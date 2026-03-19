@@ -686,7 +686,7 @@ function showFormM(title){
       </div>
       <div class="g3">
         <div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写国家名称"/></div>
+        <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="国家名称"/></div>
         <div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div>
       </div>
       <div class="stitle">产品需求</div>
