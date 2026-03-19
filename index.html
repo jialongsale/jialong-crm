@@ -568,10 +568,10 @@ function renderCus(){
     const dupW=dup?`<span class="dup-w">⚠重复</span>`:'';
     const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
     return`<tr>
+    return`<tr>
       <td><span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}<br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span></td>
-	<td><span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}<br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span></td>
-<td style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(c.first_record_date||c.created_at?.split('T')[0])}</td>
-<td style="font-size:12px">
+      <td style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(c.first_record_date||c.created_at?.split('T')[0])}</td>
+      <td style="font-size:12px">
   ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
   ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
   ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
@@ -727,10 +727,11 @@ function showFormM(title){
         ${salesRow}
         <div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div>
       </div>
-	<div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${d.first_record_date||''}" onchange="FD.first_record_date=this.value"/></div>
-    	</div>
+      <div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${d.first_record_date||''}" onchange="FD.first_record_date=this.value"/></div>
       <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新跟进备注…">${esc(d.notes)}</textarea></div>
     </div>
+    <div class="mf"><button class="btn-s" onclick="closeM()">取消</button><button class="btn-p" onclick="saveCus()">保存</button></div>
+  </div>`;
     <div class="mf"><button class="btn-s" onclick="closeM()">取消</button><button class="btn-p" onclick="saveCus()">保存</button></div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closeM()});
