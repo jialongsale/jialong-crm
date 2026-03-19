@@ -133,8 +133,15 @@ tr:hover td{background:#f8fafc}
 @media(max-width:768px){
   .chart-grid{grid-template-columns:1fr}
   .dash-row,.g2,.g3,.det-grid{grid-template-columns:1fr}
-  th,td{padding:7px 8px}
-  .nav-brand{font-size:13px}
+  .nav-brand{display:none}
+  .nb{font-size:11px;padding:4px 6px}
+  .user-pill{display:none}
+  .btn-s{padding:5px 8px;font-size:11px}
+  .btn-p{padding:5px 8px;font-size:11px}
+  .col-hide{display:none}
+  th,td{padding:6px 8px;font-size:11px}
+  .acts{flex-wrap:wrap;gap:2px}
+  .ab{font-size:10px;padding:2px 5px}
 }
 </style>
 </head>
@@ -538,18 +545,18 @@ function renderCus(){
         <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}
         <br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span>
       </td>
-      <td style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(c.first_record_date||c.created_at?.split('T')[0])}</td>
-      <td style="font-size:12px">
+      <td class="col-hide" style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(c.first_record_date||c.created_at?.split('T')[0])}</td>
+      <td class="col-hide" style="font-size:12px">
         ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
         ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
         ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
       </td>
-      <td style="color:#64748b">${esc(c.country)||'—'}</td>
-      <td style="color:#64748b">${esc(c.source)||'—'}</td>
-      <td>${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:1px;font-size:10px">${p}</span>`).join('')||'—'}</td>
-      <td style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
+      <td class="col-hide" style="color:#64748b">${esc(c.country)||'—'}</td>
+      <td class="col-hide" style="color:#64748b">${esc(c.source)||'—'}</td>
+      <td class="col-hide">${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:1px;font-size:10px">${p}</span>`).join('')||'—'}</td>
+      <td class="col-hide" style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
       <td><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
-      <td style="color:#64748b;white-space:nowrap">${fmt(c.last_follow_date)}</td>
+      <td class="col-hide" style="color:#64748b;white-space:nowrap">${fmt(c.last_follow_date)}</td>
       <td><span class="${n.cls}">${n.t}</span><br>${dots}</td>
       <td><div class="acts">
         <button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button>
@@ -575,10 +582,19 @@ function renderCus(){
       </select>
     </div>
     <div style="overflow-x:auto"><table>
-      <thead><tr>
-        <th>客户姓名</th><th>首次记录</th><th>邮箱/电话</th><th>国家</th><th>来源</th>
-        <th>产品</th><th>负责人</th><th>状态</th><th>最近跟进</th><th>下次跟进</th><th>操作</th>
-      </tr></thead>
+<thead><tr>
+  <th>客户姓名</th>
+  <th class="col-hide">首次记录</th>
+  <th class="col-hide">邮箱/电话</th>
+  <th class="col-hide">国家</th>
+  <th class="col-hide">来源</th>
+  <th class="col-hide">产品</th>
+  <th class="col-hide">负责人</th>
+  <th>状态</th>
+  <th class="col-hide">最近跟进</th>
+  <th>下次跟进</th>
+  <th>操作</th>
+</tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </div>`;
