@@ -300,7 +300,7 @@ async function saveCus(){
     packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',
     automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',
     purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',
-    sales:FD.sales||CU,status:FD.status||'',self_type:FD.self_type||'',notes:FD.notes||''};
+    sales:FD.sales||CU,status:FD.status||'',self_type:FD.self_type||'',first_record_date:FD.first_record_date||null,notes:FD.notes||''};
   if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
   const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
   if(error){toast('失败:'+error.message);return;}
@@ -409,10 +409,10 @@ function renderDash(){
 
   return`${dfHtml}
   <div class="stat-grid">
-    ${[['总客户',src.length,'#3b82f6'],['今日待办',todN,'#ef4444'],['公海',seaN,'#f59e0b'],
-       ['潜在',bs('潜在'),'#3b82f6'],['意向',bs('意向'),'#d97706'],['成交',bs('成交'),'#16a34a'],
-       ['流失',bs('流失'),'#94a3b8'],['垃圾',bs('垃圾'),'#f43f5e']]
-      .map(([l,v,c])=>`<div class="stat-card"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
+    ${[['总客户',src.length,'#3b82f6','all',null],['今日待办',todN,'#ef4444','tasks',null],['公海',seaN,'#f59e0b','sea',null],
+       ['潜在',bs('潜在'),'#3b82f6','status','潜在'],['意向',bs('意向'),'#d97706','status','意向'],['成交',bs('成交'),'#16a34a','status','成交'],
+       ['流失',bs('流失'),'#94a3b8','status','流失'],['垃圾',bs('垃圾'),'#f43f5e','status','垃圾']]
+      .map(([l,v,c,t,val])=>`<div class="stat-card" style="cursor:pointer" onclick="statClick('${t}','${val||''}')"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
   </div>
   <div class="chart-grid">
     <div class="chart-card" onclick="showDrill('country',null,event)">
@@ -508,14 +508,20 @@ function renderCharts(){
     options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
       onClick:(_,el)=>{if(el.length)showDrill('date',days[el[0].index])}}});
 }
+function statClick(type,val){
+  if(type==='tasks'){setView('tasks');return;}
+  if(type==='sea'){setView('sea');return;}
+  if(type==='all'){showDrill('all',null);return;}
+  showDrill('status',val);
+}
 
 function showDrill(field,value,e){
   if(e&&e.target.tagName==='CANVAS')return; // handled by chart onClick
   const src=isAdm()&&DF==='全部'?ALL:CUS;
-  const list=value!==undefined
+  const list=field==='all'?src:value!==undefined
     ?(field==='date'?src.filter(c=>c.created_at?.startsWith(value)):src.filter(c=>(c[field]||'')===(value||'')))
     :src;
-const labels={country:'国家',status:'状态',packaging_material:'包装物料',sales:'销售',date:'日期'};
+const labels={country:'国家',status:'状态',packaging_material:'包装物料',sales:'销售',date:'日期',all:'全部客户'};
   const el=document.createElement('div');el.className='overlay';el.id='drill-ov';
   const rows=list.length===0?'<div class="empty">暂无数据</div>':list.map(c=>{
     const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id)[0];
@@ -563,6 +569,13 @@ function renderCus(){
     const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
     return`<tr>
       <td><span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}<br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span></td>
+	<td><span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}<br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span></td>
+<td style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(c.first_record_date||c.created_at?.split('T')[0])}</td>
+<td style="font-size:12px">
+  ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
+  ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
+  ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
+</td>
       <td style="color:#64748b">${esc(c.country)||'—'}</td>
       <td style="color:#64748b">${esc(c.source)||'—'}</td>
       <td>${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:1px;font-size:10px">${p}</span>`).join('')||'—'}</td>
@@ -594,7 +607,7 @@ function renderCus(){
       </select>
     </div>
     <div style="overflow-x:auto"><table>
-      <thead><tr><th>客户姓名</th><th>国家</th><th>来源</th><th>产品</th><th>负责人</th><th>状态</th><th>最近跟进</th><th>下次跟进</th><th>操作</th></tr></thead>
+      <thead><tr><th>客户姓名</th><th>首次记录</th><th>邮箱/电话</th><th>国家</th><th>来源</th><th>产品</th><th>负责人</th><th>状态</th><th>最近跟进</th><th>下次跟进</th><th>操作</th></tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </div>`;
@@ -714,6 +727,8 @@ function showFormM(title){
         ${salesRow}
         <div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div>
       </div>
+	<div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${d.first_record_date||''}" onchange="FD.first_record_date=this.value"/></div>
+    	</div>
       <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新跟进备注…">${esc(d.notes)}</textarea></div>
     </div>
     <div class="mf"><button class="btn-s" onclick="closeM()">取消</button><button class="btn-p" onclick="saveCus()">保存</button></div>
