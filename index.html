@@ -184,6 +184,15 @@ const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 const SALES=['Jacky','Jen','Jimmy','Chris','Tony','Gethin'];
+const PASSWORDS={
+  'Jacky':'jacky123',
+  'Jen':'jen123',
+  'Jimmy':'jimmy123',
+  'Chris':'chris123',
+  'Tony':'tony123',
+  'Gethin':'gethin123',
+  '管理员':'admin888'
+};
 const SOURCES=['易询盘','外贸牛','阿里巴巴','中国制造','社媒','国内转交'];
 const PRODUCTS=['真空机','封口机','半自动','外购产品'];
 const STATUSES=['','潜在','意向','成交','流失','垃圾'];
@@ -313,6 +322,9 @@ async function saveLog(){
 }
 
 function login(n){
+  const pwd=prompt(`请输入 ${n} 的登录密码：`);
+  if(pwd===null)return;
+  if(pwd!==PASSWORDS[n]){toast('❌ 密码错误');return;}
   CU=n;localStorage.setItem('crm_u',n);
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='block';
