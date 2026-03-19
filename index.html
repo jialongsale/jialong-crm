@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>嘉龙包装 CRM</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f8fafc;color:#1e293b;min-height:100vh}
+button{cursor:pointer;font-family:inherit}
+input,select,textarea{font-family:inherit;outline:none}
+
+/* NAV */
+.nav{background:#0f172a;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:100}
+.nav-brand{color:#fff;font-weight:700;font-size:16px;letter-spacing:1px}
+.nav-links{display:flex;gap:4px}
+.nav-btn{background:none;border:none;color:#94a3b8;font-size:13px;padding:6px 12px;border-radius:6px;transition:color 0.15s}
+.nav-btn.active{color:#38bdf8;font-weight:600}
+.nav-btn:hover{color:#e2e8f0}
+.btn-new{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:7px 16px;font-size:13px;font-weight:600}
+.btn-new:hover{background:#2563eb}
+
+/* LAYOUT */
+.main{max-width:1100px;margin:0 auto;padding:24px 16px}
+
+/* CARDS */
+.stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:12px;margin-bottom:24px}
+.stat-card{background:#fff;border-radius:12px;padding:16px 20px;border:1px solid #e2e8f0}
+.stat-label{font-size:12px;color:#94a3b8;margin-bottom:6px}
+.stat-val{font-size:28px;font-weight:700}
+
+/* TABLE */
+.table-wrap{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden}
+.table-header{padding:14px 18px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}
+.table-title{font-weight:600;font-size:14px}
+table{width:100%;border-collapse:collapse;font-size:13px}
+th{padding:10px 14px;text-align:left;color:#64748b;font-weight:600;font-size:12px;border-bottom:1px solid #e2e8f0;white-space:nowrap;background:#f8fafc}
+td{padding:10px 14px;border-bottom:1px solid #f8fafc;vertical-align:middle}
+tr:hover td{background:#f8fafc}
+tr:last-child td{border-bottom:none}
+.empty-row td{padding:32px;text-align:center;color:#94a3b8}
+
+/* BADGES */
+.badge{display:inline-block;padding:3px 10px;border-radius:10px;font-size:12px;font-weight:600;white-space:nowrap}
+.badge-潜在{background:#eff6ff;color:#3b82f6}
+.badge-意向{background:#fffbeb;color:#f59e0b}
+.badge-成交{background:#f0fdf4;color:#10b981}
+.badge-流失{background:#f9fafb;color:#9ca3af}
+.badge-red{background:#fef2f2;color:#ef4444}
+.badge-orange{background:#fff7ed;color:#f97316}
+.badge-yellow{background:#fffbeb;color:#f59e0b}
+.badge-purple{background:#f5f3ff;color:#8b5cf6}
+.badge-ok{color:#94a3b8;font-size:12px}
+
+/* FILTERS */
+.filters{display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap}
+.filters input,.filters select{padding:8px 12px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;background:#fff}
+.filters input{flex:1;min-width:180px}
+
+/* ACTION BTNS */
+.act-btn{font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid;margin:0 2px}
+.act-follow{background:#f0fdf4;color:#10b981;border-color:#bbf7d0}
+.act-log{background:#eff6ff;color:#3b82f6;border-color:#bfdbfe}
+.act-edit{background:#f8fafc;color:#64748b;border-color:#e2e8f0}
+.act-del{background:#fff;color:#ef4444;border-color:#fecaca}
+
+/* GRID LAYOUT */
+.two-col{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+
+/* TODAY / SEA LIST */
+.task-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:16px 20px;margin-bottom:12px}
+.task-card-sea{border-color:#fecaca}
+.task-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.task-info{flex:1}
+.task-name{font-size:15px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:8px}
+.task-meta{font-size:12px;color:#94a3b8;margin-bottom:8px}
+.task-note{font-size:13px;background:#f8fafc;border-left:3px solid #e2e8f0;border-radius:0 8px 8px 0;padding:8px 12px;color:#374151}
+.task-actions{display:flex;flex-direction:column;gap:8px;flex-shrink:0}
+.task-btn{padding:8px 14px;border-radius:8px;font-size:13px;font-weight:600;border:none}
+.task-btn-green{background:#10b981;color:#fff}
+.task-btn-blue{background:#eff6ff;color:#3b82f6;border:1px solid #bfdbfe!important;border:none}
+.task-btn-gray{background:#f8fafc;color:#64748b;border:1px solid #e2e8f0!important;border:none}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:200;display:flex;align-items:center;justify-content:center;padding:16px}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:520px;max-height:90vh;overflow-y:auto}
+.modal-head{padding:18px 24px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center}
+.modal-title{font-weight:700;font-size:16px}
+.modal-close{background:none;border:none;font-size:22px;color:#94a3b8;line-height:1}
+.modal-body{padding:20px 24px;display:flex;flex-direction:column;gap:14px}
+.form-label{font-size:12px;color:#64748b;display:block;margin-bottom:4px;font-weight:600}
+.form-input{width:100%;padding:9px 12px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px}
+.form-input:focus{border-color:#93c5fd}
+.form-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.form-row{display:flex;gap:8px;flex-wrap:wrap}
+.tag-btn{padding:6px 14px;border-radius:8px;font-size:13px;transition:all 0.15s}
+.tag-btn-off{border:1px solid #e2e8f0;background:#fff;color:#64748b}
+.tag-btn-on{border:1px solid #3b82f6;background:#eff6ff;color:#3b82f6}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;padding-top:4px}
+.btn-cancel{padding:9px 20px;border-radius:8px;border:1px solid #e2e8f0;background:#fff;color:#64748b;font-size:13px}
+.btn-save{padding:9px 24px;border-radius:8px;background:#3b82f6;color:#fff;border:none;font-size:13px;font-weight:600}
+.btn-save:hover{background:#2563eb}
+
+/* LOG */
+.log-list{background:#f8fafc;border-radius:8px;padding:10px 14px;max-height:160px;overflow-y:auto}
+.log-item{font-size:12px;color:#64748b;padding:4px 0;border-bottom:1px dashed #e2e8f0}
+.log-item:last-child{border-bottom:none}
+.log-date{color:#94a3b8}
+
+/* PROGRESS BAR */
+.perf-row{padding:10px 18px;border-bottom:1px solid #f8fafc}
+.perf-row:last-child{border-bottom:none}
+.perf-top{display:flex;justify-content:space-between;margin-bottom:6px;font-size:13px}
+.perf-bar-bg{height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden}
+.perf-bar-fill{height:100%;background:#10b981;border-radius:2px;transition:width 0.5s}
+
+/* LOADING */
+.loading{display:flex;align-items:center;justify-content:center;height:60px;color:#94a3b8;font-size:14px}
+
+/* TOAST */
+.toast{position:fixed;bottom:24px;right:24px;background:#1e293b;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;z-index:500;opacity:0;transform:translateY(10px);transition:all 0.3s;pointer-events:none}
+.toast.show{opacity:1;transform:translateY(0)}
+
+/* EMPTY STATE */
+.empty-state{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:48px;text-align:center;color:#94a3b8}
+.empty-icon{font-size:40px;margin-bottom:12px}
+.empty-title{font-size:16px;font-weight:600;color:#374151;margin-bottom:6px}
+
+@media(max-width:640px){
+  .two-col{grid-template-columns:1fr}
+  .form-grid{grid-template-columns:1fr}
+  .nav-links .nav-btn span{display:none}
+  table{font-size:12px}
+  td,th{padding:8px}
+}
+</style>
+</head>
+<body>
+
+<!-- ══ SUPABASE CONFIG ══════════════════════════════════════════ -->
+<!-- 把下面两行替换成你的 Supabase 项目信息 -->
+<script>
+const SUPABASE_URL = 'https://otfqrrjwfxwiqanflocy.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_-dUNxzzwwKbksz8BF41Mlw_mZJh8HLY';
+</script>
+<!-- ═══════════════════════════════════════════════════════════ -->
+
+<nav class="nav">
+  <span class="nav-brand">🏭 嘉龙包装 CRM</span>
+  <div class="nav-links">
+    <button class="nav-btn active" onclick="setView('dashboard')">📊 <span>看板</span></button>
+    <button class="nav-btn" onclick="setView('customers')">👥 <span>客户</span></button>
+    <button class="nav-btn" onclick="setView('tasks')" id="tasks-btn">🔴 <span>今日待办</span></button>
+    <button class="nav-btn" onclick="setView('sea')">🌊 <span>公海</span></button>
+  </div>
+  <button class="btn-new" onclick="openAdd()">+ 新建客户</button>
+</nav>
+
+<div class="main" id="main"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+// ── Init Supabase ──────────────────────────────────────────────
+const { createClient } = supabase;
+const db = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+// ── Constants ──────────────────────────────────────────────────
+const SOURCES  = ['易询盘','外贸牛','阿里巴巴','中国制造','社媒','国内转交'];
+const COUNTRIES= ['印度','俄罗斯','越南','法国','德国','美国','巴西','墨西哥','土耳其','泰国','印尼','马来西亚','菲律宾','沙特','阿联酋','其他'];
+const PRODUCTS = ['真空机','封口机','半自动','外购产品'];
+const STATUSES = ['潜在','意向','成交','流失'];
+
+// ── State ──────────────────────────────────────────────────────
+let customers = [];
+let logs = [];
+let view = 'dashboard';
+let modalMode = null; // 'add' | 'edit' | 'log'
+let editingId = null;
+let logTargetId = null;
+let filterSearch = '';
+let filterSales = '全部';
+let filterStatus = '全部';
+let formData = {};
+let logForm = { stage:'', notes:'' };
+
+// ── Helpers ────────────────────────────────────────────────────
+const today = () => new Date().toISOString().split('T')[0];
+const addDays = (d,n) => { const r=new Date(d); r.setDate(r.getDate()+n); return r.toISOString().split('T')[0]; };
+const fmtDate = d => d ? new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeric'}) : '—';
+const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+
+function urgency(c) {
+  if (c.status==='成交'||c.status==='流失') return null;
+  const lt = c.last_follow_date;
+  if (!lt) return {label:'未跟进',cls:'badge-red'};
+  const t = today();
+  if (addDays(lt,3)===t)  return {label:'3天到期', cls:'badge-red'};
+  if (addDays(lt,7)===t)  return {label:'7天到期', cls:'badge-orange'};
+  if (addDays(lt,15)===t) return {label:'15天到期',cls:'badge-yellow'};
+  if (addDays(lt,30)===t) return {label:'30天到期',cls:'badge-purple'};
+  if (addDays(lt,3)<t)    return {label:'已逾期',  cls:'badge-red'};
+  return null;
+}
+
+function isTodayTask(c) {
+  if (c.status==='成交'||c.status==='流失') return false;
+  const lt = c.last_follow_date;
+  if (!lt) return true;
+  const t = today();
+  return [3,7,15,30].some(n=>addDays(lt,n)===t) || addDays(lt,3)<t;
+}
+
+function isSeaCustomer(c) {
+  if (c.status==='成交'||c.status==='流失') return false;
+  if (!c.last_follow_date) return true;
+  return addDays(c.last_follow_date,30) < today();
+}
+
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  setTimeout(()=>el.classList.remove('show'), 2500);
+}
+
+// ── Data ───────────────────────────────────────────────────────
+async function loadAll() {
+  const [cr, lr] = await Promise.all([
+    db.from('customers').select('*').order('created_at',{ascending:false}),
+    db.from('follow_logs').select('*').order('created_at',{ascending:false})
+  ]);
+  customers = cr.data || [];
+  logs = lr.data || [];
+  render();
+}
+
+async function saveCustomer() {
+  const d = formData;
+  if (!d.name?.trim()) { toast('请填写客户名称'); return; }
+  if (modalMode==='add') {
+    const { error } = await db.from('customers').insert([{
+      name:d.name.trim(), source:d.source||'', country:d.country||'',
+      products:d.products||[], sales:d.sales?.trim()||'',
+      status:d.status||'潜在', last_follow_date:d.last_follow_date||today(),
+      notes:d.notes||''
+    }]);
+    if (error) { toast('保存失败: '+error.message); return; }
+    toast('✅ 客户已添加');
+  } else {
+    const { error } = await db.from('customers').update({
+      name:d.name.trim(), source:d.source||'', country:d.country||'',
+      products:d.products||[], sales:d.sales?.trim()||'',
+      status:d.status||'潜在', last_follow_date:d.last_follow_date||today(),
+      notes:d.notes||''
+    }).eq('id', editingId);
+    if (error) { toast('保存失败: '+error.message); return; }
+    toast('✅ 已更新');
+  }
+  closeModal();
+  await loadAll();
+}
+
+async function deleteCustomer(id) {
+  if (!confirm('确定删除这条客户记录？')) return;
+  await db.from('customers').delete().eq('id',id);
+  toast('已删除');
+  await loadAll();
+}
+
+async function quickFollow(id) {
+  await db.from('customers').update({last_follow_date:today()}).eq('id',id);
+  toast('✅ 跟进时间已更新为今天');
+  await loadAll();
+}
+
+async function saveLog() {
+  if (!logForm.notes?.trim()) { toast('请填写沟通详情'); return; }
+  await db.from('follow_logs').insert([{
+    customer_id: logTargetId,
+    stage: logForm.stage||'',
+    notes: logForm.notes.trim()
+  }]);
+  logForm = {stage:'',notes:''};
+  toast('📝 日志已保存');
+  await loadAll();
+  renderLogModal(logTargetId);
+}
+
+// ── View ───────────────────────────────────────────────────────
+function setView(v) {
+  view = v;
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  const map = {dashboard:0,customers:1,tasks:2,sea:3};
+  document.querySelectorAll('.nav-btn')[map[v]]?.classList.add('active');
+  render();
+}
+
+function render() {
+  const el = document.getElementById('main');
+  if (view==='dashboard') el.innerHTML = renderDashboard();
+  else if (view==='customers') el.innerHTML = renderCustomers();
+  else if (view==='tasks') el.innerHTML = renderTasks();
+  else if (view==='sea') el.innerHTML = renderSea();
+  updateTaskBadge();
+}
+
+function updateTaskBadge() {
+  const n = customers.filter(isTodayTask).length;
+  const btn = document.getElementById('tasks-btn');
+  if (btn) btn.innerHTML = `${n>0?'🔴':'⬜'} <span>今日待办${n>0?` (${n})`:''}`;
+}
+
+// ── Dashboard ──────────────────────────────────────────────────
+function renderDashboard() {
+  const total = customers.length;
+  const todayN = customers.filter(isTodayTask).length;
+  const seaN = customers.filter(isSeaCustomer).length;
+  const byStatus = s => customers.filter(c=>c.status===s).length;
+  const colors = {潜在:'#3b82f6',意向:'#f59e0b',成交:'#10b981',流失:'#9ca3af'};
+
+  const statsHtml = [
+    ['总客户数',total,'#3b82f6'],
+    ['今日待办',todayN,'#ef4444'],
+    ['公海客户',seaN,'#f59e0b'],
+    ...STATUSES.map(s=>[s,byStatus(s),colors[s]])
+  ].map(([l,v,c])=>`
+    <div class="stat-card">
+      <div class="stat-label">${l}</div>
+      <div class="stat-val" style="color:${c}">${v}</div>
+    </div>`).join('');
+
+  const todayList = customers.filter(isTodayTask).slice(0,5);
+  const todayHtml = todayList.length===0
+    ? '<div style="padding:24px;text-align:center;color:#94a3b8;font-size:13px">今天暂无待办 🎉</div>'
+    : todayList.map(c=>{
+        const u = urgency(c);
+        return `<div style="padding:10px 18px;border-bottom:1px solid #f8fafc;display:flex;align-items:center;gap:10px">
+          <div style="flex:1">
+            <div style="font-size:13px;font-weight:500">${esc(c.name)}</div>
+            <div style="font-size:11px;color:#94a3b8">${esc(c.sales)} · ${esc(c.country)}</div>
+          </div>
+          ${u?`<span class="badge ${u.cls}">${u.label}</span>`:''}
+          <button class="act-btn act-follow" onclick="quickFollow('${c.id}')">✓ 已跟进</button>
+        </div>`;
+      }).join('');
+
+  const salesNames = [...new Set(customers.map(c=>c.sales).filter(Boolean))];
+  const perfHtml = salesNames.length===0
+    ? '<div style="padding:16px;color:#94a3b8;font-size:13px;text-align:center">暂无数据</div>'
+    : salesNames.map(s=>{
+        const total = customers.filter(c=>c.sales===s).length;
+        const won = customers.filter(c=>c.sales===s&&c.status==='成交').length;
+        const pct = total ? Math.round(won/total*100) : 0;
+        return `<div class="perf-row">
+          <div class="perf-top">
+            <span style="font-weight:500">${esc(s)}</span>
+            <span style="color:#64748b;font-size:12px">${won}/${total} 成交 · ${pct}%</span>
+          </div>
+          <div class="perf-bar-bg"><div class="perf-bar-fill" style="width:${pct}%"></div></div>
+        </div>`;
+      }).join('');
+
+  return `
+    <div class="stat-grid">${statsHtml}</div>
+    <div class="two-col">
+      <div class="table-wrap">
+        <div class="table-header">
+          <span class="table-title">🔴 今日待办</span>
+          <span style="font-size:11px;color:#94a3b8">${todayList.length} 条</span>
+        </div>
+        ${todayHtml}
+      </div>
+      <div class="table-wrap">
+        <div class="table-header"><span class="table-title">📈 销售业绩</span></div>
+        ${perfHtml}
+      </div>
+    </div>`;
+}
+
+// ── Customers ─────────────────────────────────────────────────
+function renderCustomers() {
+  const salesOpts = ['全部',...new Set(customers.map(c=>c.sales).filter(Boolean))];
+  const filtered = customers.filter(c=>{
+    const q = filterSearch.toLowerCase();
+    const mQ = !q||c.name.toLowerCase().includes(q)||(c.country||'').includes(q);
+    const mS = filterSales==='全部'||c.sales===filterSales;
+    const mSt = filterStatus==='全部'||c.status===filterStatus;
+    return mQ&&mS&&mSt;
+  });
+
+  const rows = filtered.length===0
+    ? '<tr class="empty-row"><td colspan="9">暂无数据</td></tr>'
+    : filtered.map(c=>{
+        const u = urgency(c);
+        return `<tr>
+          <td><div style="font-weight:600">${esc(c.name)}</div><div style="font-size:11px;color:#94a3b8">${fmtDate(c.created_at?.split('T')[0])} 创建</div></td>
+          <td style="color:#64748b">${esc(c.country)||'—'}</td>
+          <td style="color:#64748b">${esc(c.source)||'—'}</td>
+          <td>${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#3b82f6;margin:1px">${p}</span>`).join('')}</td>
+          <td style="color:#64748b">${esc(c.sales)||'—'}</td>
+          <td><span class="badge badge-${c.status}">${c.status}</span></td>
+          <td style="color:#64748b;white-space:nowrap">${fmtDate(c.last_follow_date)}</td>
+          <td>${u?`<span class="badge ${u.cls}">${u.label}</span>`:'<span class="badge-ok">正常</span>'}</td>
+          <td>
+            <button class="act-btn act-follow" onclick="quickFollow('${c.id}')">✓跟进</button>
+            <button class="act-btn act-log" onclick="openLog('${c.id}')">📝</button>
+            <button class="act-btn act-edit" onclick="openEdit('${c.id}')">编辑</button>
+            <button class="act-btn act-del" onclick="deleteCustomer('${c.id}')">删</button>
+          </td>
+        </tr>`;
+      }).join('');
+
+  return `
+    <div class="filters">
+      <input value="${esc(filterSearch)}" oninput="filterSearch=this.value;render()" placeholder="搜索客户名称、国家…"/>
+      <select onchange="filterSales=this.value;render()">
+        ${salesOpts.map(s=>`<option ${filterSales===s?'selected':''}>${esc(s)}</option>`).join('')}
+      </select>
+      <select onchange="filterStatus=this.value;render()">
+        ${['全部',...STATUSES].map(s=>`<option ${filterStatus===s?'selected':''}>${s}</option>`).join('')}
+      </select>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead><tr>
+          ${['客户名称','国家','来源','产品','负责人','状态','最近跟进','预警','操作'].map(h=>`<th>${h}</th>`).join('')}
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+    </div>`;
+}
+
+// ── Tasks ──────────────────────────────────────────────────────
+function renderTasks() {
+  const list = customers.filter(isTodayTask);
+  if (list.length===0) return `
+    <div class="empty-state">
+      <div class="empty-icon">🎉</div>
+      <div class="empty-title">今天没有待办任务！</div>
+      <div style="font-size:13px">继续保持，所有客户都在正常跟进中</div>
+    </div>`;
+  return `
+    <div style="font-weight:600;font-size:16px;margin-bottom:16px">🔴 今日待办 · ${today()}</div>
+    ${list.map(c=>{
+      const u = urgency(c);
+      const cLogs = logs.filter(l=>l.customer_id===c.id).slice(0,2);
+      return `<div class="task-card">
+        <div class="task-top">
+          <div class="task-info">
+            <div class="task-name">
+              ${esc(c.name)}
+              ${u?`<span class="badge ${u.cls}">${u.label}</span>`:''}
+              <span class="badge badge-${c.status}">${c.status}</span>
+            </div>
+            <div class="task-meta">${esc(c.country)} · ${esc(c.source)} · 负责：${esc(c.sales)}</div>
+            ${c.notes?`<div class="task-note">${esc(c.notes)}</div>`:''}
+            ${cLogs.length>0?`
+              <div style="margin-top:10px">
+                <div style="font-size:12px;color:#94a3b8;margin-bottom:4px">最近日志</div>
+                ${cLogs.map(l=>`<div class="log-item"><span class="log-date">${l.created_at?.split('T')[0]} ${l.stage?`[${l.stage}]`:''}</span> ${esc(l.notes)}</div>`).join('')}
+              </div>`:''}
+          </div>
+          <div class="task-actions">
+            <button class="task-btn task-btn-green" onclick="quickFollow('${c.id}')">✓ 已跟进</button>
+            <button class="task-btn task-btn-blue" style="border:1px solid #bfdbfe" onclick="openLog('${c.id}')">📝 写日志</button>
+            <button class="task-btn task-btn-gray" style="border:1px solid #e2e8f0" onclick="openEdit('${c.id}')">编辑</button>
+          </div>
+        </div>
+      </div>`;
+    }).join('')}`;
+}
+
+// ── Sea ────────────────────────────────────────────────────────
+function renderSea() {
+  const list = customers.filter(isSeaCustomer);
+  if (list.length===0) return `
+    <div class="empty-state">
+      <div class="empty-icon">👍</div>
+      <div class="empty-title">没有公海客户</div>
+      <div style="font-size:13px">所有客户跟进状态良好</div>
+    </div>`;
+  return `
+    <div style="margin-bottom:16px">
+      <div style="font-weight:600;font-size:16px;margin-bottom:4px">🌊 公海客户 — 超过30天未跟进</div>
+      <div style="font-size:13px;color:#94a3b8">共 ${list.length} 个客户需要重新激活或转交</div>
+    </div>
+    ${list.map(c=>`
+      <div class="task-card task-card-sea" style="display:flex;align-items:center;gap:12px">
+        <div style="flex:1">
+          <div style="font-weight:600;font-size:14px;margin-bottom:4px">${esc(c.name)}</div>
+          <div style="font-size:12px;color:#94a3b8">${esc(c.country)} · ${esc(c.sales)} · 最近跟进：${fmtDate(c.last_follow_date)}</div>
+        </div>
+        <span class="badge badge-${c.status}">${c.status}</span>
+        <button class="task-btn task-btn-green" style="padding:7px 14px" onclick="quickFollow('${c.id}')">重新激活</button>
+        <button class="task-btn task-btn-gray" style="padding:7px 14px;border:1px solid #e2e8f0" onclick="openEdit('${c.id}')">编辑</button>
+      </div>`).join('')}`;
+}
+
+// ── Modals ─────────────────────────────────────────────────────
+function openAdd() {
+  modalMode = 'add'; editingId = null;
+  formData = { name:'', source:'', country:'', products:[], sales:'', status:'潜在', last_follow_date:today(), notes:'' };
+  showFormModal();
+}
+
+function openEdit(id) {
+  const c = customers.find(x=>x.id===id);
+  if (!c) return;
+  modalMode = 'edit'; editingId = id;
+  formData = { name:c.name, source:c.source, country:c.country, products:[...(c.products||[])], sales:c.sales, status:c.status, last_follow_date:c.last_follow_date||today(), notes:c.notes||'' };
+  showFormModal();
+}
+
+function showFormModal() {
+  const existing = document.getElementById('modal-overlay');
+  if (existing) existing.remove();
+  const title = modalMode==='add'?'新建客户':'编辑客户';
+  const d = formData;
+  const sourceOpts = SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('');
+  const countryOpts = COUNTRIES.map(s=>`<option ${d.country===s?'selected':''}>${s}</option>`).join('');
+  const statusOpts = STATUSES.map(s=>`<option ${d.status===s?'selected':''}>${s}</option>`).join('');
+  const prodBtns = PRODUCTS.map(p=>`<button type="button" class="tag-btn ${d.products.includes(p)?'tag-btn-on':'tag-btn-off'}" onclick="toggleProduct('${p}')">${p}</button>`).join('');
+
+  const el = document.createElement('div');
+  el.className = 'overlay'; el.id = 'modal-overlay';
+  el.innerHTML = `
+    <div class="modal">
+      <div class="modal-head">
+        <span class="modal-title">${title}</span>
+        <button class="modal-close" onclick="closeModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <label class="form-label">客户名称 *</label>
+          <input class="form-input" id="f-name" value="${esc(d.name)}" placeholder="客户名称或联系人" oninput="formData.name=this.value"/>
+        </div>
+        <div>
+          <label class="form-label">负责销售 *</label>
+          <input class="form-input" id="f-sales" value="${esc(d.sales)}" placeholder="填写自己的名字" oninput="formData.sales=this.value"/>
+        </div>
+        <div class="form-grid">
+          <div>
+            <label class="form-label">询盘来源</label>
+            <select class="form-input" onchange="formData.source=this.value">
+              <option value="">请选择</option>${sourceOpts}
+            </select>
+          </div>
+          <div>
+            <label class="form-label">国家</label>
+            <select class="form-input" onchange="formData.country=this.value">
+              <option value="">请选择</option>${countryOpts}
+            </select>
+          </div>
+        </div>
+        <div class="form-grid">
+          <div>
+            <label class="form-label">客户状态</label>
+            <select class="form-input" onchange="formData.status=this.value">${statusOpts}</select>
+          </div>
+          <div>
+            <label class="form-label">最近跟进时间</label>
+            <input class="form-input" type="date" value="${d.last_follow_date||''}" onchange="formData.last_follow_date=this.value"/>
+          </div>
+        </div>
+        <div>
+          <label class="form-label">产品兴趣</label>
+          <div class="form-row" id="prod-btns">${prodBtns}</div>
+        </div>
+        <div>
+          <label class="form-label">最新跟进备注</label>
+          <textarea class="form-input" rows="3" placeholder="写下最新的跟进情况…" oninput="formData.notes=this.value">${esc(d.notes)}</textarea>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeModal()">取消</button>
+          <button class="btn-save" onclick="saveCustomer()">保存</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e=>{ if(e.target===el) closeModal(); });
+}
+
+function toggleProduct(p) {
+  if (formData.products.includes(p)) formData.products = formData.products.filter(x=>x!==p);
+  else formData.products.push(p);
+  document.getElementById('prod-btns').innerHTML = PRODUCTS.map(pp=>`<button type="button" class="tag-btn ${formData.products.includes(pp)?'tag-btn-on':'tag-btn-off'}" onclick="toggleProduct('${pp}')">${pp}</button>`).join('');
+}
+
+function openLog(id) {
+  logTargetId = id;
+  logForm = {stage:'',notes:''};
+  renderLogModal(id);
+}
+
+function renderLogModal(id) {
+  const existing = document.getElementById('log-overlay');
+  if (existing) existing.remove();
+  const cLogs = logs.filter(l=>l.customer_id===id);
+  const c = customers.find(x=>x.id===id);
+  const logList = cLogs.length===0
+    ? '<div style="font-size:12px;color:#cbd5e1">暂无历史日志</div>'
+    : cLogs.map(l=>`<div class="log-item"><span class="log-date">${l.created_at?.split('T')[0]} ${l.stage?`[${l.stage}]`:''}</span> ${esc(l.notes)}</div>`).join('');
+  const stageOpts = ['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<option ${logForm.stage===s?'selected':''}>${s}</option>`).join('');
+
+  const el = document.createElement('div');
+  el.className = 'overlay'; el.id = 'log-overlay';
+  el.innerHTML = `
+    <div class="modal" style="max-width:460px">
+      <div class="modal-head">
+        <span class="modal-title">📝 跟进日志 — ${esc(c?.name||'')}</span>
+        <button class="modal-close" onclick="closeLogModal()">×</button>
+      </div>
+      <div class="modal-body">
+        <div>
+          <label class="form-label">跟进阶段</label>
+          <select class="form-input" onchange="logForm.stage=this.value">
+            <option value="">请选择</option>${stageOpts}
+          </select>
+        </div>
+        <div>
+          <label class="form-label">沟通详情 *</label>
+          <textarea class="form-input" rows="4" placeholder="记录这次沟通的内容…" oninput="logForm.notes=this.value">${esc(logForm.notes)}</textarea>
+        </div>
+        <div>
+          <label class="form-label">历史记录</label>
+          <div class="log-list">${logList}</div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn-cancel" onclick="closeLogModal()">关闭</button>
+          <button class="btn-save" onclick="saveLog()">保存日志</button>
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e=>{ if(e.target===el) closeLogModal(); });
+}
+
+function closeModal() { document.getElementById('modal-overlay')?.remove(); }
+function closeLogModal() { document.getElementById('log-overlay')?.remove(); }
+
+// ── Boot ───────────────────────────────────────────────────────
+loadAll();
+</script>
+</body>
+</html>
