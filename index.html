@@ -183,7 +183,7 @@ tr:hover td{background:#f8fafc}
 <div id="app" style="display:none">
   <nav class="nav">
     <div class="nav-left">
-      <span class="nav-brand">🏭 嘉龙 CRM</span>
+      <span class="nav-brand">🏭 JIALONG CRM</span>
       <button class="nb active" id="nb-dashboard" onclick="setView('dashboard')">📊 看板</button>
       <button class="nb" id="nb-customers" onclick="setView('customers')">👥 客户</button>
       <button class="nb" id="nb-tasks" onclick="setView('tasks')">🔴 待办</button>
@@ -300,7 +300,7 @@ async function saveCus(){
     packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',
     automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',
     purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',
-    sales:FD.sales||CU,status:FD.status||'',notes:FD.notes||''};
+    sales:FD.sales||CU,status:FD.status||'',self_type:FD.self_type||'',notes:FD.notes||''};
   if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
   const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
   if(error){toast('失败:'+error.message);return;}
@@ -498,20 +498,24 @@ function renderCharts(){
   const ctx2=document.getElementById('cv');
   if(ctx2)CI['cv']=new Chart(ctx2,{type:'bar',
     data:{labels:SALES,datasets:[{data:SALES.map(s=>src.filter(c=>c.sales===s).length),backgroundColor:'#3b82f6',borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
+      onClick:(_,el)=>{if(el.length)showDrill('sales',SALES[el[0].index])}}});
 
   const days=Array.from({length:14},(_,i)=>addD(T(),i-13));
   const ctx3=document.getElementById('cd');
   if(ctx3)CI['cd']=new Chart(ctx3,{type:'bar',
     data:{labels:days.map(d=>fmt(d)),datasets:[{data:days.map(d=>src.filter(c=>c.created_at?.startsWith(d)).length),backgroundColor:'#10b981',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
+      onClick:(_,el)=>{if(el.length)showDrill('date',days[el[0].index])}}});
 }
 
 function showDrill(field,value,e){
   if(e&&e.target.tagName==='CANVAS')return; // handled by chart onClick
   const src=isAdm()&&DF==='全部'?ALL:CUS;
-  const list=value!==undefined?src.filter(c=>(c[field]||'')===(value||'')):src;
-  const labels={country:'国家',status:'状态',packaging_material:'包装物料'};
+  const list=value!==undefined
+    ?(field==='date'?src.filter(c=>c.created_at?.startsWith(value)):src.filter(c=>(c[field]||'')===(value||'')))
+    :src;
+const labels={country:'国家',status:'状态',packaging_material:'包装物料',sales:'销售',date:'日期'};
   const el=document.createElement('div');el.className='overlay';el.id='drill-ov';
   const rows=list.length===0?'<div class="empty">暂无数据</div>':list.map(c=>{
     const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id)[0];
@@ -682,7 +686,7 @@ function showFormM(title){
       </div>
       <div class="g3">
         <div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">国家</label><select class="fi" onchange="FD.country=this.value"><option value="">—</option>${COUNTRIES.map(s=>`<option ${d.country===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写国家名称"/></div>
         <div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div>
       </div>
       <div class="stitle">产品需求</div>
@@ -700,6 +704,9 @@ function showFormM(title){
       <div class="g2">
         <div class="fg"><label class="fl">客户类型</label><select class="fi" onchange="FD.customer_type=this.value"><option value="">—</option>${CTYPES.map(s=>`<option ${d.customer_type===s?'selected':''}>${s}</option>`).join('')}</select></div>
         <div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div>
+      </div>
+      <div class="g2">
+        <div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="自由填写，如：贸易商、小型工厂…"/></div>
       </div>
       <div class="fg"><label class="fl">项目详情</label><textarea class="fi" rows="3" oninput="FD.project_details=this.value" placeholder="客户背景、具体需求…">${esc(d.project_details)}</textarea></div>
       <div class="stitle">CRM</div>
@@ -724,7 +731,7 @@ function tP(p){
 // ══════════════════════════════════
 function openDetail(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
-  const n=nfi(c);const dup=isDup(c);
+  const n=nfi(c);const dup=isDup(c,c.id);
   const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
   const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],
     ['来源',c.source],['客户类型',c.customer_type],['真空需求',c.vacuum_need],
@@ -803,8 +810,8 @@ function openImport(){
     <div class="mh"><div class="mt">📥 批量导入客户</div><button class="xb" onclick="document.getElementById('imp-ov').remove()">×</button></div>
     <div class="mb">
       <p style="font-size:13px;color:#64748b;margin-bottom:10px">第一行为表头，从第二行开始填数据。不在列表里的国家/来源可以直接填文字。</p>
-      <div class="imp-tpl">姓名,公司,邮箱,电话,来源,国家,地区,负责销售,状态,包装物料,备注
-张三,ABC公司,zhang@abc.com,+8613800000001,阿里巴巴,印度,孟买,Jacky,潜在,食品,有意向购买</div>
+      <div class="imp-tpl">姓名,公司,邮箱,电话,来源,国家,地区,负责销售,状态,包装物料,包装重量,包装速度,真空需求,自动化需求,客户类型,客户性质,预计购买,项目详情,备注
+张三,ABC公司,zhang@abc.com,+8613800000001,阿里巴巴,印度,孟买,Jacky,潜在,食品,25-50kg,30包/分钟,有,全自动,终端客户,小型工厂,Q3 2025,需要整套包装线,有意向</div>
       <div class="fg"><label class="fl">粘贴 CSV 数据</label>
         <textarea class="fi" id="imp-txt" rows="8" placeholder="粘贴 CSV 内容…"></textarea></div>
       <div style="display:flex;gap:10px;align-items:center">
@@ -833,7 +840,10 @@ async function doImp(){
   const parse=l=>l.split(',').map(s=>s.trim());
   const headers=parse(lines[0]);
   const map={姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',
-    地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',备注:'notes'};
+    地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',
+    包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',
+    自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',
+    预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes'};
   const rows=[];
   for(let i=1;i<lines.length;i++){
     const vals=parse(lines[i]);
