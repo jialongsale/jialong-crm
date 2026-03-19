@@ -557,7 +557,7 @@ function renderCus(){
   const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))];
   const saOpts=isAdm()?['全部',...SALES]:['全部',CU];
   const rows=filtered.length===0?'<tr><td colspan="9" class="empty">暂无数据</td></tr>':filtered.map(c=>{
-    const n=nfi(c);const dup=isDup(c);
+    const n=nfi(c);const dup=isDup(c,c.id);
     const sea=isSea(c)?'<span class="badge u-red" style="margin-left:3px;font-size:10px">公海</span>':'';
     const dupW=dup?`<span class="dup-w">⚠重复</span>`:'';
     const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
