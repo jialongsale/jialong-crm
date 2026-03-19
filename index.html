@@ -10,7 +10,6 @@
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
 button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inherit;outline:none}
-
 #login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1a3a5c);display:flex;align-items:center;justify-content:center;z-index:1000}
 .login-box{background:#fff;border-radius:20px;padding:40px;width:360px;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.35)}
 .login-logo{font-size:36px;margin-bottom:8px}
@@ -20,7 +19,6 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .user-btn{padding:13px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;font-size:14px;font-weight:600;color:#374151;transition:all .15s}
 .user-btn:hover{border-color:#3b82f6;color:#2563eb;background:#eff6ff}
 .user-btn.admin{background:#0f172a;color:#fff;border-color:#0f172a;grid-column:span 2;margin-top:4px}
-
 .nav{background:#0f172a;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:sticky;top:0;z-index:100}
 .nav-left{display:flex;align-items:center;gap:2px;overflow:hidden}
 .nav-brand{color:#fff;font-weight:700;font-size:15px;margin-right:12px;white-space:nowrap;flex-shrink:0}
@@ -33,27 +31,22 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .btn-p:hover{background:#2563eb}
 .btn-s{background:#1e293b;color:#94a3b8;border:none;border-radius:8px;padding:7px 13px;font-size:13px}
 .btn-s:hover{background:#334155;color:#e2e8f0}
-
 .main{max-width:1200px;margin:0 auto;padding:18px 14px}
-
 .stat-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:18px}
-.stat-card{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0}
+.stat-card{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0;cursor:pointer}
+.stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .stat-lbl{font-size:11px;color:#94a3b8;margin-bottom:5px;font-weight:500;letter-spacing:.5px}
 .stat-v{font-size:26px;font-weight:700}
-
 .chart-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
 .chart-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px;cursor:pointer;transition:box-shadow .15s}
 .chart-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
-.chart-card.no-click{cursor:default}
-.chart-card.no-click:hover{box-shadow:none}
+.chart-card.no-click{cursor:default}.chart-card.no-click:hover{box-shadow:none}
 .chart-ttl{font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
 .chart-wrap{position:relative;height:170px}
 .dash-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-
 .filter-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9}
 .filter-bar input,.filter-bar select{padding:7px 10px;border-radius:7px;border:1px solid #e2e8f0;font-size:12px;background:#fff;color:#374151}
 .filter-bar input{min-width:150px}
-
 .tw{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden}
 .th{padding:12px 14px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
 .ttl{font-weight:700;font-size:14px}
@@ -62,17 +55,13 @@ th{padding:8px 11px;text-align:left;color:#64748b;font-weight:700;font-size:11px
 td{padding:8px 11px;border-bottom:1px solid #f8fafc;vertical-align:middle}
 tr:last-child td{border-bottom:none}
 tr:hover td{background:#f8fafc}
-.nlink{color:#1d4ed8;font-weight:700;cursor:pointer}
-.nlink:hover{text-decoration:underline}
-
+.nlink{color:#1d4ed8;font-weight:700;cursor:pointer}.nlink:hover{text-decoration:underline}
 .badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}
 .s-潜在{background:#eff6ff;color:#3b82f6}.s-意向{background:#fffbeb;color:#d97706}
 .s-成交{background:#f0fdf4;color:#16a34a}.s-流失{background:#f9fafb;color:#94a3b8}
 .s-垃圾{background:#fff1f2;color:#f43f5e}.s-{background:#f8fafc;color:#94a3b8}
-.u-red{background:#fef2f2;color:#ef4444}.u-ora{background:#fff7ed;color:#f97316}
-.u-yel{background:#fffbeb;color:#d97706}.u-pur{background:#f5f3ff;color:#7c3aed}
-.u-grn{background:#f0fdf4;color:#16a34a}.dup-w{background:#fff7ed;color:#c2410c;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:3px}
-
+.u-red{background:#fef2f2;color:#ef4444}
+.dup-w{background:#fff7ed;color:#c2410c;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:3px}
 .acts{display:flex;gap:3px;flex-wrap:nowrap}
 .ab{font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid;white-space:nowrap}
 .ag{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}
@@ -80,7 +69,6 @@ tr:hover td{background:#f8fafc}
 .ac{background:#f8fafc;color:#4b5563;border-color:#e5e7eb}
 .ao{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
 .ar{background:#fef2f2;color:#dc2626;border-color:#fecaca}
-
 .overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
 .modal{background:#fff;border-radius:16px;width:100%;max-width:580px;margin:auto;flex-shrink:0}
 .mlg{max-width:700px}.msm{max-width:460px}
@@ -89,7 +77,6 @@ tr:hover td{background:#f8fafc}
 .xb{background:none;border:none;font-size:22px;color:#94a3b8;line-height:1;padding:2px;flex-shrink:0}
 .mb{padding:16px 20px;max-height:75vh;overflow-y:auto}
 .mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid #f1f5f9}
-
 .fg{margin-bottom:13px}
 .fl{font-size:12px;color:#4b5563;display:block;margin-bottom:3px;font-weight:600}
 .fi{width:100%;padding:8px 11px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;background:#fff;color:#1e293b}
@@ -101,12 +88,10 @@ tr:hover td{background:#f8fafc}
 .tag{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:500;transition:all .15s}
 .toff{border:1px solid #e2e8f0;background:#fff;color:#6b7280}
 .ton{border:1px solid #3b82f6;background:#eff6ff;color:#1d4ed8}
-
 .det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
 .di{padding:8px 10px;background:#f8fafc;border-radius:8px}
 .dk{font-size:11px;color:#94a3b8;margin-bottom:2px}
 .dv{font-size:13px;color:#1e293b;font-weight:500;word-break:break-all}
-
 .task-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:13px 16px;margin-bottom:10px}
 .task-top{display:flex;gap:11px;align-items:flex-start}
 .task-info{flex:1;min-width:0}
@@ -115,44 +100,36 @@ tr:hover td{background:#f8fafc}
 .task-note{font-size:12px;background:#f8fafc;border-left:3px solid #e2e8f0;padding:5px 9px;border-radius:0 6px 6px 0;color:#475569}
 .tbs{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
 .tb{padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;white-space:nowrap}
-.tbg{background:#10b981;color:#fff}.tbb{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe!important}.tbc{background:#f8fafc;color:#4b5563;border:1px solid #e5e7eb!important}
-
+.tbg{background:#10b981;color:#fff}
+.tbb{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe!important}
+.tbc{background:#f8fafc;color:#4b5563;border:1px solid #e5e7eb!important}
 .sea-card{background:#fff;border-radius:12px;border:1px solid #fca5a5;padding:11px 15px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
-
 .ll{background:#f8fafc;border-radius:8px;padding:8px 11px;max-height:150px;overflow-y:auto}
 .li{font-size:12px;color:#475569;padding:4px 0;border-bottom:1px dashed #e2e8f0}
 .li:last-child{border-bottom:none}
 .ld{color:#94a3b8}
-
 .sdots{display:flex;gap:3px;align-items:center}
 .dot{width:6px;height:6px;border-radius:50%;background:#e2e8f0;flex-shrink:0}
 .dot.done{background:#10b981}.dot.cur{background:#f59e0b}
-
 .nf-pend{color:#94a3b8;font-size:12px}.nf-soon{color:#d97706;font-size:12px;font-weight:600}
 .nf-today{color:#ef4444;font-size:12px;font-weight:700}.nf-over{color:#dc2626;font-size:12px;font-weight:700}
 .nf-done{color:#16a34a;font-size:12px}
-
 .perf-row{padding:9px 14px;border-bottom:1px solid #f8fafc}
 .perf-row:last-child{border-bottom:none}
 .perf-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
 .perf-bar{height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden}
 .perf-fill{height:100%;background:#10b981;border-radius:2px;transition:width .5s}
-
 .imp-tpl{font-family:monospace;font-size:11px;background:#f8fafc;padding:10px 12px;border-radius:8px;overflow-x:auto;white-space:pre;color:#374151;margin-bottom:10px;border:1px solid #e2e8f0}
 .empty{padding:40px;text-align:center;color:#94a3b8}
 .empty-icon{font-size:32px;margin-bottom:8px}
 .empty-ttl{font-size:15px;font-weight:700;color:#374151;margin-bottom:4px}
-
 #toast{position:fixed;bottom:18px;right:18px;background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
 #toast.show{opacity:1;transform:translateY(0)}
-
 .drill-row{padding:9px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px}
 .drill-row:hover{background:#f8fafc}.drill-row:last-child{border-bottom:none}
-
 .dash-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
 .df-btn{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;transition:all .15s}
 .df-btn.on{border-color:#3b82f6;background:#eff6ff;color:#2563eb}
-
 @media(max-width:768px){
   .chart-grid{grid-template-columns:1fr}
   .dash-row,.g2,.g3,.det-grid{grid-template-columns:1fr}
@@ -183,7 +160,7 @@ tr:hover td{background:#f8fafc}
 <div id="app" style="display:none">
   <nav class="nav">
     <div class="nav-left">
-      <span class="nav-brand">🏭 JIALONG CRM</span>
+      <span class="nav-brand">JIALONG CRM</span>
       <button class="nb active" id="nb-dashboard" onclick="setView('dashboard')">📊 看板</button>
       <button class="nb" id="nb-customers" onclick="setView('customers')">👥 客户</button>
       <button class="nb" id="nb-tasks" onclick="setView('tasks')">🔴 待办</button>
@@ -201,20 +178,13 @@ tr:hover td{background:#f8fafc}
 <div id="toast"></div>
 
 <script>
-// ══════════════════════════════════
-// CONFIG — 替换这两行
-// ══════════════════════════════════
 const SUPABASE_URL = 'https://otfqrrjwfxwiqanflocy.supabase.co';
 const SUPABASE_ANON_KEY = 'sb_publishable_-dUNxzzwwKbksz8BF41Mlw_mZJh8HLY';
 const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
-// ══════════════════════════════════
-// CONSTANTS
-// ══════════════════════════════════
 const SALES=['Jacky','Jen','Jimmy','Chris','Tony','Gethin'];
 const SOURCES=['易询盘','外贸牛','阿里巴巴','中国制造','社媒','国内转交'];
-const COUNTRIES=['印度','俄罗斯','越南','法国','德国','美国','巴西','墨西哥','土耳其','泰国','印尼','马来西亚','菲律宾','沙特','阿联酋','其他'];
 const PRODUCTS=['真空机','封口机','半自动','外购产品'];
 const STATUSES=['','潜在','意向','成交','流失','垃圾'];
 const CTYPES=['终端客户','经销商','代理商','其他'];
@@ -223,18 +193,12 @@ const AUTO=['全自动','半自动','手动','待确认'];
 const SLABELS=['','首次跟进','3天回访','7天回访','15天回访','30天回访'];
 const COLORS=['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#94a3b8','#f43f5e','#14b8a6'];
 
-// ══════════════════════════════════
-// STATE
-// ══════════════════════════════════
 let CU=null,ALL=[],CUS=[],LOGS=[];
 let VIEW='dashboard',DF='全部';
 let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部';
 let EID=null,LID=null,FD={},LFD={};
 let CI={};
 
-// ══════════════════════════════════
-// HELPERS
-// ══════════════════════════════════
 const T=()=>new Date().toISOString().split('T')[0];
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
 const diffD=d=>d?Math.floor((new Date(d)-new Date(T()))/86400000):null;
@@ -275,9 +239,6 @@ function isDup(c,skip=null){
   return ALL.some(x=>x.id!==skip&&((c.name&&x.name===c.name)||(c.phone&&c.phone.length>5&&x.phone===c.phone)));
 }
 
-// ══════════════════════════════════
-// DATA
-// ══════════════════════════════════
 async function load(){
   const[cr,lr]=await Promise.all([
     db.from('customers').select('*').order('created_at',{ascending:false}),
@@ -294,13 +255,16 @@ function applyFilter(){
 
 async function saveCus(){
   if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
-  const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',
+  const p={
+    name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',
     source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],
     packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',
     packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',
     automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',
-    purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',
-    sales:FD.sales||CU,status:FD.status||'',self_type:FD.self_type||'',first_record_date:FD.first_record_date||null,notes:FD.notes||''};
+    self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',
+    project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',
+    first_record_date:FD.first_record_date||null,notes:FD.notes||''
+  };
   if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
   const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
   if(error){toast('失败:'+error.message);return;}
@@ -348,9 +312,6 @@ async function saveLog(){
   await load();renderLogM(LID);
 }
 
-// ══════════════════════════════════
-// AUTH
-// ══════════════════════════════════
 function login(n){
   CU=n;localStorage.setItem('crm_u',n);
   document.getElementById('login-screen').style.display='none';
@@ -364,9 +325,6 @@ function logout(){
   document.getElementById('app').style.display='none';
 }
 
-// ══════════════════════════════════
-// ROUTING
-// ══════════════════════════════════
 function setView(v){
   VIEW=v;
   ['dashboard','customers','tasks','sea'].forEach(k=>{
@@ -393,26 +351,22 @@ function updateBadge(){
   if(b)b.textContent=`${n?'🔴':'⬜'} 待办${n?` (${n})`:''}`;
 }
 
-// ══════════════════════════════════
-// DASHBOARD
-// ══════════════════════════════════
 function renderDash(){
   const src=isAdm()&&DF==='全部'?ALL:CUS;
   const bs=s=>src.filter(c=>c.status===s).length;
   const todN=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).length;
   const seaN=ALL.filter(isSea).length;
-
   const dfHtml=isAdm()?`<div class="dash-filter">
     <span style="font-size:12px;color:#94a3b8;font-weight:600">筛选销售：</span>
     ${['全部',...SALES].map(s=>`<button class="df-btn ${DF===s?'on':''}" onclick="DF='${s}';applyFilter();render()">${s}</button>`).join('')}
   </div>`:'';
-
   return`${dfHtml}
   <div class="stat-grid">
     ${[['总客户',src.length,'#3b82f6','all',null],['今日待办',todN,'#ef4444','tasks',null],['公海',seaN,'#f59e0b','sea',null],
-       ['潜在',bs('潜在'),'#3b82f6','status','潜在'],['意向',bs('意向'),'#d97706','status','意向'],['成交',bs('成交'),'#16a34a','status','成交'],
-       ['流失',bs('流失'),'#94a3b8','status','流失'],['垃圾',bs('垃圾'),'#f43f5e','status','垃圾']]
-      .map(([l,v,c,t,val])=>`<div class="stat-card" style="cursor:pointer" onclick="statClick('${t}','${val||''}')"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
+       ['潜在',bs('潜在'),'#3b82f6','status','潜在'],['意向',bs('意向'),'#d97706','status','意向'],
+       ['成交',bs('成交'),'#16a34a','status','成交'],['流失',bs('流失'),'#94a3b8','status','流失'],
+       ['垃圾',bs('垃圾'),'#f43f5e','status','垃圾']]
+      .map(([l,v,c,t,val])=>`<div class="stat-card" onclick="statClick('${t}','${val||''}')"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
   </div>
   <div class="chart-grid">
     <div class="chart-card" onclick="showDrill('country',null,event)">
@@ -429,11 +383,11 @@ function renderDash(){
     </div>
   </div>
   <div class="dash-row">
-    <div class="chart-card no-click">
+    <div class="chart-card" onclick="showDrill('sales',null,event)">
       <div class="chart-ttl">👤 各销售客户数</div>
       <div class="chart-wrap"><canvas id="cv"></canvas></div>
     </div>
-    <div class="chart-card no-click">
+    <div class="chart-card" onclick="showDrill('date',null,event)">
       <div class="chart-ttl">📅 近14天新增</div>
       <div class="chart-wrap"><canvas id="cd"></canvas></div>
     </div>
@@ -489,25 +443,26 @@ function renderCharts(){
         plugins:{legend:{position:'right',labels:{font:{size:10},padding:6}}},
         onClick:(_,el)=>{if(onClick&&el.length)onClick(labels[el[0].index]);}}});
   };
-  const agg=(field)=>{const m={};src.forEach(c=>{const v=c[field]||'';m[v]=(m[v]||0)+1});return m;};
+  const agg=field=>{const m={};src.forEach(c=>{const v=c[field]||'';m[v]=(m[v]||0)+1});return m;};
   pie('cc',agg('country'),l=>showDrill('country',l));
   const sd={};src.forEach(c=>{const v=c.status||'未设置';sd[v]=(sd[v]||0)+1});
   pie('cs',sd,l=>showDrill('status',l==='未设置'?'':l));
   pie('cm',agg('packaging_material'),l=>showDrill('packaging_material',l));
-
   const ctx2=document.getElementById('cv');
   if(ctx2)CI['cv']=new Chart(ctx2,{type:'bar',
     data:{labels:SALES,datasets:[{data:SALES.map(s=>src.filter(c=>c.sales===s).length),backgroundColor:'#3b82f6',borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
-      onClick:(_,el)=>{if(el.length)showDrill('sales',SALES[el[0].index])}}});
-
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
+      onClick:(_,el)=>{if(el.length)showDrill('sales',SALES[el[0].index]);}}});
   const days=Array.from({length:14},(_,i)=>addD(T(),i-13));
   const ctx3=document.getElementById('cd');
   if(ctx3)CI['cd']=new Chart(ctx3,{type:'bar',
     data:{labels:days.map(d=>fmt(d)),datasets:[{data:days.map(d=>src.filter(c=>c.created_at?.startsWith(d)).length),backgroundColor:'#10b981',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
-      onClick:(_,el)=>{if(el.length)showDrill('date',days[el[0].index])}}});
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
+      onClick:(_,el)=>{if(el.length)showDrill('date',days[el[0].index]);}}});
 }
+
 function statClick(type,val){
   if(type==='tasks'){setView('tasks');return;}
   if(type==='sea'){setView('sea');return;}
@@ -516,12 +471,13 @@ function statClick(type,val){
 }
 
 function showDrill(field,value,e){
-  if(e&&e.target.tagName==='CANVAS')return; // handled by chart onClick
+  if(e&&e.target.tagName==='CANVAS')return;
   const src=isAdm()&&DF==='全部'?ALL:CUS;
-  const list=field==='all'?src:value!==undefined
-    ?(field==='date'?src.filter(c=>c.created_at?.startsWith(value)):src.filter(c=>(c[field]||'')===(value||'')))
+  const list=field==='all'?src
+    :field==='date'?src.filter(c=>c.created_at?.startsWith(value))
+    :value!==undefined?src.filter(c=>(c[field]||'')===(value||''))
     :src;
-const labels={country:'国家',status:'状态',packaging_material:'包装物料',sales:'销售',date:'日期',all:'全部客户'};
+  const labels={country:'国家',status:'状态',packaging_material:'包装物料',sales:'销售',date:'日期',all:'全部客户'};
   const el=document.createElement('div');el.className='overlay';el.id='drill-ov';
   const rows=list.length===0?'<div class="empty">暂无数据</div>':list.map(c=>{
     const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id)[0];
@@ -535,7 +491,7 @@ const labels={country:'国家',status:'状态',packaging_material:'包装物料'
     </div>`;}).join('');
   el.innerHTML=`<div class="modal mlg">
     <div class="mh">
-      <div class="mt">${labels[field]||field}：${esc(value||'未设置')} <span style="font-size:13px;color:#94a3b8;font-weight:400">${list.length}个客户</span></div>
+      <div class="mt">${labels[field]||field}：${esc(value||'全部')} <span style="font-size:13px;color:#94a3b8;font-weight:400">${list.length}个客户</span></div>
       <button class="xb" onclick="document.getElementById('drill-ov').remove()">×</button>
     </div>
     <div style="padding:0 0 8px">
@@ -548,9 +504,6 @@ const labels={country:'国家',status:'状态',packaging_material:'包装物料'
   document.body.appendChild(el);el.addEventListener('click',ev=>{if(ev.target===el)el.remove()});
 }
 
-// ══════════════════════════════════
-// CUSTOMERS VIEW
-// ══════════════════════════════════
 function renderCus(){
   const filtered=CUS.filter(c=>{
     const q=fS.toLowerCase();
@@ -562,20 +515,23 @@ function renderCus(){
   });
   const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))];
   const saOpts=isAdm()?['全部',...SALES]:['全部',CU];
-  const rows=filtered.length===0?'<tr><td colspan="9" class="empty">暂无数据</td></tr>':filtered.map(c=>{
-    const n=nfi(c);const dup=isDup(c,c.id);
+  const rows=filtered.length===0?'<tr><td colspan="11" class="empty">暂无数据</td></tr>':filtered.map(c=>{
+    const n=nfi(c);
+    const dup=isDup(c,c.id);
     const sea=isSea(c)?'<span class="badge u-red" style="margin-left:3px;font-size:10px">公海</span>':'';
     const dupW=dup?`<span class="dup-w">⚠重复</span>`:'';
     const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
     return`<tr>
-    return`<tr>
-      <td><span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}<br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span></td>
+      <td>
+        <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}
+        <br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span>
+      </td>
       <td style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(c.first_record_date||c.created_at?.split('T')[0])}</td>
       <td style="font-size:12px">
-  ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
-  ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
-  ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
-</td>
+        ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
+        ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
+        ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
+      </td>
       <td style="color:#64748b">${esc(c.country)||'—'}</td>
       <td style="color:#64748b">${esc(c.source)||'—'}</td>
       <td>${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:1px;font-size:10px">${p}</span>`).join('')||'—'}</td>
@@ -607,15 +563,15 @@ function renderCus(){
       </select>
     </div>
     <div style="overflow-x:auto"><table>
-      <thead><tr><th>客户姓名</th><th>首次记录</th><th>邮箱/电话</th><th>国家</th><th>来源</th><th>产品</th><th>负责人</th><th>状态</th><th>最近跟进</th><th>下次跟进</th><th>操作</th></tr></thead>
+      <thead><tr>
+        <th>客户姓名</th><th>首次记录</th><th>邮箱/电话</th><th>国家</th><th>来源</th>
+        <th>产品</th><th>负责人</th><th>状态</th><th>最近跟进</th><th>下次跟进</th><th>操作</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
   </div>`;
 }
 
-// ══════════════════════════════════
-// TASKS VIEW
-// ══════════════════════════════════
 function renderTasks(){
   const list=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU));
   if(!list.length)return`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-ttl">今日无待办</div><div>所有客户跟进正常</div></div>`;
@@ -643,9 +599,6 @@ function renderTasks(){
     </div>`;}).join('')}`;
 }
 
-// ══════════════════════════════════
-// SEA VIEW
-// ══════════════════════════════════
 function renderSea(){
   const list=ALL.filter(isSea);
   if(!list.length)return`<div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">没有公海客户</div></div>`;
@@ -654,39 +607,47 @@ function renderSea(){
     <div style="font-size:13px;color:#94a3b8">超30天未跟进，任何销售可认领</div>
   </div>
   ${list.map(c=>`<div class="sea-card">
-    <div style="flex:1"><div class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</div>
-    <div style="font-size:11px;color:#94a3b8;margin-top:2px">${esc(c.country)} · 原负责：${esc(c.sales)} · 最近跟进：${fmt(c.last_follow_date)}</div></div>
+    <div style="flex:1">
+      <div class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</div>
+      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${esc(c.country)} · 原负责：${esc(c.sales)} · 最近跟进：${fmt(c.last_follow_date)}</div>
+    </div>
     <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
     <button class="tb tbg" style="padding:6px 11px;font-size:12px" onclick="claimSea('${c.id}')">认领</button>
   </div>`).join('')}`;
 }
 
-// ══════════════════════════════════
-// MODALS — CUSTOMER FORM
-// ══════════════════════════════════
 function closeM(id='modal-ov'){document.getElementById(id)?.remove()}
 
 function openAdd(){
-  EID=null;FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',
+  EID=null;
+  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',
     products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',
-    vacuum_need:'',automation_need:'',customer_type:'',purchase_timeline:'',
-    project_details:'',sales:isAdm()?'':CU,status:'',notes:''};
+    vacuum_need:'',automation_need:'',customer_type:'',self_type:'',
+    purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,
+    status:'',first_record_date:'',notes:''};
   showFormM('新建客户');
 }
+
 function openEdit(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
-  EID=id;FD={...c,products:[...(c.products||[])]};showFormM('编辑客户');
+  EID=id;FD={...c,products:[...(c.products||[])]};
+  showFormM('编辑客户');
 }
 
 function showFormM(title){
   closeM();const d=FD;
-  const salesRow=isAdm()?`<div class="fg"><label class="fl">负责销售</label>
-    <select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>
-    ${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`:
-    `<div class="fg"><label class="fl">负责销售</label><div style="padding:8px 11px;background:#f8fafc;border-radius:8px;font-size:13px;font-weight:600">${CU}</div></div>`;
+  const salesRow=isAdm()
+    ?`<div class="fg"><label class="fl">负责销售</label>
+       <select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>
+       ${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`
+    :`<div class="fg"><label class="fl">负责销售</label>
+       <div style="padding:8px 11px;background:#f8fafc;border-radius:8px;font-size:13px;font-weight:600">${CU}</div></div>`;
   const el=document.createElement('div');el.className='overlay';el.id='modal-ov';
   el.innerHTML=`<div class="modal mlg">
-    <div class="mh"><div class="mt">${title}</div><button class="xb" onclick="closeM()">×</button></div>
+    <div class="mh">
+      <div class="mt">${title}</div>
+      <button class="xb" onclick="closeM()">×</button>
+    </div>
     <div class="mb">
       <div class="stitle">基本信息</div>
       <div class="g2">
@@ -699,7 +660,7 @@ function showFormM(title){
       </div>
       <div class="g3">
         <div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="国家名称"/></div>
+        <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写国家名称"/></div>
         <div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div>
       </div>
       <div class="stitle">产品需求</div>
@@ -716,10 +677,11 @@ function showFormM(title){
       <div class="stitle">业务信息</div>
       <div class="g2">
         <div class="fg"><label class="fl">客户类型</label><select class="fi" onchange="FD.customer_type=this.value"><option value="">—</option>${CTYPES.map(s=>`<option ${d.customer_type===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div>
+        <div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="自由填写，如：贸易商、小型工厂…"/></div>
       </div>
       <div class="g2">
-        <div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="自由填写，如：贸易商、小型工厂…"/></div>
+        <div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div>
+        <div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${esc(d.first_record_date||'')}" onchange="FD.first_record_date=this.value"/></div>
       </div>
       <div class="fg"><label class="fl">项目详情</label><textarea class="fi" rows="3" oninput="FD.project_details=this.value" placeholder="客户背景、具体需求…">${esc(d.project_details)}</textarea></div>
       <div class="stitle">CRM</div>
@@ -727,32 +689,34 @@ function showFormM(title){
         ${salesRow}
         <div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div>
       </div>
-      <div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${d.first_record_date||''}" onchange="FD.first_record_date=this.value"/></div>
       <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新跟进备注…">${esc(d.notes)}</textarea></div>
     </div>
-    <div class="mf"><button class="btn-s" onclick="closeM()">取消</button><button class="btn-p" onclick="saveCus()">保存</button></div>
-  </div>`;
-    <div class="mf"><button class="btn-s" onclick="closeM()">取消</button><button class="btn-p" onclick="saveCus()">保存</button></div>
+    <div class="mf">
+      <button class="btn-s" onclick="closeM()">取消</button>
+      <button class="btn-p" onclick="saveCus()">保存</button>
+    </div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closeM()});
 }
 
 function tP(p){
-  if(FD.products.includes(p))FD.products=FD.products.filter(x=>x!==p);else FD.products.push(p);
+  if(FD.products.includes(p))FD.products=FD.products.filter(x=>x!==p);
+  else FD.products.push(p);
   document.getElementById('ptags').innerHTML=PRODUCTS.map(pp=>`<button type="button" class="tag ${FD.products.includes(pp)?'ton':'toff'}" onclick="tP('${pp}')">${pp}</button>`).join('');
 }
 
-// ══════════════════════════════════
-// MODALS — DETAIL
-// ══════════════════════════════════
 function openDetail(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
   const n=nfi(c);const dup=isDup(c,c.id);
   const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
-  const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],
-    ['来源',c.source],['客户类型',c.customer_type],['真空需求',c.vacuum_need],
-    ['自动化',c.automation_need],['包装物料',c.packaging_material],
-    ['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline]].filter(([,v])=>v);
+  const fields=[
+    ['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],
+    ['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],
+    ['真空需求',c.vacuum_need],['自动化',c.automation_need],
+    ['包装物料',c.packaging_material],['包装重量',c.packaging_weight],
+    ['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],
+    ['首次记录',fmtF(c.first_record_date)]
+  ].filter(([,v])=>v);
   el.innerHTML=`<div class="modal mlg">
     <div class="mh">
       <div class="mt">👤 ${esc(c.name)} ${c.company?`<span style="font-size:13px;color:#94a3b8;font-weight:400">· ${esc(c.company)}</span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div>
@@ -769,10 +733,11 @@ function openDetail(id){
       ${c.products?.length?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:5px">产品兴趣</div><div>${c.products.map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:2px">${p}</span>`).join('')}</div></div>`:''}
       ${c.project_details?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:#f8fafc;padding:9px;border-radius:8px;line-height:1.6">${esc(c.project_details)}</div></div>`:''}
       ${c.notes?`<div style="margin-top:8px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:#374151">${esc(c.notes)}</div></div>`:''}
-      <div style="margin-top:12px"><div class="dk" style="margin-bottom:5px">跟进记录 (${LOGS.filter(l=>l.customer_id===c.id).length}条)</div>
-        <div class="ll">${LOGS.filter(l=>l.customer_id===c.id).length?
-          LOGS.filter(l=>l.customer_id===c.id).map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''} · ${esc(l.sales)}</span><br>${esc(l.notes)}</div>`).join(''):
-          '<div style="color:#cbd5e1;font-size:12px">暂无记录</div>'}</div>
+      <div style="margin-top:12px">
+        <div class="dk" style="margin-bottom:5px">跟进记录 (${LOGS.filter(l=>l.customer_id===c.id).length}条)</div>
+        <div class="ll">${LOGS.filter(l=>l.customer_id===c.id).length
+          ?LOGS.filter(l=>l.customer_id===c.id).map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''} · ${esc(l.sales)}</span><br>${esc(l.notes)}</div>`).join('')
+          :'<div style="color:#cbd5e1;font-size:12px">暂无记录</div>'}</div>
       </div>
     </div>
     <div class="mf">
@@ -784,9 +749,6 @@ function openDetail(id){
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
 
-// ══════════════════════════════════
-// MODALS — LOG
-// ══════════════════════════════════
 function openLog(id){LID=id;LFD={stage_label:'',notes:'',status_update:''};renderLogM(id);}
 
 function renderLogM(id){
@@ -795,41 +757,51 @@ function renderLogM(id){
   const cl=LOGS.filter(l=>l.customer_id===id);
   const el=document.createElement('div');el.className='overlay';el.id='log-ov';
   el.innerHTML=`<div class="modal msm">
-    <div class="mh"><div class="mt">📝 跟进日志 — ${esc(c.name)}</div><button class="xb" onclick="document.getElementById('log-ov').remove()">×</button></div>
+    <div class="mh">
+      <div class="mt">📝 跟进日志 — ${esc(c.name)}</div>
+      <button class="xb" onclick="document.getElementById('log-ov').remove()">×</button>
+    </div>
     <div class="mb">
       <div class="fg"><label class="fl">跟进阶段</label>
-        <select class="fi" onchange="LFD.stage_label=this.value"><option value="">请选择</option>
+        <select class="fi" onchange="LFD.stage_label=this.value">
+          <option value="">请选择</option>
           ${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<option ${LFD.stage_label===s?'selected':''}>${s}</option>`).join('')}
-        </select></div>
+        </select>
+      </div>
       <div class="fg"><label class="fl">沟通详情 *</label>
-        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…">${esc(LFD.notes)}</textarea></div>
+        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…">${esc(LFD.notes)}</textarea>
+      </div>
       <div class="fg"><label class="fl">更新客户状态（可选）</label>
         <select class="fi" onchange="LFD.status_update=this.value">
           ${STATUSES.map(s=>`<option value="${s}" ${LFD.status_update===s?'selected':''}>${s||'（不修改）'}</option>`).join('')}
-        </select></div>
+        </select>
+      </div>
       <div><label class="fl">历史记录</label>
-        <div class="ll">${cl.length?cl.map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label)}]${l.status_update?` →${l.status_update}`:''}</span><br>${esc(l.notes)}</div>`).join(''):'<div style="color:#cbd5e1;font-size:12px">暂无历史</div>'}</div>
+        <div class="ll">${cl.length
+          ?cl.map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label)}]${l.status_update?` →${l.status_update}`:''}</span><br>${esc(l.notes)}</div>`).join('')
+          :'<div style="color:#cbd5e1;font-size:12px">暂无历史</div>'}</div>
       </div>
     </div>
-    <div class="mf"><button class="btn-s" onclick="document.getElementById('log-ov').remove()">关闭</button><button class="btn-p" onclick="saveLog()">保存日志</button></div>
+    <div class="mf">
+      <button class="btn-s" onclick="document.getElementById('log-ov').remove()">关闭</button>
+      <button class="btn-p" onclick="saveLog()">保存日志</button>
+    </div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
 
-// ══════════════════════════════════
-// IMPORT
-// ══════════════════════════════════
 function openImport(){
   closeM('imp-ov');
   const el=document.createElement('div');el.className='overlay';el.id='imp-ov';
   el.innerHTML=`<div class="modal mlg">
     <div class="mh"><div class="mt">📥 批量导入客户</div><button class="xb" onclick="document.getElementById('imp-ov').remove()">×</button></div>
     <div class="mb">
-      <p style="font-size:13px;color:#64748b;margin-bottom:10px">第一行为表头，从第二行开始填数据。不在列表里的国家/来源可以直接填文字。</p>
+      <p style="font-size:13px;color:#64748b;margin-bottom:10px">第一行为表头，从第二行开始填数据。所有字段均可选填。</p>
       <div class="imp-tpl">姓名,公司,邮箱,电话,来源,国家,地区,负责销售,状态,包装物料,包装重量,包装速度,真空需求,自动化需求,客户类型,客户性质,预计购买,项目详情,备注
 张三,ABC公司,zhang@abc.com,+8613800000001,阿里巴巴,印度,孟买,Jacky,潜在,食品,25-50kg,30包/分钟,有,全自动,终端客户,小型工厂,Q3 2025,需要整套包装线,有意向</div>
       <div class="fg"><label class="fl">粘贴 CSV 数据</label>
-        <textarea class="fi" id="imp-txt" rows="8" placeholder="粘贴 CSV 内容…"></textarea></div>
+        <textarea class="fi" id="imp-txt" rows="8" placeholder="粘贴 CSV 内容…"></textarea>
+      </div>
       <div style="display:flex;gap:10px;align-items:center">
         <label style="padding:7px 13px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;cursor:pointer;background:#f8fafc">
           📁 选择文件 <input type="file" accept=".csv,.txt" style="display:none" onchange="loadFile(this)"/>
@@ -837,7 +809,10 @@ function openImport(){
         <span id="fn" style="font-size:12px;color:#94a3b8"></span>
       </div>
     </div>
-    <div class="mf"><button class="btn-s" onclick="document.getElementById('imp-ov').remove()">取消</button><button class="btn-p" onclick="doImp()">导入</button></div>
+    <div class="mf">
+      <button class="btn-s" onclick="document.getElementById('imp-ov').remove()">取消</button>
+      <button class="btn-p" onclick="doImp()">导入</button>
+    </div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
@@ -855,11 +830,13 @@ async function doImp(){
   if(lines.length<2){toast('至少需要表头+一行数据');return;}
   const parse=l=>l.split(',').map(s=>s.trim());
   const headers=parse(lines[0]);
-  const map={姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',
+  const map={
+    姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',
     地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',
     包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',
     自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',
-    预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes'};
+    预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes'
+  };
   const rows=[];
   for(let i=1;i<lines.length;i++){
     const vals=parse(lines[i]);
@@ -877,9 +854,6 @@ async function doImp(){
   await load();
 }
 
-// ══════════════════════════════════
-// BOOT
-// ══════════════════════════════════
 const saved=localStorage.getItem('crm_u');
 if(saved){
   CU=saved;
