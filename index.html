@@ -287,7 +287,7 @@ function isDup(c,skip=null){
 
 async function load(){
   const[cr,lr]=await Promise.all([
-    db.from('customers').select('*').order('custom_date',{ascending:false,nullsFirst:false}),
+    db.from('customers').select('*').order('custom_date',{ascending:false,nullsFirst:false}).limit(10000),
     db.from('follow_logs').select('*').order('created_at',{ascending:false})
   ]);
   ALL=cr.data||[];LOGS=lr.data||[];
