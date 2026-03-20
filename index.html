@@ -435,7 +435,7 @@ function renderDash(){
        ['垃圾',bs('垃圾'),'#f43f5e','status','垃圾']]
       .map(([l,v,c,t,val])=>`<div class="stat-card" onclick="statClick('${t}','${val||''}')"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
   </div>
-  <div class="chart-grid">
+<div class="chart-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
     <div class="chart-card" onclick="showDrill('country',null,event)">
       <div class="chart-ttl">🌍 国家分布</div>
       <div class="chart-wrap"><canvas id="cc"></canvas></div>
@@ -448,8 +448,6 @@ function renderDash(){
       <div class="chart-ttl">📦 行业（包装物料）</div>
       <div class="chart-wrap"><canvas id="cm"></canvas></div>
     </div>
-  </div>
-  <div class="chart-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
     <div class="chart-card" onclick="showDrill('source',null,event)">
       <div class="chart-ttl">📡 客户来源</div>
       <div class="chart-wrap"><canvas id="csr"></canvas></div>
