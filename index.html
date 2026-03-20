@@ -353,9 +353,23 @@ async function delCus(id){
 
 async function saveLog(){
   if(!LFD.notes?.trim()){toast('请填写沟通详情');return;}
-  if(LFD.status_update)await db.from('customers').update({status:LFD.status_update}).eq('id',LID);
   const logDate=LFD.log_date||T();
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',created_at:logDate+'T00:00:00'}]);
+  const c=ALL.find(x=>x.id===LID);if(!c)return;
+
+  // 同步更新客户跟进状态
+  const ns=Math.min((c.follow_stage||0)+1,5);
+  const upd={last_follow_date:logDate,follow_stage:ns};
+  if(ns===1){
+    upd.first_follow_date=logDate;
+    upd.next_follow_date=addD(logDate,3);
+  } else if(ns===2) upd.next_follow_date=addD(c.first_follow_date||logDate,7);
+  else if(ns===3) upd.next_follow_date=addD(c.first_follow_date||logDate,15);
+  else if(ns===4) upd.next_follow_date=addD(c.first_follow_date||logDate,30);
+  else upd.next_follow_date=null;
+
+  if(LFD.status_update) upd.status=LFD.status_update;
+  await db.from('customers').update(upd).eq('id',LID);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',created_at:logDate+'T00:00:00'}]);
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
   await load();renderLogM(LID);
 }
