@@ -285,12 +285,24 @@ function isDup(c,skip=null){
   return ALL.some(x=>x.id!==skip&&((c.name&&x.name===c.name)||(c.phone&&c.phone.length>5&&x.phone===c.phone)));
 }
 
+async function fetchAll(table, orderCol){
+  let all=[], from=0;
+  while(true){
+    const{data,error}=await db.from(table).select('*').order(orderCol,{ascending:false,nullsFirst:false}).range(from,from+999);
+    if(error||!data||data.length===0)break;
+    all=[...all,...data];
+    if(data.length<1000)break;
+    from+=1000;
+  }
+  return all;
+}
+
 async function load(){
   const[cr,lr]=await Promise.all([
-    db.from('customers').select('*').order('custom_date',{ascending:false,nullsFirst:false}).limit(10000),
-    db.from('follow_logs').select('*').order('created_at',{ascending:false})
+    fetchAll('customers','custom_date'),
+    fetchAll('follow_logs','created_at')
   ]);
-  ALL=cr.data||[];LOGS=lr.data||[];
+  ALL=cr;LOGS=lr;
   applyFilter();render();
 }
 
