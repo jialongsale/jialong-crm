@@ -369,7 +369,7 @@ async function saveLog(){
 
   if(LFD.status_update) upd.status=LFD.status_update;
   await db.from('customers').update(upd).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',created_at:logDate+'T00:00:00'}]);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',log_date:logDate}]);
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
   await load();renderLogM(LID);
 }
@@ -780,7 +780,7 @@ function renderTasks(){
           </div>
           <div class="task-meta">${esc(c.country)} · ${esc(c.source)} · ${esc(c.sales)}</div>
           ${c.notes?`<div class="task-note">${esc(c.notes)}</div>`:''}
-          ${cl.length?`<div style="margin-top:7px">${cl.map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label)}]</span> ${esc(l.notes)}</div>`).join('')}</div>`:''}
+          ${cl.length?`<div style="margin-top:7px">${cl.map(l=>`<div class="li"><span class="ld">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label)}]</span> ${esc(l.notes)}</div>`).join('')}</div>`:''}
         </div>
         <div class="tbs">
           <button class="tb tbg" onclick="followUp('${c.id}')">✓ 已跟进</button>
@@ -929,7 +929,7 @@ function openDetail(id){
       <div style="margin-top:12px">
         <div class="dk" style="margin-bottom:5px">跟进记录 (${LOGS.filter(l=>l.customer_id===c.id).length}条)</div>
         <div class="ll">${LOGS.filter(l=>l.customer_id===c.id).length
-          ?LOGS.filter(l=>l.customer_id===c.id).map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''} · ${esc(l.sales)}</span><br>${esc(l.notes)}</div>`).join('')
+          ?LOGS.filter(l=>l.customer_id===c.id).map(l=>`<div class="li"><span class="ld">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''} · ${esc(l.sales)}</span><br>${esc(l.notes)}</div>`).join('')
           :'<div style="color:#cbd5e1;font-size:12px">暂无记录</div>'}</div>
       </div>
     </div>
@@ -978,7 +978,7 @@ function renderLogM(id){
         <div class="ll" style="max-height:220px">${cl.length
           ?cl.map(l=>`<div class="li" style="display:flex;gap:6px;align-items:flex-start;padding:5px 0">
               <div style="flex:1;min-width:0">
-                <span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` →${l.status_update}`:''}</span>
+                <span class="ld">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` →${l.status_update}`:''}</span>
                 <div style="margin-top:2px;word-break:break-all">${esc(l.notes)}</div>
               </div>
               <div style="display:flex;gap:3px;flex-shrink:0;padding-top:2px">
