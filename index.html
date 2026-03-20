@@ -358,8 +358,9 @@ async function saveLog(){
 
   // 同步更新客户跟进状态
   const advance=document.getElementById('advance-stage')?.checked!==false;
-  const ns=advance?Math.min((c.follow_stage||0)+1,5):(c.follow_stage||0);
-const upd={last_follow_date:logDate,follow_stage:ns};
+  const currentLogs=LOGS.filter(l=>l.customer_id===LID);
+  const ns=advance?Math.min(currentLogs.length+1,5):(c.follow_stage||0);
+  const upd={last_follow_date:logDate,follow_stage:ns};
   if(ns===1){
     upd.first_follow_date=logDate;
     upd.next_follow_date=addD(logDate,3);
@@ -390,6 +391,22 @@ async function editLog(logId){
 async function deleteLog(logId){
   if(!confirm('确定删除这条跟进记录？'))return;
   await db.from('follow_logs').delete().eq('id',logId);
+  // 删除后根据剩余日志重新计算客户状态
+  const remaining=LOGS.filter(l=>l.customer_id===LID&&l.id!==logId);
+  const c=ALL.find(x=>x.id===LID);if(c){
+    if(remaining.length===0){
+      await db.from('customers').update({follow_stage:0,first_follow_date:null,last_follow_date:null,next_follow_date:null}).eq('id',LID);
+    } else {
+      const sorted=remaining.sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1);
+      const latest=sorted[0];
+      const latestDate=latest.log_date||latest.created_at?.split('T')[0];
+      const ns=Math.min(remaining.length,5);
+      const first=sorted[sorted.length-1];
+      const firstDate=first.log_date||first.created_at?.split('T')[0];
+      const nextMap={1:addD(firstDate,3),2:addD(firstDate,7),3:addD(firstDate,15),4:addD(firstDate,30),5:null};
+      await db.from('customers').update({follow_stage:ns,first_follow_date:firstDate,last_follow_date:latestDate,next_follow_date:nextMap[ns]||null}).eq('id',LID);
+    }
+  }
   toast('已删除');await load();renderLogM(LID);
 }
 
