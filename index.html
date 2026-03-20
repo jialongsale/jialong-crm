@@ -219,7 +219,7 @@ let fDateRange='all',fDateStart='',fDateEnd='';
 let dashDateRange='14',dashDateStart='',dashDateEnd='';
 let EID=null,LID=null,FD={},LFD={};
 let CI={};
-let cusPage=1,cusPageSize=20;
+let cusPage=1,cusPageSize=20,selIds=new Set();
 
 const T=()=>new Date().toISOString().split('T')[0];
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
@@ -249,7 +249,6 @@ function filterByDate(list,range,start,end){
   return list.filter(c=>{const d=cusDate(c);return d>=r.s&&d<=r.e;});
 }
 
-// 聚合数据并按数量从大到小排序
 function aggSorted(src,field){
   const m={};
   src.forEach(c=>{const v=c[field]||'';if(v)m[v]=(m[v]||0)+1;});
@@ -328,7 +327,7 @@ async function followUp(id){
   else if(ns===4)upd.next_follow_date=addD(c.first_follow_date,30);
   else upd.next_follow_date=null;
   await db.from('customers').update(upd).eq('id',id);
-  await db.from('follow_logs').insert([{customer_id:id,sales:CU,stage_label:SLABELS[ns]||'已完成',notes:'标记已跟进',status_update:''}]);
+  await db.from('follow_logs').insert([{customer_id:id,sales:CU,stage_label:SLABELS[ns]||'已完成',notes:'标记已跟进',status_update:'',log_date:t}]);
   toast(`✅ ${SLABELS[ns]||'跟进完成'}`);await load();
 }
 
@@ -347,7 +346,9 @@ async function transfer(id){
 
 async function delCus(id){
   if(!confirm('确定删除？'))return;
+  await db.from('follow_logs').delete().eq('customer_id',id);
   await db.from('customers').delete().eq('id',id);
+  selIds.delete(id);
   toast('已删除');await load();
 }
 
@@ -355,21 +356,16 @@ async function saveLog(){
   if(!LFD.notes?.trim()){toast('请填写沟通详情');return;}
   const logDate=LFD.log_date||T();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
-
-  // 同步更新客户跟进状态
   const advance=document.getElementById('advance-stage')?.checked!==false;
   const currentLogs=LOGS.filter(l=>l.customer_id===LID);
   const ns=advance?Math.min(currentLogs.length+1,5):(c.follow_stage||0);
   const upd={last_follow_date:logDate,follow_stage:ns};
-  if(ns===1){
-    upd.first_follow_date=logDate;
-    upd.next_follow_date=addD(logDate,3);
-  } else if(ns===2) upd.next_follow_date=addD(c.first_follow_date||logDate,7);
-  else if(ns===3) upd.next_follow_date=addD(c.first_follow_date||logDate,15);
-  else if(ns===4) upd.next_follow_date=addD(c.first_follow_date||logDate,30);
+  if(ns===1){upd.first_follow_date=logDate;upd.next_follow_date=addD(logDate,3);}
+  else if(ns===2)upd.next_follow_date=addD(c.first_follow_date||logDate,7);
+  else if(ns===3)upd.next_follow_date=addD(c.first_follow_date||logDate,15);
+  else if(ns===4)upd.next_follow_date=addD(c.first_follow_date||logDate,30);
   else upd.next_follow_date=null;
-
-  if(LFD.status_update) upd.status=LFD.status_update;
+  if(LFD.status_update)upd.status=LFD.status_update;
   await db.from('customers').update(upd).eq('id',LID);
   await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',log_date:logDate}]);
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
@@ -391,7 +387,6 @@ async function editLog(logId){
 async function deleteLog(logId){
   if(!confirm('确定删除这条跟进记录？'))return;
   await db.from('follow_logs').delete().eq('id',logId);
-  // 删除后根据剩余日志重新计算客户状态
   const remaining=LOGS.filter(l=>l.customer_id===LID&&l.id!==logId);
   const c=ALL.find(x=>x.id===LID);if(c){
     if(remaining.length===0){
@@ -410,6 +405,29 @@ async function deleteLog(logId){
   toast('已删除');await load();renderLogM(LID);
 }
 
+function toggleSel(id,checked){
+  if(checked)selIds.add(id);else selIds.delete(id);
+  render();
+}
+
+function toggleAll(cb){
+  const boxes=document.querySelectorAll('.row-sel');
+  boxes.forEach(b=>{
+    if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);
+  });
+  render();
+}
+
+async function batchDel(){
+  if(!confirm(`确定删除选中的 ${selIds.size} 条客户记录？此操作不可恢复。`))return;
+  const ids=[...selIds];
+  await db.from('follow_logs').delete().in('customer_id',ids);
+  await db.from('customers').delete().in('id',ids);
+  selIds.clear();
+  toast(`✅ 已删除 ${ids.length} 条`);
+  await load();
+}
+
 function login(n){
   const pwd=prompt(`请输入 ${n} 的登录密码：`);
   if(pwd===null)return;
@@ -421,7 +439,7 @@ function login(n){
   load();
 }
 function logout(){
-  localStorage.removeItem('crm_u');CU=null;
+  localStorage.removeItem('crm_u');CU=null;selIds.clear();
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
 }
@@ -477,7 +495,6 @@ function setDashDR(v){
   dashDateRange=v;render();
 }
 
-// ── Dashboard ──
 function renderDash(){
   const src=isAdm()&&DF==='全部'?ALL:CUS;
   const bs=s=>src.filter(c=>c.status===s).length;
@@ -595,11 +612,8 @@ function renderCharts(){
   pie('cm',aggSorted(src,'packaging_material'),l=>showDrill('packaging_material',l));
   pie('cct',aggSorted(src,'customer_type'),l=>showDrill('customer_type',l));
   pie('csr',aggSorted(src,'source'),l=>showDrill('source',l));
-  // 跟进阶段也按数量排序
   const sd={};src.forEach(c=>{const v=c.status||'未设置';sd[v]=(sd[v]||0)+1});
-  const sdSorted=Object.entries(sd).sort((a,b)=>b[1]-a[1]);
-  pie('cs',sdSorted,l=>showDrill('status',l==='未设置'?'':l));
-
+  pie('cs',Object.entries(sd).sort((a,b)=>b[1]-a[1]),l=>showDrill('status',l==='未设置'?'':l));
   const ctx2=document.getElementById('cv');
   if(ctx2)CI['cv']=new Chart(ctx2,{type:'bar',
     data:{labels:SALES,datasets:[{data:SALES.map(s=>src.filter(c=>c.sales===s).length),backgroundColor:'#3b82f6',borderRadius:6}]},
@@ -632,7 +646,6 @@ function showDrill(field,value,e){
   const labels={country:'国家',status:'状态',packaging_material:'行业',sales:'销售',date:'日期',all:'全部客户',source:'客户来源',customer_type:'客户类型'};
   const el=document.createElement('div');el.className='overlay';el.id='drill-ov';
   const rows=list.length===0?'<div class="empty">暂无数据</div>':list.map(c=>{
-    const n=nfi(c);
     return`<div class="drill-row">
       <div style="flex:1;min-width:0">
         <div class="nlink" style="font-size:13px" onclick="openDetail('${c.id}')">${esc(c.name)}</div>
@@ -657,7 +670,6 @@ function showDrill(field,value,e){
   document.body.appendChild(el);el.addEventListener('click',ev=>{if(ev.target===el)el.remove()});
 }
 
-// ── Customers ──
 function renderCus(){
   let filtered=CUS.filter(c=>{
     const q=fS.toLowerCase();
@@ -677,14 +689,16 @@ function renderCus(){
   const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
   const saOpts=isAdm()?['全部',...SALES]:['全部',CU];
   const ctypeOpts=['全部',...new Set(CUS.map(c=>c.customer_type).filter(Boolean))];
+  const allPagedSelected=paged.length>0&&paged.every(c=>selIds.has(c.id));
 
-  const rows=paged.length===0?'<tr><td colspan="11" class="empty">暂无数据</td></tr>':paged.map(c=>{
+  const rows=paged.length===0?`<tr><td colspan="12" class="empty">暂无数据</td></tr>`:paged.map(c=>{
     const n=nfi(c);
     const dup=isDup(c,c.id);
     const sea=isSea(c)?'<span class="badge u-red" style="margin-left:3px;font-size:10px">公海</span>':'';
     const dupW=dup?`<span class="dup-w">⚠重复</span>`:'';
     const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
     return`<tr>
+      <td style="width:32px;text-align:center"><input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="width:14px;height:14px;cursor:pointer"/></td>
       <td>
         <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}
         <br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span>
@@ -711,7 +725,6 @@ function renderCus(){
       </div></td>
     </tr>`;}).join('');
 
-  // 翻页栏
   const pageNums=[];
   for(let i=1;i<=totalPages;i++){
     if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);
@@ -728,7 +741,10 @@ function renderCus(){
   </div>`;
 
   return`<div class="tw">
-    <div class="th"><span class="ttl">👥 客户列表 (${total})</span></div>
+    <div class="th">
+      <span class="ttl">👥 客户列表 (${total})</span>
+      ${selIds.size>0?`<button onclick="batchDel()" style="padding:6px 14px;border-radius:7px;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 删除已选 (${selIds.size})</button>`:''}
+    </div>
     <div class="filter-bar">
       <input value="${esc(fS)}" oninput="fS=this.value;cusPage=1;render()" placeholder="搜索姓名/公司/电话…"/>
       ${isAdm()?`<select onchange="fSales=this.value;cusPage=1;render()">${saOpts.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
@@ -752,6 +768,7 @@ function renderCus(){
     </div>
     <div style="overflow-x:auto"><table>
       <thead><tr>
+        <th style="width:32px;text-align:center"><input type="checkbox" id="sel-all" ${allPagedSelected?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer"/></th>
         <th>客户姓名</th>
         <th class="col-hide">创建时间</th>
         <th class="col-hide">邮箱/电话</th>
