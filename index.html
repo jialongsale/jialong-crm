@@ -928,7 +928,19 @@ function openImport(){
 function loadFile(inp){
   const f=inp.files[0];if(!f)return;
   document.getElementById('fn').textContent=f.name;
-  const r=new FileReader();r.onload=e=>{document.getElementById('imp-txt').value=e.target.result};r.readAsText(f,'UTF-8');
+  const r=new FileReader();
+  r.onload=e=>{
+    let txt=e.target.result;
+    // 检测乱码（GBK文件用UTF-8读会出现替换字符）
+    if(txt.includes(' ')){
+      const r2=new FileReader();
+      r2.onload=e2=>{document.getElementById('imp-txt').value=e2.target.result};
+      r2.readAsText(f,'GBK');
+    } else {
+      document.getElementById('imp-txt').value=txt;
+    }
+  };
+  r.readAsText(f,'UTF-8');
 }
 
 async function doImp(){
@@ -936,7 +948,16 @@ async function doImp(){
   if(!raw){toast('请粘贴 CSV 数据');return;}
   const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
   if(lines.length<2){toast('至少需要表头+一行数据');return;}
-  const parse=l=>l.split(',').map(s=>s.trim());
+const parse=l=>{
+  const res=[];let cur='',inQ=false;
+  for(let i=0;i<l.length;i++){
+    const ch=l[i];
+    if(ch==='"'){inQ=!inQ;}
+    else if(ch===','&&!inQ){res.push(cur.trim());cur='';}
+    else cur+=ch;
+  }
+  res.push(cur.trim());return res;
+};
   const headers=parse(lines[0]);
   const map={
     姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',
