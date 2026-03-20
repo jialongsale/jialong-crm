@@ -378,10 +378,11 @@ async function editLog(logId){
   const log=LOGS.find(l=>l.id===logId);if(!log)return;
   const newNotes=prompt('修改沟通详情：',log.notes);
   if(newNotes===null)return;
-  const newDate=prompt('修改跟进日期（格式 2024-03-15）：',log.created_at?.split('T')[0]);
+  const curDate=log.log_date||log.created_at?.split('T')[0];
+  const newDate=prompt('修改跟进日期（格式 2024-03-15）：',curDate);
   if(newDate===null)return;
-  const fd=fixDate(newDate)||log.created_at?.split('T')[0];
-  await db.from('follow_logs').update({notes:newNotes.trim(),created_at:fd+'T00:00:00'}).eq('id',logId);
+  const fd=fixDate(newDate)||curDate;
+  await db.from('follow_logs').update({notes:newNotes.trim(),log_date:fd}).eq('id',logId);
   toast('✅ 日志已更新');await load();renderLogM(LID);
 }
 
