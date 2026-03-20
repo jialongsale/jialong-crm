@@ -156,7 +156,7 @@ tr:hover td{background:#f8fafc}
 <div id="login-screen">
   <div class="login-box">
     <div class="login-logo">🏭</div>
-    <div class="login-title">JIALONG CRM</div>
+    <div class="login-title">嘉龙包装 CRM</div>
     <div class="login-sub">选择你的身份开始使用</div>
     <div class="user-grid">
       <button class="user-btn" onclick="login('Jacky')">Jacky</button>
@@ -166,7 +166,7 @@ tr:hover td{background:#f8fafc}
       <button class="user-btn" onclick="login('Tony')">Tony</button>
       <button class="user-btn" onclick="login('Gethin')">Gethin</button>
     </div>
-    <button class="user-btn admin" onclick="login('管理员')">🔧 admin</button>
+    <button class="user-btn admin" onclick="login('管理员')">🔧 管理员（查看全部数据）</button>
   </div>
 </div>
 
@@ -928,37 +928,57 @@ function openImport(){
 function loadFile(inp){
   const f=inp.files[0];if(!f)return;
   document.getElementById('fn').textContent=f.name;
-  const r=new FileReader();
-  r.onload=e=>{
-    let txt=e.target.result;
-    // 检测乱码（GBK文件用UTF-8读会出现替换字符）
-    if(txt.includes(' ')){
-      const r2=new FileReader();
-      r2.onload=e2=>{document.getElementById('imp-txt').value=e2.target.result};
-      r2.readAsText(f,'GBK');
-    } else {
-      document.getElementById('imp-txt').value=txt;
-    }
+  // 先尝试 UTF-8，如果出现乱码自动改用 GBK
+  const tryRead=(enc)=>{
+    const r=new FileReader();
+    r.onload=e=>{
+      const txt=e.target.result;
+      if(enc==='UTF-8'&&txt.includes('\uFFFD')){tryRead('GBK');}
+      else{document.getElementById('imp-txt').value=txt;}
+    };
+    r.readAsText(f,enc);
   };
-  r.readAsText(f,'UTF-8');
+  tryRead('UTF-8');
+}
+
+// 标准 CSV 解析，支持引号包裹、字段内逗号、字段内换行
+function parseCSV(raw){
+  const rows=[];
+  let cur='',inQ=false,fields=[];
+  for(let i=0;i<raw.length;i++){
+    const ch=raw[i],nx=raw[i+1];
+    if(ch==='"'){
+      if(inQ&&nx==='"'){cur+='"';i++;}
+      else inQ=!inQ;
+    } else if(ch===','&&!inQ){
+      fields.push(cur.trim());cur='';
+    } else if((ch==='\n'||ch==='\r')&&!inQ){
+      if(ch==='\r'&&nx==='\n')i++;
+      fields.push(cur.trim());cur='';
+      if(fields.some(f=>f!==''))rows.push(fields);
+      fields=[];
+    } else {
+      cur+=ch;
+    }
+  }
+  if(cur||fields.length){fields.push(cur.trim());if(fields.some(f=>f!==''))rows.push(fields);}
+  return rows;
+}
+
+// 修复日期格式：把 2026/3/12 转成 2026-03-12
+function fixDate(s){
+  if(!s)return null;
+  const m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
+  if(!m)return null;
+  return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
 }
 
 async function doImp(){
-  const raw=document.getElementById('imp-txt')?.value?.trim();
-  if(!raw){toast('请粘贴 CSV 数据');return;}
-  const lines=raw.split('\n').map(l=>l.trim()).filter(Boolean);
-  if(lines.length<2){toast('至少需要表头+一行数据');return;}
-const parse=l=>{
-  const res=[];let cur='',inQ=false;
-  for(let i=0;i<l.length;i++){
-    const ch=l[i];
-    if(ch==='"'){inQ=!inQ;}
-    else if(ch===','&&!inQ){res.push(cur.trim());cur='';}
-    else cur+=ch;
-  }
-  res.push(cur.trim());return res;
-};
-  const headers=parse(lines[0]);
+  const raw=document.getElementById('imp-txt')?.value;
+  if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
+  const rows=parseCSV(raw);
+  if(rows.length<2){toast('至少需要表头+一行数据');return;}
+  const headers=rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
   const map={
     姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',
     地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',
@@ -967,20 +987,26 @@ const parse=l=>{
     预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',
     创建时间:'custom_date'
   };
-  const rows=[];
-  for(let i=1;i<lines.length;i++){
-    const vals=parse(lines[i]);
+  const data=[];
+  for(let i=1;i<rows.length;i++){
+    const vals=rows[i];
     const obj={products:[]};
-    headers.forEach((h,j)=>{if(map[h])obj[map[h]]=vals[j]||''});
+    headers.forEach((h,j)=>{if(map[h])obj[map[h]]=(vals[j]||'').trim();});
     if(!obj.name)continue;
     if(!obj.sales)obj.sales=CU;
-    if(!obj.custom_date)obj.custom_date=T();
-    rows.push(obj);
+    obj.custom_date=fixDate(obj.custom_date)||T();
+    data.push(obj);
   }
-  if(!rows.length){toast('没有有效数据行');return;}
-  const{error}=await db.from('customers').insert(rows);
-  if(error){toast('导入失败: '+error.message);return;}
-  toast(`✅ 成功导入 ${rows.length} 条`);
+  if(!data.length){toast('没有有效数据行');return;}
+  // 分批导入，每次50条
+  let total=0;
+  for(let i=0;i<data.length;i+=50){
+    const batch=data.slice(i,i+50);
+    const{error}=await db.from('customers').insert(batch);
+    if(error){toast(`导入失败(第${i+1}行起): ${error.message}`);return;}
+    total+=batch.length;
+  }
+  toast(`✅ 成功导入 ${total} 条`);
   document.getElementById('imp-ov')?.remove();
   await load();
 }
