@@ -271,6 +271,7 @@ function isTask(c){
 
 function nfi(c){
   const s=c.follow_stage||0;
+  if(['成交','流失','垃圾'].includes(c.status))return{t:'✅ 完成',cls:'nf-done'};
   if(s>=5)return{t:'✅ 完成',cls:'nf-done'};
   if(s===0)return{t:'待首次跟进',cls:'nf-pend'};
   const d=diffD(c.next_follow_date);
