@@ -357,7 +357,8 @@ async function saveLog(){
   const c=ALL.find(x=>x.id===LID);if(!c)return;
 
   // 同步更新客户跟进状态
-  const ns=Math.min((c.follow_stage||0)+1,5);
+  const advance=document.getElementById('advance-stage')?.checked!==false;
+  const ns=advance?Math.min((c.follow_stage||0)+1,5):(c.follow_stage||0);
   const upd={last_follow_date:logDate,follow_stage:ns};
   if(ns===1){
     upd.first_follow_date=logDate;
@@ -974,6 +975,11 @@ function renderLogM(id){
         <select class="fi" onchange="LFD.status_update=this.value">
           ${STATUSES.map(s=>`<option value="${s}" ${LFD.status_update===s?'selected':''}>${s||'（不修改）'}</option>`).join('')}
         </select>
+      </div>
+      <div class="fg"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="advance-stage" checked style="width:16px;height:16px;cursor:pointer"/>
+        <span>推进跟进阶段（补录历史数据时取消勾选）</span>
+      </label></div>
       </div>
       <div><label class="fl" style="margin-bottom:6px">历史记录 (${cl.length}条)</label>
         <div class="ll" style="max-height:220px">${cl.length
