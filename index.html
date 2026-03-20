@@ -37,10 +37,10 @@ button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inhe
 .stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
 .stat-lbl{font-size:11px;color:#94a3b8;margin-bottom:5px;font-weight:500;letter-spacing:.5px}
 .stat-v{font-size:26px;font-weight:700}
-.chart-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.chart-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
+.chart-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px}
 .chart-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px;cursor:pointer;transition:box-shadow .15s}
 .chart-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
-.chart-card.no-click{cursor:default}.chart-card.no-click:hover{box-shadow:none}
 .chart-ttl{font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
 .chart-wrap{position:relative;height:170px}
 .dash-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
@@ -136,8 +136,13 @@ tr:hover td{background:#f8fafc}
 .custom-date-row{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
 .custom-date-row input{padding:5px 9px;border-radius:7px;border:1px solid #e2e8f0;font-size:12px;background:#fff}
 .custom-date-row button{padding:5px 12px;border-radius:7px;border:none;background:#3b82f6;color:#fff;font-size:12px;cursor:pointer}
+.page-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f1f5f9;flex-wrap:wrap}
+.page-btn{padding:5px 11px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;font-size:12px;color:#374151;cursor:pointer}
+.page-btn:hover{background:#f8fafc}
+.page-btn.on{background:#3b82f6;color:#fff;border-color:#3b82f6}
+.page-btn:disabled{opacity:.4;cursor:not-allowed}
 @media(max-width:768px){
-  .chart-grid{grid-template-columns:1fr}
+  .chart-grid3,.chart-grid2{grid-template-columns:1fr}
   .dash-row,.g2,.g3,.det-grid{grid-template-columns:1fr}
   .nav-brand{display:none}
   .nb{font-size:11px;padding:4px 6px}
@@ -166,7 +171,7 @@ tr:hover td{background:#f8fafc}
       <button class="user-btn" onclick="login('Tony')">Tony</button>
       <button class="user-btn" onclick="login('Gethin')">Gethin</button>
     </div>
-    <button class="user-btn admin" onclick="login('管理员')">🔧 admin</button>
+    <button class="user-btn admin" onclick="login('管理员')">🔧 Admin</button>
   </div>
 </div>
 
@@ -204,16 +209,17 @@ const CTYPES=['终端客户','经销商','代理商','其他'];
 const VACUUM=['有','无','待确认'];
 const AUTO=['全自动','半自动','手动','待确认'];
 const SLABELS=['','首次跟进','3天回访','7天回访','15天回访','30天回访'];
-const COLORS=['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#94a3b8','#f43f5e','#14b8a6'];
+const COLORS=['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#94a3b8','#f43f5e','#14b8a6','#a855f7','#0ea5e9','#d946ef'];
 const PASSWORDS={Jacky:'jacky123',Jen:'jen123',Jimmy:'jimmy123',Chris:'chris123',Tony:'tony123',Gethin:'gethin123','管理员':'admin888'};
 
 let CU=null,ALL=[],CUS=[],LOGS=[];
 let VIEW='dashboard',DF='全部';
-let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部';
+let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部';
 let fDateRange='all',fDateStart='',fDateEnd='';
 let dashDateRange='14',dashDateStart='',dashDateEnd='';
 let EID=null,LID=null,FD={},LFD={};
 let CI={};
+let cusPage=1,cusPageSize=20;
 
 const T=()=>new Date().toISOString().split('T')[0];
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
@@ -224,8 +230,6 @@ const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>
 const isAdm=()=>CU==='管理员';
 
 function toast(m,t=2500){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),t)}
-
-// 获取客户的"业务创建日期"，优先用 custom_date，没有则用 created_at
 function cusDate(c){return c.custom_date||c.created_at?.split('T')[0]||''}
 
 function getDateRange(range,start,end){
@@ -243,6 +247,13 @@ function filterByDate(list,range,start,end){
   const r=getDateRange(range,start,end);
   if(!r||!r.s)return list;
   return list.filter(c=>{const d=cusDate(c);return d>=r.s&&d<=r.e;});
+}
+
+// 聚合数据并按数量从大到小排序
+function aggSorted(src,field){
+  const m={};
+  src.forEach(c=>{const v=c[field]||'';if(v)m[v]=(m[v]||0)+1;});
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
 }
 
 function isSea(c){
@@ -299,8 +310,7 @@ async function saveCus(){
     automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',
     self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',
     project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',
-    custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,
-    notes:FD.notes||''
+    custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||''
   };
   if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
   const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
@@ -391,7 +401,6 @@ function updateBadge(){
   if(b)b.textContent=`${n?'🔴':'⬜'} 待办${n?` (${n})`:''}`;
 }
 
-// ── 日期筛选器 HTML ──
 function renderDateFilterBar(range,start,end,onchange){
   const opts=[['7','近7天'],['14','近14天'],['30','近30天'],['month','本月'],['lastmonth','上月'],['custom','自定义'],['all','全部']];
   return`<div class="date-filter-bar">
@@ -406,9 +415,9 @@ function renderDateFilterBar(range,start,end,onchange){
 }
 
 function setCusDR(v){
-  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';render();return;}
-  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';render();return;}
-  fDateRange=v;render();
+  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
+  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
+  fDateRange=v;cusPage=1;render();
 }
 
 function setDashDR(v){
@@ -435,22 +444,28 @@ function renderDash(){
        ['垃圾',bs('垃圾'),'#f43f5e','status','垃圾']]
       .map(([l,v,c,t,val])=>`<div class="stat-card" onclick="statClick('${t}','${val||''}')"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
   </div>
-<div class="chart-grid" style="grid-template-columns:1fr 1fr;margin-bottom:14px">
+  <div class="chart-grid3">
     <div class="chart-card" onclick="showDrill('country',null,event)">
       <div class="chart-ttl">🌍 国家分布</div>
       <div class="chart-wrap"><canvas id="cc"></canvas></div>
-    </div>
-    <div class="chart-card" onclick="showDrill('status',null,event)">
-      <div class="chart-ttl">📊 跟进阶段</div>
-      <div class="chart-wrap"><canvas id="cs"></canvas></div>
     </div>
     <div class="chart-card" onclick="showDrill('packaging_material',null,event)">
       <div class="chart-ttl">📦 行业（包装物料）</div>
       <div class="chart-wrap"><canvas id="cm"></canvas></div>
     </div>
+    <div class="chart-card" onclick="showDrill('customer_type',null,event)">
+      <div class="chart-ttl">🏢 客户类型</div>
+      <div class="chart-wrap"><canvas id="cct"></canvas></div>
+    </div>
+  </div>
+  <div class="chart-grid2">
     <div class="chart-card" onclick="showDrill('source',null,event)">
       <div class="chart-ttl">📡 客户来源</div>
       <div class="chart-wrap"><canvas id="csr"></canvas></div>
+    </div>
+    <div class="chart-card" onclick="showDrill('status',null,event)">
+      <div class="chart-ttl">📊 跟进阶段</div>
+      <div class="chart-wrap"><canvas id="cs"></canvas></div>
     </div>
   </div>
   <div class="dash-row">
@@ -514,23 +529,26 @@ function getDashDays(){
 function renderCharts(){
   const src=isAdm()&&DF==='全部'?ALL:CUS;
   Object.values(CI).forEach(c=>{try{c.destroy()}catch(e){}});CI={};
-  const pie=(id,data,onClick)=>{
-    const labels=Object.keys(data).filter(k=>k&&data[k]>0);
-    const vals=labels.map(k=>data[k]);
-    if(!labels.length)return;
+  const pie=(id,entries,onClick)=>{
+    if(!entries.length)return;
     const ctx=document.getElementById(id);if(!ctx)return;
+    const labels=entries.map(e=>e[0]);
+    const vals=entries.map(e=>e[1]);
     CI[id]=new Chart(ctx,{type:'pie',
       data:{labels,datasets:[{data:vals,backgroundColor:COLORS.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
       options:{responsive:true,maintainAspectRatio:false,
         plugins:{legend:{position:'right',labels:{font:{size:10},padding:6}}},
         onClick:(_,el)=>{if(onClick&&el.length)onClick(labels[el[0].index]);}}});
   };
-  const agg=field=>{const m={};src.forEach(c=>{const v=c[field]||'';m[v]=(m[v]||0)+1});return m;};
-  pie('cc',agg('country'),l=>showDrill('country',l));
+  pie('cc',aggSorted(src,'country'),l=>showDrill('country',l));
+  pie('cm',aggSorted(src,'packaging_material'),l=>showDrill('packaging_material',l));
+  pie('cct',aggSorted(src,'customer_type'),l=>showDrill('customer_type',l));
+  pie('csr',aggSorted(src,'source'),l=>showDrill('source',l));
+  // 跟进阶段也按数量排序
   const sd={};src.forEach(c=>{const v=c.status||'未设置';sd[v]=(sd[v]||0)+1});
-  pie('cs',sd,l=>showDrill('status',l==='未设置'?'':l));
-  pie('cm',agg('packaging_material'),l=>showDrill('packaging_material',l));
-  pie('csr',agg('source'),l=>showDrill('source',l));
+  const sdSorted=Object.entries(sd).sort((a,b)=>b[1]-a[1]);
+  pie('cs',sdSorted,l=>showDrill('status',l==='未设置'?'':l));
+
   const ctx2=document.getElementById('cv');
   if(ctx2)CI['cv']=new Chart(ctx2,{type:'bar',
     data:{labels:SALES,datasets:[{data:SALES.map(s=>src.filter(c=>c.sales===s).length),backgroundColor:'#3b82f6',borderRadius:6}]},
@@ -560,10 +578,10 @@ function showDrill(field,value,e){
     :field==='date'?src.filter(c=>cusDate(c)===value)
     :value!==undefined?src.filter(c=>(c[field]||'')===(value||''))
     :src;
-  const labels={country:'国家',status:'状态',packaging_material:'包装物料',sales:'销售',date:'日期',all:'全部客户',source:'客户来源'};
+  const labels={country:'国家',status:'状态',packaging_material:'行业',sales:'销售',date:'日期',all:'全部客户',source:'客户来源',customer_type:'客户类型'};
   const el=document.createElement('div');el.className='overlay';el.id='drill-ov';
   const rows=list.length===0?'<div class="empty">暂无数据</div>':list.map(c=>{
-    const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id)[0];
+    const n=nfi(c);
     return`<div class="drill-row">
       <div style="flex:1;min-width:0">
         <div class="nlink" style="font-size:13px" onclick="openDetail('${c.id}')">${esc(c.name)}</div>
@@ -571,7 +589,7 @@ function showDrill(field,value,e){
       </div>
       <div style="min-width:60px;font-size:12px;color:#64748b">${esc(c.country)||'—'}</div>
       <div style="min-width:60px;font-size:12px;color:#64748b">${esc(c.source)||'—'}</div>
-      <div style="min-width:90px;font-size:12px;color:#2563eb;cursor:pointer" onclick="openLog('${c.id}')">${cl?esc(cl.notes.substring(0,18))+'…':'暂无日志'}</div>
+      <div style="min-width:70px"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></div>
     </div>`;}).join('');
   el.innerHTML=`<div class="modal mlg">
     <div class="mh">
@@ -596,16 +614,19 @@ function renderCus(){
       &&(fSales==='全部'||c.sales===fSales)
       &&(fStat==='全部'||(c.status||'')===fStat)
       &&(fCo==='全部'||c.country===fCo)
-      &&(fSrc==='全部'||c.source===fSrc);
+      &&(fSrc==='全部'||c.source===fSrc)
+      &&(fCtype==='全部'||(c.customer_type||'')===fCtype);
   });
   filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
-  const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))];
+  const total=filtered.length;
+  const totalPages=Math.max(1,Math.ceil(total/cusPageSize));
+  if(cusPage>totalPages)cusPage=totalPages;
+  const paged=filtered.slice((cusPage-1)*cusPageSize,cusPage*cusPageSize);
+  const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
   const saOpts=isAdm()?['全部',...SALES]:['全部',CU];
-  const cusDateFilterBar=`<div style="padding:8px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9">
-    <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px;letter-spacing:.5px">按创建时间筛选</div>
-    ${renderCusDateBar()}
-  </div>`;
-  const rows=filtered.length===0?'<tr><td colspan="11" class="empty">暂无数据</td></tr>':filtered.map(c=>{
+  const ctypeOpts=['全部',...new Set(CUS.map(c=>c.customer_type).filter(Boolean))];
+
+  const rows=paged.length===0?'<tr><td colspan="11" class="empty">暂无数据</td></tr>':paged.map(c=>{
     const n=nfi(c);
     const dup=isDup(c,c.id);
     const sea=isSea(c)?'<span class="badge u-red" style="margin-left:3px;font-size:10px">公海</span>':'';
@@ -637,22 +658,45 @@ function renderCus(){
         <button class="ab ar" onclick="delCus('${c.id}')">删</button>
       </div></td>
     </tr>`;}).join('');
+
+  // 翻页栏
+  const pageNums=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);
+    else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');
+  }
+  const pageBar=`<div class="page-bar">
+    <span style="font-size:12px;color:#64748b">共 ${total} 条</span>
+    <select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;background:#fff">
+      ${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}
+    </select>
+    <button class="page-btn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>
+    ${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:#94a3b8;padding:0 4px">…</span>`:`<button class="page-btn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}
+    <button class="page-btn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button>
+  </div>`;
+
   return`<div class="tw">
-    <div class="th"><span class="ttl">👥 客户列表 (${filtered.length})</span></div>
+    <div class="th"><span class="ttl">👥 客户列表 (${total})</span></div>
     <div class="filter-bar">
-      <input value="${esc(fS)}" oninput="fS=this.value;render()" placeholder="搜索姓名/公司/电话…"/>
-      ${isAdm()?`<select onchange="fSales=this.value;render()">${saOpts.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
-      <select onchange="fStat=this.value;render()">
+      <input value="${esc(fS)}" oninput="fS=this.value;cusPage=1;render()" placeholder="搜索姓名/公司/电话…"/>
+      ${isAdm()?`<select onchange="fSales=this.value;cusPage=1;render()">${saOpts.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
+      <select onchange="fStat=this.value;cusPage=1;render()">
         ${['全部',...STATUSES].map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s||'（空）'}</option>`).join('')}
       </select>
-      <select onchange="fCo=this.value;render()">
+      <select onchange="fCo=this.value;cusPage=1;render()">
         <option>全部</option>${coOpts.map(s=>`<option ${fCo===s?'selected':''}>${esc(s)}</option>`).join('')}
       </select>
-      <select onchange="fSrc=this.value;render()">
+      <select onchange="fSrc=this.value;cusPage=1;render()">
         <option>全部</option>${SOURCES.map(s=>`<option ${fSrc===s?'selected':''}>${s}</option>`).join('')}
       </select>
+      <select onchange="fCtype=this.value;cusPage=1;render()">
+        ${ctypeOpts.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}
+      </select>
     </div>
-    ${cusDateFilterBar}
+    <div style="padding:8px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9">
+      <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px;letter-spacing:.5px">按创建时间筛选</div>
+      ${renderCusDateBar()}
+    </div>
     <div style="overflow-x:auto"><table>
       <thead><tr>
         <th>客户姓名</th>
@@ -669,6 +713,7 @@ function renderCus(){
       </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
+    ${pageBar}
   </div>`;
 }
 
@@ -910,7 +955,7 @@ function openImport(){
   el.innerHTML=`<div class="modal mlg">
     <div class="mh"><div class="mt">📥 批量导入客户</div><button class="xb" onclick="document.getElementById('imp-ov').remove()">×</button></div>
     <div class="mb">
-      <p style="font-size:13px;color:#64748b;margin-bottom:10px">第一行为表头，从第二行开始填数据。创建时间支持自定义，格式：2024-03-15</p>
+      <p style="font-size:13px;color:#64748b;margin-bottom:10px">第一行为表头，从第二行开始填数据。创建时间格式：2024-03-15</p>
       <div class="imp-tpl">姓名,公司,邮箱,电话,来源,国家,地区,负责销售,状态,包装物料,包装重量,包装速度,真空需求,自动化需求,客户类型,客户性质,预计购买,项目详情,备注,创建时间
 张三,ABC公司,zhang@abc.com,+8613800000001,阿里巴巴,印度,孟买,Jacky,潜在,食品,25-50kg,30包/分钟,有,全自动,终端客户,小型工厂,Q3 2025,需要整套包装线,有意向,2024-01-15</div>
       <div class="fg"><label class="fl">粘贴 CSV 数据</label>
@@ -934,7 +979,6 @@ function openImport(){
 function loadFile(inp){
   const f=inp.files[0];if(!f)return;
   document.getElementById('fn').textContent=f.name;
-  // 先尝试 UTF-8，如果出现乱码自动改用 GBK
   const tryRead=(enc)=>{
     const r=new FileReader();
     r.onload=e=>{
@@ -947,7 +991,6 @@ function loadFile(inp){
   tryRead('UTF-8');
 }
 
-// 标准 CSV 解析，支持引号包裹、字段内逗号、字段内换行
 function parseCSV(raw){
   const rows=[];
   let cur='',inQ=false,fields=[];
@@ -971,7 +1014,6 @@ function parseCSV(raw){
   return rows;
 }
 
-// 修复日期格式：把 2026/3/12 转成 2026-03-12
 function fixDate(s){
   if(!s)return null;
   const m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
@@ -990,8 +1032,7 @@ async function doImp(){
     地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',
     包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',
     自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',
-    预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',
-    创建时间:'custom_date'
+    预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',创建时间:'custom_date'
   };
   const data=[];
   for(let i=1;i<rows.length;i++){
@@ -1004,7 +1045,6 @@ async function doImp(){
     data.push(obj);
   }
   if(!data.length){toast('没有有效数据行');return;}
-  // 分批导入，每次50条
   let total=0;
   for(let i=0;i<data.length;i+=50){
     const batch=data.slice(i,i+50);
