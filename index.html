@@ -214,7 +214,7 @@ const PASSWORDS={Jacky:'jacky123',Jen:'jen123',Jimmy:'jimmy123',Chris:'chris123'
 
 let CU=null,ALL=[],CUS=[],LOGS=[];
 let VIEW='dashboard',DF='全部';
-let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部';
+let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部',fDup=false;
 let fDateRange='all',fDateStart='',fDateEnd='';
 let dashDateRange='14',dashDateStart='',dashDateEnd='';
 let EID=null,LID=null,FD={},LFD={};
@@ -354,9 +354,27 @@ async function delCus(id){
 async function saveLog(){
   if(!LFD.notes?.trim()){toast('请填写沟通详情');return;}
   if(LFD.status_update)await db.from('customers').update({status:LFD.status_update}).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||'',notes:LFD.notes.trim(),status_update:LFD.status_update||''}]);
-  toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:''};
+  const logDate=LFD.log_date||T();
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',created_at:logDate+'T00:00:00'}]);
+  toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
   await load();renderLogM(LID);
+}
+
+async function editLog(logId){
+  const log=LOGS.find(l=>l.id===logId);if(!log)return;
+  const newNotes=prompt('修改沟通详情：',log.notes);
+  if(newNotes===null)return;
+  const newDate=prompt('修改跟进日期（格式 2024-03-15）：',log.created_at?.split('T')[0]);
+  if(newDate===null)return;
+  const fd=fixDate(newDate)||log.created_at?.split('T')[0];
+  await db.from('follow_logs').update({notes:newNotes.trim(),created_at:fd+'T00:00:00'}).eq('id',logId);
+  toast('✅ 日志已更新');await load();renderLogM(LID);
+}
+
+async function deleteLog(logId){
+  if(!confirm('确定删除这条跟进记录？'))return;
+  await db.from('follow_logs').delete().eq('id',logId);
+  toast('已删除');await load();renderLogM(LID);
 }
 
 function login(n){
@@ -615,7 +633,8 @@ function renderCus(){
       &&(fStat==='全部'||(c.status||'')===fStat)
       &&(fCo==='全部'||c.country===fCo)
       &&(fSrc==='全部'||c.source===fSrc)
-      &&(fCtype==='全部'||(c.customer_type||'')===fCtype);
+      &&(fCtype==='全部'||(c.customer_type||'')===fCtype)
+      &&(!fDup||isDup(c,c.id));
   });
   filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
   const total=filtered.length;
@@ -692,6 +711,7 @@ function renderCus(){
       <select onchange="fCtype=this.value;cusPage=1;render()">
         ${ctypeOpts.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}
       </select>
+      <button onclick="fDup=!fDup;cusPage=1;render()" style="padding:7px 12px;border-radius:7px;border:1px solid ${fDup?'#ef4444':'#e2e8f0'};background:${fDup?'#fef2f2':'#fff'};color:${fDup?'#ef4444':'#64748b'};font-size:12px;cursor:pointer;white-space:nowrap">⚠ ${fDup?'已筛重复':'筛重复'}</button>
     </div>
     <div style="padding:8px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9">
       <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px;letter-spacing:.5px">按创建时间筛选</div>
@@ -908,7 +928,7 @@ function openDetail(id){
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
 
-function openLog(id){LID=id;LFD={stage_label:'',notes:'',status_update:''};renderLogM(id);}
+function openLog(id){LID=id;LFD={stage_label:'',notes:'',status_update:'',log_date:T()};renderLogM(id);}
 
 function renderLogM(id){
   document.getElementById('log-ov')?.remove();
@@ -921,11 +941,16 @@ function renderLogM(id){
       <button class="xb" onclick="document.getElementById('log-ov').remove()">×</button>
     </div>
     <div class="mb">
-      <div class="fg"><label class="fl">跟进阶段</label>
-        <select class="fi" onchange="LFD.stage_label=this.value">
-          <option value="">请选择</option>
-          ${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<option ${LFD.stage_label===s?'selected':''}>${s}</option>`).join('')}
-        </select>
+      <div class="g2">
+        <div class="fg"><label class="fl">跟进阶段</label>
+          <select class="fi" onchange="LFD.stage_label=this.value">
+            <option value="">请选择</option>
+            ${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<option ${LFD.stage_label===s?'selected':''}>${s}</option>`).join('')}
+          </select>
+        </div>
+        <div class="fg"><label class="fl">跟进日期</label>
+          <input class="fi" type="date" value="${LFD.log_date||T()}" onchange="LFD.log_date=this.value"/>
+        </div>
       </div>
       <div class="fg"><label class="fl">沟通详情 *</label>
         <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…">${esc(LFD.notes)}</textarea>
@@ -935,9 +960,18 @@ function renderLogM(id){
           ${STATUSES.map(s=>`<option value="${s}" ${LFD.status_update===s?'selected':''}>${s||'（不修改）'}</option>`).join('')}
         </select>
       </div>
-      <div><label class="fl">历史记录</label>
-        <div class="ll">${cl.length
-          ?cl.map(l=>`<div class="li"><span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label)}]${l.status_update?` →${l.status_update}`:''}</span><br>${esc(l.notes)}</div>`).join('')
+      <div><label class="fl" style="margin-bottom:6px">历史记录 (${cl.length}条)</label>
+        <div class="ll" style="max-height:220px">${cl.length
+          ?cl.map(l=>`<div class="li" style="display:flex;gap:6px;align-items:flex-start;padding:5px 0">
+              <div style="flex:1;min-width:0">
+                <span class="ld">${l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` →${l.status_update}`:''}</span>
+                <div style="margin-top:2px;word-break:break-all">${esc(l.notes)}</div>
+              </div>
+              <div style="display:flex;gap:3px;flex-shrink:0;padding-top:2px">
+                <button onclick="editLog('${l.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #bfdbfe;background:#eff6ff;color:#2563eb;cursor:pointer;white-space:nowrap">编辑</button>
+                <button onclick="deleteLog('${l.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer">删</button>
+              </div>
+            </div>`).join('')
           :'<div style="color:#cbd5e1;font-size:12px">暂无历史</div>'}</div>
       </div>
     </div>
