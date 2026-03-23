@@ -104,7 +104,6 @@ tr:hover td{background:#f8fafc}
 .tbg{background:#10b981;color:#fff}
 .tbb{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe!important}
 .tbc{background:#f8fafc;color:#4b5563;border:1px solid #e5e7eb!important}
-.sea-card{background:#fff;border-radius:12px;border:1px solid #fca5a5;padding:11px 15px;margin-bottom:8px;display:flex;align-items:center;gap:10px}
 .ll{background:#f8fafc;border-radius:8px;padding:8px 11px;max-height:150px;overflow-y:auto}
 .li{font-size:12px;color:#475569;padding:4px 0;border-bottom:1px dashed #e2e8f0}
 .li:last-child{border-bottom:none}
@@ -208,7 +207,7 @@ const SOURCES=['易询盘','外贸牛','阿里巴巴','中国制造','社媒','�
 const PRODUCTS=['真空机','封口机','半自动','全自动','外购产品'];
 const STATUSES=['','潜在','意向','成交','转交代理商','流失','垃圾'];
 const DONE_STATUSES=['成交','转交代理商','流失','垃圾'];
-const CTYPES=['终端客户','机器经销商','贸易商','其他'];
+const CTYPES=['终端客户','贸易商','机器经销商'];
 const VACUUM=['有','无','待确认'];
 const AUTO=['全自动','半自动','手动','待确认'];
 const SLABELS=['','首次跟进','3天回访','7天回访','15天回访','30天回访'];
@@ -223,6 +222,7 @@ let dashDateRange='14',dashDateStart='',dashDateEnd='';
 let EID=null,LID=null,FD={},LFD={};
 let CI={};
 let cusPage=1,cusPageSize=20,selIds=new Set();
+let seaPage=1,seaPageSize=20,seaS='';
 
 const T=()=>new Date().toISOString().split('T')[0];
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
@@ -369,7 +369,6 @@ async function delCus(id){
 }
 
 async function saveLog(){
-  if(!LFD.notes?.trim()){toast('请填写沟通详情');return;}
   const logDate=LFD.log_date||T();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
   const advance=document.getElementById('advance-stage')?.checked!==false;
@@ -383,7 +382,7 @@ async function saveLog(){
   else upd.next_follow_date=null;
   if(LFD.status_update)upd.status=LFD.status_update;
   await db.from('customers').update(upd).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',log_date:logDate}]);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate}]);
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
   await load();renderLogM(LID);
 }
@@ -614,7 +613,6 @@ function renderDash(){
     <span style="font-size:12px;color:#94a3b8;font-weight:600">筛选销售：</span>
     ${['全部',...SALES].map(s=>`<button class="df-btn ${DF===s?'on':''}" onclick="DF='${s}';applyFilter();render()">${s}</button>`).join('')}
   </div>`:'';
-  // 3×3 固定布局
   const stats=[
     ['总客户',src.length,'#3b82f6','all',null],
     ['今日待办',todN,'#ef4444','tasks',null],
@@ -807,10 +805,10 @@ function renderCus(){
   const paged=filtered.slice((cusPage-1)*cusPageSize,cusPage*cusPageSize);
   const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
   const saOpts=isAdm()?['全部',...SALES]:['全部',CU];
-  const ctypeOpts=['全部',...new Set(CUS.map(c=>c.customer_type).filter(Boolean))];
+  const ctypeOpts=['全部',...CTYPES];
   const allPagedSelected=paged.length>0&&paged.every(c=>selIds.has(c.id));
 
-  const rows=paged.length===0?`<tr><td colspan="12" class="empty">暂无数据</td></tr>`:paged.map(c=>{
+  const rows=paged.length===0?`<tr><td colspan="13" class="empty">暂无数据</td></tr>`:paged.map(c=>{
     const n=nfi(c);
     const dup=isDup(c,c.id);
     const sea=isSea(c)?'<span class="badge u-red" style="margin-left:3px;font-size:10px">公海</span>':'';
@@ -868,9 +866,9 @@ function renderCus(){
         ${selIds.size>0?`
         <button onclick="batchStatus()" style="padding:6px 12px;border-radius:7px;border:none;background:#f59e0b;color:#fff;font-size:12px;font-weight:600;cursor:pointer">✏️ 改状态 (${selIds.size})</button>
         <button onclick="batchTransfer()" style="padding:6px 12px;border-radius:7px;border:none;background:#3b82f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">👤 转移 (${selIds.size})</button>
-        <button onclick="batchDel()" style="padding:6px 12px;border-radius:7px;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 删除 (${selIds.size})</button>
         <button onclick="batchProducts()" style="padding:6px 12px;border-radius:7px;border:none;background:#8b5cf6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">📦 改产品 (${selIds.size})</button>
         <button onclick="batchCtype()" style="padding:6px 12px;border-radius:7px;border:none;background:#0891b2;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🏢 改类型 (${selIds.size})</button>
+        <button onclick="batchDel()" style="padding:6px 12px;border-radius:7px;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 删除 (${selIds.size})</button>
         `:''}
       </div>
     </div>
@@ -958,20 +956,78 @@ function renderTasks(){
 }
 
 function renderSea(){
-  const list=ALL.filter(isSea);
-  if(!list.length)return`<div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">没有公海客户</div></div>`;
-  return`<div style="margin-bottom:12px">
-    <div style="font-weight:700;font-size:16px;margin-bottom:3px">🌊 公海客户 (${list.length})</div>
-    <div style="font-size:13px;color:#94a3b8">超30天未跟进，任何销售可认领</div>
-  </div>
-  ${list.map(c=>`<div class="sea-card">
-    <div style="flex:1">
-      <div class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</div>
-      <div style="font-size:11px;color:#94a3b8;margin-top:2px">${esc(c.country)} · 原负责：${esc(c.sales)} · 最近跟进：${fmt(c.last_follow_date)}</div>
+  let list=ALL.filter(isSea);
+  if(seaS){const q=seaS.toLowerCase();list=list.filter(c=>c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.country?.toLowerCase().includes(q)||c.sales?.toLowerCase().includes(q));}
+  const total=list.length;
+  const totalPages=Math.max(1,Math.ceil(total/seaPageSize));
+  if(seaPage>totalPages)seaPage=totalPages;
+  const paged=list.slice((seaPage-1)*seaPageSize,seaPage*seaPageSize);
+  if(!total)return`<div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">没有公海客户</div></div>`;
+  const pageNums=[];
+  for(let i=1;i<=totalPages;i++){
+    if(i===1||i===totalPages||Math.abs(i-seaPage)<=2)pageNums.push(i);
+    else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');
+  }
+  const pageBar=`<div class="page-bar">
+    <span style="font-size:12px;color:#64748b">共 ${total} 条</span>
+    <select onchange="seaPageSize=+this.value;seaPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;background:#fff">
+      ${[20,50,100].map(n=>`<option value="${n}" ${seaPageSize===n?'selected':''}>${n}条/页</option>`).join('')}
+    </select>
+    <button class="page-btn" onclick="seaPage=Math.max(1,seaPage-1);render()" ${seaPage===1?'disabled':''}>‹</button>
+    ${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:#94a3b8;padding:0 4px">…</span>`:`<button class="page-btn ${seaPage===n?'on':''}" onclick="seaPage=${n};render()">${n}</button>`).join('')}
+    <button class="page-btn" onclick="seaPage=Math.min(${totalPages},seaPage+1);render()" ${seaPage===totalPages?'disabled':''}>›</button>
+  </div>`;
+  const rows=paged.map(c=>{
+    const n=nfi(c);
+    const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
+    return`<tr>
+      <td>
+        <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
+        <br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span>
+      </td>
+      <td class="col-hide" style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(cusDate(c))}</td>
+      <td class="col-hide" style="font-size:12px">
+        ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
+        ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
+        ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
+      </td>
+      <td class="col-hide" style="color:#64748b">${esc(c.country)||'—'}</td>
+      <td class="col-hide" style="color:#64748b">${esc(c.source)||'—'}</td>
+      <td class="col-hide" style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
+      <td><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
+      <td class="col-hide" style="color:#64748b;white-space:nowrap">${fmt(c.last_follow_date)}</td>
+      <td><span class="${n.cls}">${n.t}</span><br>${dots}</td>
+      <td><div class="acts">
+        <button class="ab ag" onclick="claimSea('${c.id}')">认领</button>
+        <button class="ab ab2" onclick="openLog('${c.id}')">📝</button>
+        <button class="ab ac" onclick="openDetail('${c.id}')">详情</button>
+      </div></td>
+    </tr>`;}).join('');
+  return`<div class="tw">
+    <div class="th">
+      <span class="ttl">🌊 公海客户 (${total})</span>
+      <span style="font-size:12px;color:#94a3b8">超30天未跟进，任何销售可认领</span>
     </div>
-    <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
-    <button class="tb tbg" style="padding:6px 11px;font-size:12px" onclick="claimSea('${c.id}')">认领</button>
-  </div>`).join('')}`;
+    <div class="filter-bar">
+      <input value="${esc(seaS)}" oninput="seaS=this.value;seaPage=1;render()" placeholder="搜索姓名/公司/国家/负责人…"/>
+    </div>
+    <div style="overflow-x:auto"><table>
+      <thead><tr>
+        <th>客户姓名</th>
+        <th class="col-hide">创建时间</th>
+        <th class="col-hide">邮箱/电话</th>
+        <th class="col-hide">国家</th>
+        <th class="col-hide">来源</th>
+        <th class="col-hide">原负责人</th>
+        <th>状态</th>
+        <th class="col-hide">最近跟进</th>
+        <th>下次跟进</th>
+        <th>操作</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    ${pageBar}
+  </div>`;
 }
 
 function closeM(id='modal-ov'){document.getElementById(id)?.remove()}
@@ -1132,8 +1188,8 @@ function renderLogM(id){
           <input class="fi" type="date" value="${LFD.log_date||T()}" onchange="LFD.log_date=this.value"/>
         </div>
       </div>
-      <div class="fg"><label class="fl">沟通详情 *</label>
-        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…">${esc(LFD.notes)}</textarea>
+      <div class="fg"><label class="fl">沟通详情</label>
+        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="留空则自动记录「标记已跟进」">${esc(LFD.notes)}</textarea>
       </div>
       <div class="fg"><label class="fl">更新客户状态（可选）</label>
         <select class="fi" onchange="LFD.status_update=this.value">
