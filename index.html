@@ -312,7 +312,7 @@ async function load(){
 
 function applyFilter(){
   if(isAdm())CUS=DF==='全部'?[...ALL]:ALL.filter(c=>c.sales===DF);
-  else CUS=ALL.filter(c=>c.sales===CU||isSea(c));
+  else CUS=ALL.filter(c=>c.sales===CU);
 }
 
 async function saveCus(){
