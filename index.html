@@ -369,6 +369,7 @@ async function delCus(id){
 }
 
 async function saveLog(){
+  if(!LFD.notes?.trim()){toast('请填写沟通详情');return;}
   const logDate=LFD.log_date||T();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
   const advance=document.getElementById('advance-stage')?.checked!==false;
@@ -382,7 +383,7 @@ async function saveLog(){
   else upd.next_follow_date=null;
   if(LFD.status_update)upd.status=LFD.status_update;
   await db.from('customers').update(upd).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate}]);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',log_date:logDate}]);
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
   await load();renderLogM(LID);
 }
@@ -463,6 +464,63 @@ async function batchTransfer(){
   const{error}=await db.from('customers').update({sales:tgt}).in('id',ids);
   if(error){toast('失败:'+error.message);return;}
   toast(`✅ 已将 ${ids.length} 条客户转移给 ${tgt}`);
+  selIds.clear();await load();
+}
+
+async function batchProducts(){
+  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
+  el.innerHTML=`<div class="modal msm">
+    <div class="mh"><div class="mt">📦 批量改产品类型（${selIds.size}条）</div><button class="xb" onclick="document.getElementById('bp-ov').remove()">×</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">选择产品类型（可多选）</label>
+        <div class="tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="tag toff" onclick="this.classList.toggle('ton');this.classList.toggle('toff')">${p}</button>`).join('')}</div>
+      </div>
+      <div style="font-size:12px;color:#94a3b8;margin-top:8px">⚠ 会替换选中客户的产品类型，不是追加</div>
+    </div>
+    <div class="mf">
+      <button class="btn-s" onclick="document.getElementById('bp-ov').remove()">取消</button>
+      <button class="btn-p" onclick="confirmBatchProducts()">确认修改</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+
+async function confirmBatchProducts(){
+  const selected=[...document.querySelectorAll('#bp-tags .ton')].map(b=>b.textContent);
+  if(!selected.length){toast('请至少选择一个产品类型');return;}
+  const ids=[...selIds];
+  const{error}=await db.from('customers').update({products:selected}).in('id',ids);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已更新 ${ids.length} 条客户的产品类型`);
+  document.getElementById('bp-ov')?.remove();
+  selIds.clear();await load();
+}
+
+async function batchCtype(){
+  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
+  el.innerHTML=`<div class="modal msm">
+    <div class="mh"><div class="mt">🏢 批量改客户类型（${selIds.size}条）</div><button class="xb" onclick="document.getElementById('bct-ov').remove()">×</button></div>
+    <div class="mb">
+      <div class="fg"><label class="fl">选择客户类型</label>
+        <div class="tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="tag toff" onclick="document.querySelectorAll('#bct-tags .tag').forEach(b=>{b.classList.remove('ton');b.classList.add('toff')});this.classList.add('ton');this.classList.remove('toff')">${p}</button>`).join('')}</div>
+      </div>
+    </div>
+    <div class="mf">
+      <button class="btn-s" onclick="document.getElementById('bct-ov').remove()">取消</button>
+      <button class="btn-p" onclick="confirmBatchCtype()">确认修改</button>
+    </div>
+  </div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+
+async function confirmBatchCtype(){
+  const sel=document.querySelector('#bct-tags .ton');
+  if(!sel){toast('请选择一个客户类型');return;}
+  const ids=[...selIds];
+  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',ids);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已将 ${ids.length} 条客户改为「${sel.textContent}」`);
+  document.getElementById('bct-ov')?.remove();
   selIds.clear();await load();
 }
 
@@ -810,6 +868,8 @@ function renderCus(){
         <button onclick="batchStatus()" style="padding:6px 12px;border-radius:7px;border:none;background:#f59e0b;color:#fff;font-size:12px;font-weight:600;cursor:pointer">✏️ 改状态 (${selIds.size})</button>
         <button onclick="batchTransfer()" style="padding:6px 12px;border-radius:7px;border:none;background:#3b82f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">👤 转移 (${selIds.size})</button>
         <button onclick="batchDel()" style="padding:6px 12px;border-radius:7px;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 删除 (${selIds.size})</button>
+        <button onclick="batchProducts()" style="padding:6px 12px;border-radius:7px;border:none;background:#8b5cf6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">📦 改产品 (${selIds.size})</button>
+        <button onclick="batchCtype()" style="padding:6px 12px;border-radius:7px;border:none;background:#0891b2;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🏢 改类型 (${selIds.size})</button>
         `:''}
       </div>
     </div>
@@ -1071,7 +1131,7 @@ function renderLogM(id){
         </div>
       </div>
       <div class="fg"><label class="fl">沟通详情 *</label>
-        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…留空则自动记录「标记已跟进」">${esc(LFD.notes)}</textarea>
+        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…">${esc(LFD.notes)}</textarea>
       </div>
       <div class="fg"><label class="fl">更新客户状态（可选）</label>
         <select class="fi" onchange="LFD.status_update=this.value">
