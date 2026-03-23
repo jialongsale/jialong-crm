@@ -369,7 +369,6 @@ async function delCus(id){
 }
 
 async function saveLog(){
-  if(!LFD.notes?.trim()){toast('请填写沟通详情');return;}
   const logDate=LFD.log_date||T();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
   const advance=document.getElementById('advance-stage')?.checked!==false;
@@ -383,7 +382,7 @@ async function saveLog(){
   else upd.next_follow_date=null;
   if(LFD.status_update)upd.status=LFD.status_update;
   await db.from('customers').update(upd).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes.trim(),status_update:LFD.status_update||'',log_date:logDate}]);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate}]);
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
   await load();renderLogM(LID);
 }
@@ -1072,7 +1071,7 @@ function renderLogM(id){
         </div>
       </div>
       <div class="fg"><label class="fl">沟通详情 *</label>
-        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…">${esc(LFD.notes)}</textarea>
+        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="记录本次沟通内容、客户反馈…留空则自动记录「标记已跟进」">${esc(LFD.notes)}</textarea>
       </div>
       <div class="fg"><label class="fl">更新客户状态（可选）</label>
         <select class="fi" onchange="LFD.status_update=this.value">
