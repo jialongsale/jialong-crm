@@ -831,8 +831,8 @@ function renderCus(){
       <td class="col-hide" style="color:#64748b">${esc(c.country)||'—'}</td>
       <td class="col-hide" style="color:#64748b">${esc(c.source)||'—'}</td>
       <td class="col-hide">${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:1px;font-size:10px">${p}</span>`).join('')||'—'}</td>
-      <td class="col-hide" style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
       <td class="col-hide" style="color:#64748b">${esc(c.customer_type)||'—'}</td>
+      <td class="col-hide" style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
       <td><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
       <td class="col-hide" style="color:#64748b;white-space:nowrap">${fmt(c.last_follow_date)}</td>
       <td><span class="${n.cls}">${n.t}</span><br>${dots}</td>
