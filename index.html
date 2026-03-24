@@ -540,7 +540,7 @@ function tbHtml(title,sub,rightHtml){
 }
 
 // ===== DASHBOARD =====
-  function openDashDrill(type, param='') {
+function openDashDrill(type, param='') {
   let baseSrc = isAdm() && dashSales === '全部' ? ALL : (isAdm() ? ALL.filter(c => c.sales === dashSales) : CUS);
   const src = filterByDate(baseSrc, dashDateRange, '', '');
   
@@ -552,6 +552,9 @@ function tbHtml(title,sub,rightHtml){
   else if (type === 'task') { list = src.filter(c => isTask(c)); title = `${rangeLabel} - 今日待办`; }
   else if (type === 'sea') { list = src.filter(isSea); title = `${rangeLabel} - 公海客户`; }
   else if (type === 'status') { list = src.filter(c => c.status === param); title = `${rangeLabel} - ${param}客户`; }
+  else if (type === 'date') { list = src.filter(c => cusDate(c) === param); title = `${param} 新增客户`; }
+
+  list.sort((a, b) => (cusDate(b) > cusDate(a) ? 1 : -1));
 
   document.getElementById('dash-drill-ov')?.remove();
   const el = document.createElement('div');
@@ -561,14 +564,21 @@ function tbHtml(title,sub,rightHtml){
   const rowsHtml = list.length ? list.map(c => `
     <div class="drill-row" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-l);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
       <div style="width:85px;font-size:11px;color:var(--ts);flex-shrink:0">${fmt(cusDate(c))}</div>
+      
       <div style="flex:1;min-width:0;display:flex;align-items:center;gap:6px">
         <span style="font-size:13px;font-weight:600;color:var(--brand);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
         <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
         ${ratingBadge(c.rating)}
       </div>
+      
       <div style="flex:1;min-width:0;display:flex;gap:4px;flex-wrap:wrap">
         ${tagChips((c.tags||[]).slice(0,3))}
       </div>
+      
+      <div style="width:120px;font-size:12px;color:var(--ts);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.phone || c.email || '')}">
+        ${esc(c.phone || c.email || '—')}
+      </div>
+      
       <div style="width:60px;font-size:12px;color:var(--tp);font-weight:500;text-align:right;flex-shrink:0">${esc(c.sales)}</div>
     </div>
   `).join('') : '<div class="empty"><div class="empty-ttl">当前区间暂无数据</div></div>';
@@ -587,6 +597,7 @@ function tbHtml(title,sub,rightHtml){
         <div style="width:85px">创建时间</div>
         <div style="flex:1">客户 (状态/评级)</div>
         <div style="flex:1">标签</div>
+        <div style="width:120px">联系方式</div>
         <div style="width:60px;text-align:right">负责人</div>
       </div>` : ''}
       ${rowsHtml}
@@ -655,7 +666,37 @@ function renderDashChart(){
   if(!r||!r.s)days=Array.from({length:14},(_,i)=>addD(T(),i-13));
   else{days=[];let d=r.s;while(d<=r.e){days.push(d);d=addD(d,1);}}
   const ctx=document.getElementById('cd');if(!ctx)return;
-  CI['cd']=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>fmt(d)),datasets:[{data:days.map(d=>src.filter(c=>cusDate(c)===d).length),backgroundColor:'rgba(0,102,204,.65)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,color:'#86868B',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}},x:{ticks:{maxRotation:45,font:{size:9},color:'#86868B'},grid:{display:false}}}}});
+  CI['cd']=new Chart(ctx,{
+    type:'bar',
+    data:{
+      labels:days.map(d=>fmt(d)),
+      datasets:[{
+        data:days.map(d=>src.filter(c=>cusDate(c)===d).length),
+        backgroundColor:'rgba(0,102,204,.65)',
+        borderRadius:4,
+        borderSkipped:false
+      }]
+    },
+    options:{
+      responsive:true,
+      maintainAspectRatio:false,
+      plugins:{legend:{display:false}},
+      scales:{
+        y:{beginAtZero:true,ticks:{stepSize:1,color:'#86868B',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}},
+        x:{ticks:{maxRotation:45,font:{size:9},color:'#86868B'},grid:{display:false}}
+      },
+      onClick: (e, elements) => {
+        if (elements.length > 0) {
+          const idx = elements[0].index;
+          const date = days[idx];
+          openDashDrill('date', date);
+        }
+      },
+      onHover: (e, elements) => {
+        e.native.target.style.cursor = elements.length ? 'pointer' : 'default';
+      }
+    }
+  });
 }
 
 // ===== CUSTOMERS =====
