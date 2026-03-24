@@ -700,6 +700,7 @@ function renderDashChart(){
 }
 
 // ===== CUSTOMERS =====
+// ===== CUSTOMERS =====
 function renderCus(){
   let filtered=CUS.filter(c=>{
     const q=fS.toLowerCase();
@@ -722,40 +723,40 @@ function renderCus(){
   const allSel=paged.length>0&&paged.every(c=>selIds.has(c.id));
 
   const rows=paged.length===0?`<tr><td colspan="13"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div></td></tr>`:paged.map(c=>{
-    const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
-    const wa=waLink(c.phone),ml=mailLink(c.email);
-    return`<tr>
-      <td style="text-align:center"><input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></td>
-      <td style="font-size:11px;color:var(--tt);white-space:nowrap">${fmt(cusDate(c))}</td>
-      <td>
-        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
-          <span style="font-size:13px;font-weight:600;color:var(--brand);cursor:pointer;display:inline-block;max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" onclick="openDetail('${c.id}')" title="${esc(c.name)}">${esc(c.name)}</span>
-          ${noResp?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--danger);flex-shrink:0" title="超15天未回复"></span>':''}
-          ${sea?'<span class="sea-badge">公海</span>':''}
-          ${dup?'<span class="dup-w">⚠重复</span>':''}
-        </div>
-        <div style="font-size:11px;color:var(--tt);margin-top:1px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.company)}">${esc(c.company)}</div>
-      </td>
-      <td class="col-hide"><div style="display:flex;align-items:center;gap:4px">${ratingBadge(c.rating)}${tagChips((c.tags||[]).slice(0,2))}</div></td>
-      <td class="col-hide" style="font-size:12px;white-space:nowrap">
-        ${c.email?`<div style="color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:4px" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')"><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block" title="${esc(c.email)}">✉ ${esc(c.email)}</span>${ml?`<button class="mail-btn" onclick="event.stopPropagation();window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}</div>`:''}
-        ${c.phone?`<div style="color:var(--ts);cursor:pointer;display:flex;align-items:center;gap:4px;margin-top:2px" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')"><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block" title="${esc(c.phone)}">📞 ${esc(c.phone)}</span>${wa?`<button class="wa-btn" onclick="event.stopPropagation();window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''}</div>`:''}
-        ${!c.email&&!c.phone?'<span style="color:var(--border)">—</span>':''}
-      </td>
-      <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.country)||'—'}</td>
-      <td class="col-hide" style="white-space:nowrap"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
-      <td class="col-hide" style="font-size:12px;color:var(--ts);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(c.products||[]).join(', ')}">${(c.products||[]).join(', ')||'—'}</td>
-      <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.source)||'—'}</td>
-      <td class="col-hide" style="font-size:12px;font-weight:500;color:var(--tp);white-space:nowrap">${esc(c.sales)||'—'}</td>
-      <td style="font-size:11px;color:var(--ts);white-space:nowrap">${c.last_follow_date ? fmt(c.last_follow_date) : '—'}</td>
-      <td style="white-space:nowrap"><span class="${n.cls}">${n.t}</span>${dots(c.follow_stage||0)}</td>
-      <td style="text-align:right;padding-right:20px;white-space:nowrap"><div class="acts" style="justify-content:flex-end">
-        <button class="ab ag" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button>
-        <button class="ab ab2" onclick="event.stopPropagation();openLog('${c.id}')">📝</button>
-        <button class="ab ac" onclick="event.stopPropagation();openEdit('${c.id}')">编辑</button>
-        <div class="more-dd-btn" onclick="event.stopPropagation();toggleDD(this)">···<div class="dd">${isAdm()||c.sales===CU?`<div class="ddi" onclick="transfer('${c.id}')">👤 转移</div>`:''}<div class="ddi danger" onclick="delCus('${c.id}')">🗑 删除</div></div></div>
-      </div></td>
-    </tr>`;}).join('');
+    const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
+    const wa=waLink(c.phone),ml=mailLink(c.email);
+    return`<tr>
+      <td style="width:1%;text-align:center"><input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></td>
+      <td style="width:1%;font-size:11px;color:var(--tt);white-space:nowrap">${fmt(cusDate(c))}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:600;color:var(--brand);cursor:pointer" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
+          ${noResp?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--danger);flex-shrink:0" title="超15天未回复"></span>':''}
+          ${sea?'<span class="sea-badge">公海</span>':''}
+          ${dup?'<span class="dup-w">⚠重复</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--tt);margin-top:1px">${esc(c.company)}</div>
+      </td>
+      <td class="col-hide" style="width:1%;white-space:nowrap"><div style="display:flex;align-items:center;gap:4px">${ratingBadge(c.rating)}${tagChips((c.tags||[]).slice(0,2))}</div></td>
+      <td class="col-hide">
+        ${c.email?`<div style="color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:4px" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')">✉ <span>${esc(c.email)}</span>${ml?`<button class="mail-btn" onclick="event.stopPropagation();window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}</div>`:''}
+        ${c.phone?`<div style="color:var(--ts);cursor:pointer;display:flex;align-items:center;gap:4px;margin-top:2px" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')">📞 <span>${esc(c.phone)}</span>${wa?`<button class="wa-btn" onclick="event.stopPropagation();window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''}</div>`:''}
+        ${!c.email&&!c.phone?'<span style="color:var(--border)">—</span>':''}
+      </td>
+      <td class="col-hide" style="width:1%;font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.country)||'—'}</td>
+      <td class="col-hide" style="width:1%;white-space:nowrap"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
+      <td class="col-hide" style="width:1%;font-size:12px;color:var(--ts);white-space:nowrap;max-width:150px;overflow:hidden;text-overflow:ellipsis" title="${(c.products||[]).join(', ')}">${(c.products||[]).join(', ')||'—'}</td>
+      <td class="col-hide" style="width:1%;font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.source)||'—'}</td>
+      <td class="col-hide" style="width:1%;font-size:12px;font-weight:500;color:var(--tp);white-space:nowrap">${esc(c.sales)||'—'}</td>
+      <td style="width:1%;font-size:11px;color:var(--ts);white-space:nowrap">${c.last_follow_date ? fmt(c.last_follow_date) : '—'}</td>
+      <td style="width:1%;white-space:nowrap"><span class="${n.cls}">${n.t}</span>${dots(c.follow_stage||0)}</td>
+      <td style="width:1%;text-align:right;padding-right:20px;white-space:nowrap"><div class="acts" style="justify-content:flex-end">
+        <button class="ab ag" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button>
+        <button class="ab ab2" onclick="event.stopPropagation();openLog('${c.id}')">📝</button>
+        <button class="ab ac" onclick="event.stopPropagation();openEdit('${c.id}')">编辑</button>
+        <div class="more-dd-btn" onclick="event.stopPropagation();toggleDD(this)">···<div class="dd">${isAdm()||c.sales===CU?`<div class="ddi" onclick="transfer('${c.id}')">👤 转移</div>`:''}<div class="ddi danger" onclick="delCus('${c.id}')">🗑 删除</div></div></div>
+      </div></td>
+    </tr>`;}).join('');
 
   const pageNums=[];
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
@@ -777,7 +778,7 @@ function renderCus(){
       <button onclick="fDup=!fDup;cusPage=1;render()" style="padding:7px 12px;border-radius:var(--r);border:1px solid ${fDup?'var(--danger)':'var(--border)'};background:${fDup?'var(--danger-l)':'transparent'};color:${fDup?'var(--danger)':'var(--ts)'};font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">⚠ ${fDup?'已筛重复':'筛重复'}</button>
     </div>
     <div class="frow" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-l)">
-      <span class="flbl">创建时间：</span>
+      <span class="flbl">创建时间：</span>
       ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['近15天','15'],['本月','month'],['上月','lastmonth'],['全部','all'],['自定义','custom']].map(([l,v])=>`<span class="pill ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</span>`).join('')}
       ${fDateRange==='custom'?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px"><input type="date" value="${fDateStart}" onchange="fDateStart=this.value" id="cs1" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><span style="font-size:12px;color:var(--tt)">至</span><input type="date" value="${fDateEnd}" onchange="fDateEnd=this.value" id="cs2" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><button onclick="setCusDR('custom2')" style="padding:5px 12px;border-radius:var(--r);border:none;background:var(--brand);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">确定</button></div>`:''}
     </div>
@@ -798,20 +799,20 @@ function renderCus(){
     </div>
     <div class="tscroll"><table>
       <thead><tr>
-        <th style="width:40px;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></th>
-        <th style="width:80px;white-space:nowrap">创建时间</th>
-        <th style="width:auto;min-width:140px">客户</th>
-        <th class="col-hide" style="width:120px;white-space:nowrap">评级/标签</th>
-        <th class="col-hide" style="width:180px">邮箱/电话</th>
-        <th class="col-hide" style="width:80px;white-space:nowrap">国家</th>
-        <th class="col-hide" style="width:80px;white-space:nowrap">状态</th>
-        <th class="col-hide" style="width:100px;white-space:nowrap">产品类型</th>
-        <th class="col-hide" style="width:90px;white-space:nowrap">来源</th>
-        <th class="col-hide" style="width:80px;white-space:nowrap">负责人</th>
-        <th style="width:90px;white-space:nowrap">最近跟进</th>
-        <th style="width:110px;white-space:nowrap">下次跟进</th>
-        <th style="width:160px;text-align:right;padding-right:20px;white-space:nowrap">操作</th>
-      </tr></thead>
+        <th style="width:1%;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></th>
+        <th style="width:1%;white-space:nowrap">创建时间</th>
+        <th>客户</th>
+        <th class="col-hide" style="width:1%;white-space:nowrap">评级/标签</th>
+        <th class="col-hide">邮箱/电话</th>
+        <th class="col-hide" style="width:1%;white-space:nowrap">国家</th>
+        <th class="col-hide" style="width:1%;white-space:nowrap">状态</th>
+        <th class="col-hide" style="width:1%;white-space:nowrap;max-width:150px">产品类型</th>
+        <th class="col-hide" style="width:1%;white-space:nowrap">来源</th>
+        <th class="col-hide" style="width:1%;white-space:nowrap">负责人</th>
+        <th style="width:1%;white-space:nowrap">最近跟进</th>
+        <th style="width:1%;white-space:nowrap">下次跟进</th>
+        <th style="width:1%;text-align:right;padding-right:20px;white-space:nowrap">操作</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     ${pageBar}
