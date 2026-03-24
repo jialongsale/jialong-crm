@@ -619,7 +619,9 @@ function renderDash(){
     <div class="sc" onclick="openDashDrill('task')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>
     <div class="sc" onclick="openDashDrill('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>
   </div>
-<div class="sg6">${[['潜在','潜在','var(--brand)'],['意向','意向','var(--warn)'],['成交','成交','var(--success)'],['转交','转交代理商','var(--teal)'],['流失','流失','var(--ts)'],['垃圾','垃圾','var(--danger)']].map(([l,s,c])=>`<div class="sc sm" onclick="openDashDrill('status', '${s}')"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${bs(s)}</div></div>`).join('')}</div>    <div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>
+<div class="sg6">${[['潜在','潜在','var(--brand)'],['意向','意向','var(--warn)'],['成交','成交','var(--success)'],['转交','转交代理商','var(--teal)'],['流失','流失','var(--ts)'],['垃圾','垃圾','var(--danger)']].map(([l,s,c])=>`<div class="sc sm" onclick="openDashDrill('status', '${s}')"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${bs(s)}</div></div>`).join('')}</div>
+  <div class="cg3">
+    <div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>
     <div class="cc"><div class="cc-title">📦 行业（包装物料）</div><div class="bar-chart">${barChartHtml(aggSorted(src,'packaging_material'),'var(--success)')}</div></div>
     <div class="cc">
       <div class="cc-title">⭐ 客户评级</div><div style="margin-bottom:12px">${ratingBars}</div>
