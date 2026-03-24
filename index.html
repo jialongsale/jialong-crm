@@ -596,55 +596,56 @@ function tbHtml(title,sub,rightHtml){
   el.addEventListener('click', e => { if(e.target === el) el.remove() });
 }
 function renderDash(){
-  let baseSrc=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
-  const src=filterByDate(baseSrc,dashDateRange,'','');
-  const bs=s=>src.filter(c=>c.status===s).length;
-  const taskN=src.filter(c=>isTask(c)).length;
-  const seaN=src.filter(isSea).length;
-  const salesPills=(isAdm()?['全部',...SALES]:[CU]).map(s=>`<span class="pill ${dashSales===s?'on':''}" onclick="dashSales='${s}';applyFilter();render()">${s}</span>`).join('');
-  const datePills=[['近7天','7'],['近14天','14'],['近30天','30'],['本月','month'],['上月','lastmonth'],['全部','all']].map(([l,v])=>`<span class="pill ${dashDateRange===v?'on':''}" onclick="dashDateRange='${v}';render()">${l}</span>`).join('');
-  const ratingData=RATINGS.map(r=>[r,src.filter(c=>c.rating===r).length]).filter(([,n])=>n>0);
-  const maxR=Math.max(...ratingData.map(d=>d[1]),1);
-  const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
-  const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
-  const todList=src.filter(c=>isTask(c)).slice(0,6);
-  const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
-  
-  return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
-  <div class="dash-filters">
-    ${isAdm()?`<div class="df-row"><span class="flbl">销售：</span>${salesPills}</div>`:''}
-    <div class="df-row"><span class="flbl">日期：</span>${datePills}</div>
-  </div>
-  <div class="sg3">
-    <div class="sc" onclick="openDashDrill('all')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>
-    <div class="sc" onclick="openDashDrill('task')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>
-    <div class="sc" onclick="openDashDrill('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>
-  </div>
-  <div class="sg6">${[['潜在','潜在','var(--brand)'],['意向','意向','var(--warn)'],['成交','成交','var(--success)'],['转交','转交代理商','var(--teal)'],['流失','流失','var(--ts)'],['垃圾','垃圾','var(--danger)']].map(([l,s,c])=>`<div class="sc sm" onclick="openDashDrill('status', '${s}')"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${bs(s)}</div></div>`).join('')}</div>
-  <div class="cg3">
-    <div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>
-    <div class="cc"><div class="cc-title">📦 行业（包装物料）</div><div class="bar-chart">${barChartHtml(aggSorted(src,'packaging_material'),'var(--success)')}</div></div>
-    <div class="cc">
-      <div class="cc-title">⭐ 客户评级</div><div style="margin-bottom:12px">${ratingBars}</div>
-      <div style="border-top:1px solid var(--border-l);padding-top:10px">
-        <div class="cc-title" style="margin-bottom:8px">📡 来源 & 🏢 类型</div>
-        ${barChartHtml(aggSorted(src,'source').slice(0,5),'var(--purple)')}
-        <div style="margin-top:8px">${barChartHtml(aggSorted(src,'customer_type'),'var(--teal)')}</div>
-      </div>
-    </div>
-  </div>
-  <div class="db3">
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
-      <div class="cc"><div class="cc-title">👤 各销售客户数</div>${perfRows||'<div style="color:var(--tt);font-size:12px">暂无数据</div>'}</div>
-      <div class="cc"><div class="cc-title" style="margin-bottom:8px">📅 新增客户统计</div><div class="chart-wrap"><canvas id="cd"></canvas></div></div>
-    </div>
-    <div class="cc">
-      <div class="cc-title" style="margin-bottom:10px">🔴 今日待办 <span style="color:var(--danger);font-size:14px;font-weight:700">${taskN}</span></div>
-      <div style="max-height:320px;overflow-y:auto">${todHtml}</div>
-      ${taskN>6?`<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--tt)">还有 ${taskN-6} 条 · <span style="color:var(--brand);cursor:pointer" onclick="setView('tasks')">查看全部 →</span></div>`:''}
-    </div>
-  </div>
-  </div>`;
+  let baseSrc=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
+  const src=filterByDate(baseSrc,dashDateRange,'','');
+  const bs=s=>src.filter(c=>c.status===s).length;
+  const taskN=src.filter(c=>isTask(c)).length;
+  const seaN=src.filter(isSea).length;
+  const salesPills=(isAdm()?['全部',...SALES]:[CU]).map(s=>`<span class="pill ${dashSales===s?'on':''}" onclick="dashSales='${s}';applyFilter();render()">${s}</span>`).join('');
+  const datePills=[['近7天','7'],['近14天','14'],['近30天','30'],['本月','month'],['上月','lastmonth'],['全部','all']].map(([l,v])=>`<span class="pill ${dashDateRange===v?'on':''}" onclick="dashDateRange='${v}';render()">${l}</span>`).join('');
+  const ratingData=RATINGS.map(r=>[r,src.filter(c=>c.rating===r).length]).filter(([,n])=>n>0);
+  const maxR=Math.max(...ratingData.map(d=>d[1]),1);
+  const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
+  const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
+  const todList=src.filter(c=>isTask(c)).slice(0,6);
+  const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
+  
+  return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
+  `<div class="dash-filters">` +
+    (isAdm()?`<div class="df-row"><span class="flbl">销售：</span>${salesPills}</div>`:'') +
+    `<div class="df-row"><span class="flbl">日期：</span>${datePills}</div>` +
+  `</div>` +
+  `<div class="sg3">` +
+    `<div class="sc" onclick="openDashDrill('all')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>` +
+    `<div class="sc" onclick="openDashDrill('task')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>` +
+    `<div class="sc" onclick="openDashDrill('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>` +
+  `</div>` +
+  `<div class="sg6">` +
+    [['潜在','潜在','var(--brand)'],['意向','意向','var(--warn)'],['成交','成交','var(--success)'],['转交','转交代理商','var(--teal)'],['流失','流失','var(--ts)'],['垃圾','垃圾','var(--danger)']].map(([l,s,c])=>`<div class="sc sm" onclick="openDashDrill('status', '${s}')"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${bs(s)}</div></div>`).join('') +
+  `</div>` +
+  `<div class="cg3">` +
+    `<div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>` +
+    `<div class="cc"><div class="cc-title">📦 行业（包装物料）</div><div class="bar-chart">${barChartHtml(aggSorted(src,'packaging_material'),'var(--success)')}</div></div>` +
+    `<div class="cc">` +
+      `<div class="cc-title">⭐ 客户评级</div><div style="margin-bottom:12px">${ratingBars}</div>` +
+      `<div style="border-top:1px solid var(--border-l);padding-top:10px">` +
+        `<div class="cc-title" style="margin-bottom:8px">📡 来源 & 🏢 类型</div>` +
+        `${barChartHtml(aggSorted(src,'source').slice(0,5),'var(--purple)')}` +
+        `<div style="margin-top:8px">${barChartHtml(aggSorted(src,'customer_type'),'var(--teal)')}</div>` +
+      `</div>` +
+    `</div>` +
+  `</div>` +
+  `<div class="db3">` +
+    `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">` +
+      `<div class="cc"><div class="cc-title">👤 各销售客户数</div>${perfRows||'<div style="color:var(--tt);font-size:12px">暂无数据</div>'}</div>` +
+      `<div class="cc"><div class="cc-title" style="margin-bottom:8px">📅 新增客户统计</div><div class="chart-wrap"><canvas id="cd"></canvas></div></div>` +
+    `</div>` +
+    `<div class="cc">` +
+      `<div class="cc-title" style="margin-bottom:10px">🔴 今日待办 <span style="color:var(--danger);font-size:14px;font-weight:700">${taskN}</span></div>` +
+      `<div style="max-height:320px;overflow-y:auto">${todHtml}</div>` +
+      `${taskN>6?`<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--tt)">还有 ${taskN-6} 条 · <span style="color:var(--brand);cursor:pointer" onclick="setView('tasks')">查看全部 →</span></div>`:''}` +
+    `</div>` +
+  `</div></div>`;
 }
 function renderDashChart(){
   const src=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
