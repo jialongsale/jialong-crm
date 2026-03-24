@@ -774,8 +774,8 @@ function renderCus(){
       <select class="fsel" onchange="fCtype=this.value;cusPage=1;render()"><option value="全部">全部类型</option>${CTYPES.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}</select>
       <button onclick="fDup=!fDup;cusPage=1;render()" style="padding:7px 12px;border-radius:var(--r);border:1px solid ${fDup?'var(--danger)':'var(--border)'};background:${fDup?'var(--danger-l)':'transparent'};color:${fDup?'var(--danger)':'var(--ts)'};font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">⚠ ${fDup?'已筛重复':'筛重复'}</button>
     </div>
-    <div class="frow">
-      <span class="flbl">创建时间：</span>
+    <div class="frow" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-l)">
+      <span class="flbl">创建时间：</span>
       ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['近15天','15'],['本月','month'],['上月','lastmonth'],['全部','all'],['自定义','custom']].map(([l,v])=>`<span class="pill ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</span>`).join('')}
       ${fDateRange==='custom'?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px"><input type="date" value="${fDateStart}" onchange="fDateStart=this.value" id="cs1" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><span style="font-size:12px;color:var(--tt)">至</span><input type="date" value="${fDateEnd}" onchange="fDateEnd=this.value" id="cs2" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><button onclick="setCusDR('custom2')" style="padding:5px 12px;border-radius:var(--r);border:none;background:var(--brand);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">确定</button></div>`:''}
     </div>
