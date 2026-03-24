@@ -310,19 +310,27 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
 .df-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .df-row+.df-row{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-l)}
 
-/* RESPONSIVE */
+/* RESPONSIVE & MOBILE */
+.menu-btn { display:none; background:transparent; border:none; font-size:22px; color:var(--tp); cursor:pointer; margin-right:12px; padding:0; line-height:1; }
 @media(max-width:1100px){.cg3{grid-template-columns:1fr 1fr}.db3{grid-template-columns:1fr}}
 @media(max-width:768px){
-  :root{--sb:0px}
-  .sb{transform:translateX(-100%)}
-  .main-wrap{margin-left:0}
-  .sg3{grid-template-columns:repeat(3,1fr)}.sg6{grid-template-columns:repeat(3,1fr)}
-  .g2,.g3,.det-grid{grid-template-columns:1fr}
-  .col-hide{display:none}
-  .content{padding:14px 12px}
-  .topbar{padding:0 14px}.tb-title{font-size:15px}
-  .cg3,.cg2{grid-template-columns:1fr}
-  table{min-width:600px}
+  :root{--sb:0px}
+  .sb{transform:translateX(-100%); transition:transform .3s var(--ease); box-shadow: 4px 0 24px rgba(0,0,0,.15); z-index:999;}
+  .sb.show{transform:translateX(0);} 
+  .main-wrap{margin-left:0}
+  .menu-btn { display:block; } 
+  .sg3, .sg6{grid-template-columns:1fr 1fr} 
+  .g2,.g3,.det-grid{grid-template-columns:1fr}
+  .col-hide{display:none} 
+  .content{padding:14px 12px}
+  .topbar{padding:0 14px}.tb-title{font-size:16px}
+  .cg3,.cg2,.db3{grid-template-columns:1fr}
+  table{min-width:600px}
+  .sbox { min-width: 100%; } 
+  .tb-right { gap: 6px; }
+  .tb-right .btn { padding: 6px 10px; font-size: 12px; } 
+  .modal { max-height: 95vh; margin: 10px; width: calc(100% - 20px); }
+  .drawer { width: 85vw; }
 }
 </style>
 </head>
@@ -522,9 +530,10 @@ function barChartHtml(data,color='var(--brand)'){
 
 // ===== RENDER =====
 function setView(v){
-  VIEW=v;
-  ['dashboard','customers','tasks','sea'].forEach(k=>document.getElementById('ni-'+k)?.classList.toggle('on',k===v));
-  render();
+  VIEW=v;
+  ['dashboard','customers','tasks','sea'].forEach(k=>document.getElementById('ni-'+k)?.classList.toggle('on',k===v));
+  document.getElementById('sidebar')?.classList.remove('show'); 
+  render();
 }
 function render(){
   applyFilter();updateBadges();
@@ -536,7 +545,17 @@ function render(){
   if(VIEW==='dashboard')setTimeout(renderDashChart,80);
 }
 function tbHtml(title,sub,rightHtml){
-  return`<div class="topbar"><div class="tb-left"><div class="tb-title">${title}</div>${sub?`<div class="tb-sub">${sub}</div>`:''}</div><div class="tb-right"><button class="ib" onclick="document.body.classList.toggle('dark')" title="暗色模式">🌙</button><button class="ib" onclick="document.body.classList.toggle('compact')" title="紧凑模式">⊟</button>${rightHtml}</div></div><div class="content">`;
+  return`<div class="topbar">
+    <div class="tb-left" style="display:flex;align-items:center;">
+      <button class="menu-btn" onclick="document.getElementById('sidebar').classList.toggle('show')">☰</button>
+      <div><div class="tb-title">${title}</div>${sub?`<div class="tb-sub">${sub}</div>`:''}</div>
+    </div>
+    <div class="tb-right">
+      <button class="ib col-hide" onclick="document.body.classList.toggle('dark')" title="暗色模式">🌙</button>
+      <button class="ib col-hide" onclick="document.body.classList.toggle('compact')" title="紧凑模式">⊟</button>
+      ${rightHtml}
+    </div>
+  </div><div class="content">`;
 }
 
 // ===== DASHBOARD =====
