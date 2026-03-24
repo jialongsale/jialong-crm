@@ -1103,7 +1103,7 @@ function showFormModal(title,activeTab){
   const salesRow=isAdm()?`<div class="fg"><label class="fl">负责销售</label><select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`:`<div class="fg"><label class="fl">负责销售</label><div style="padding:8px 11px;background:var(--surface2);border-radius:var(--r);font-size:13px;font-weight:600">${CU}</div></div>`;
   const el=document.createElement('div');el.className='overlay';el.id='form-ov';
   el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">${title}</div><button class="modal-close" onclick="document.getElementById('form-ov').remove()">×</button></div>
-  <div class="tabs" id="form-tabs">${['基本信息','产品需求','业务信息','CRM'].map((t,i)=>`<div class="tab ${i===activeTab?'on':''}" onclick="switchFormTab(${i})">${t}</div>`).join('')}</div></div>
+  <div class="tabs" id="form-tabs" style="overflow-y: hidden; scrollbar-width: none;">${['基本信息','产品需求','业务信息','CRM'].map((t,i)=>`<div class="tab ${i===activeTab?'on':''}" onclick="switchFormTab(${i})">${t}</div>`).join('')}</div></div>
   <div class="modal-body">
     <div class="tab-panel ${activeTab===0?'on':''}" id="ft0">
       <div class="g2"><div class="fg"><label class="fl">客户姓名 <span style="color:var(--danger)">*</span></label><input class="fi" value="${esc(d.name)}" oninput="FD.name=this.value" placeholder="联系人姓名"/></div><div class="fg"><label class="fl">公司名称</label><input class="fi" value="${esc(d.company)}" oninput="FD.company=this.value"/></div></div>
