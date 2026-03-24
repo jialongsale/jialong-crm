@@ -4,156 +4,325 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
 <title>JIALONG CRM</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&display=swap" rel="stylesheet"/>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <style>
+:root{
+  --bg:#F5F5F7;--surface:#fff;--surface2:#FAFAFA;--surface-blur:rgba(255,255,255,.92);
+  --border:#E8E8ED;--border-l:#F2F2F7;
+  --tp:#1D1D1F;--ts:#86868B;--tt:#AEAEB2;
+  --brand:#0066CC;--brand-l:#EBF4FF;--brand-h:#0055A5;
+  --success:#34C759;--success-l:#F0FBF3;
+  --warn:#FF9500;--warn-l:#FFF8ED;
+  --danger:#FF3B30;--danger-l:#FFF2F1;
+  --teal:#0891b2;--teal-l:#ECFEFF;
+  --purple:#AF52DE;--purple-l:#F5EEFF;
+  --rose:#78716c;--rose-l:#F5F0EE;
+  --sb:224px;--r:8px;--r2:12px;--r3:16px;
+  --sh:0 1px 3px rgba(0,0,0,.06),0 1px 2px rgba(0,0,0,.04);
+  --sh2:0 4px 24px rgba(0,0,0,.07),0 1px 3px rgba(0,0,0,.04);
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+body.dark{
+  --bg:#000;--surface:#1C1C1E;--surface2:#2C2C2E;--surface-blur:rgba(28,28,30,.92);
+  --border:#38383A;--border-l:#2C2C2E;
+  --tp:#F5F5F7;--ts:#A1A1A6;--tt:#6E6E73;
+  --brand:#0A84FF;--brand-l:#001e3c;--brand-h:#409CFF;
+  --success:#30D158;--success-l:#0d2918;
+  --warn:#FF9F0A;--warn-l:#2a1f00;
+  --danger:#FF453A;--danger-l:#2a0a09;
+  --teal:#64D2FF;--teal-l:#00263d;
+  --purple:#DA8FFF;--purple-l:#2d1a40;
+  --rose:#a8a29e;--rose-l:#292524;
+  --sh:0 1px 3px rgba(0,0,0,.4);--sh2:0 4px 24px rgba(0,0,0,.5);
+}
 *{box-sizing:border-box;margin:0;padding:0}
-body{font-family:'PingFang SC','Microsoft YaHei',sans-serif;background:#f1f5f9;color:#1e293b;min-height:100vh}
-button{cursor:pointer;font-family:inherit}input,select,textarea{font-family:inherit;outline:none}
-#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#0f172a,#1a3a5c);display:flex;align-items:center;justify-content:center;z-index:1000}
-.login-box{background:#fff;border-radius:20px;padding:40px;width:360px;text-align:center;box-shadow:0 25px 60px rgba(0,0,0,0.35)}
-.login-logo{font-size:36px;margin-bottom:8px}
-.login-title{font-size:22px;font-weight:700;color:#0f172a;margin-bottom:4px}
-.login-sub{font-size:13px;color:#94a3b8;margin-bottom:28px}
+body{font-family:'DM Sans',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--tp);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
+button{cursor:pointer;font-family:inherit;border:none}
+input,select,textarea{font-family:inherit;outline:none}
+
+/* LOGIN */
+#login-screen{position:fixed;inset:0;background:linear-gradient(135deg,#08090f,#0f172a,#132240);display:flex;align-items:center;justify-content:center;z-index:1000}
+.login-box{background:var(--surface);border-radius:20px;padding:40px;width:380px;text-align:center;box-shadow:0 30px 80px rgba(0,0,0,.4)}
+.login-logo{width:56px;height:56px;background:linear-gradient(135deg,var(--brand),#003d99);border-radius:16px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:20px;font-weight:800;margin:0 auto 14px;box-shadow:0 8px 24px rgba(0,102,204,.35)}
+.login-title{font-size:22px;font-weight:700;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--tt);margin-bottom:28px}
 .user-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:12px}
-.user-btn{padding:13px;border-radius:10px;border:2px solid #e2e8f0;background:#fff;font-size:14px;font-weight:600;color:#374151;transition:all .15s}
-.user-btn:hover{border-color:#3b82f6;color:#2563eb;background:#eff6ff}
-.user-btn.admin{background:#0f172a;color:#fff;border-color:#0f172a;grid-column:span 2;margin-top:4px}
-.nav{background:#0f172a;height:56px;display:flex;align-items:center;justify-content:space-between;padding:0 18px;position:sticky;top:0;z-index:100}
-.nav-left{display:flex;align-items:center;gap:2px;overflow:hidden}
-.nav-brand{color:#fff;font-weight:700;font-size:15px;margin-right:12px;white-space:nowrap;flex-shrink:0}
-.nb{background:none;border:none;color:#94a3b8;font-size:13px;padding:6px 10px;border-radius:6px;white-space:nowrap;transition:color .15s}
-.nb:hover{color:#e2e8f0}.nb.active{color:#38bdf8;background:rgba(255,255,255,.08)}
-.nav-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
-.user-pill{font-size:12px;color:#94a3b8;background:#1e293b;padding:4px 10px;border-radius:20px}
-.user-pill b{color:#38bdf8}
-.btn-p{background:#3b82f6;color:#fff;border:none;border-radius:8px;padding:7px 13px;font-size:13px;font-weight:600}
-.btn-p:hover{background:#2563eb}
-.btn-s{background:#1e293b;color:#94a3b8;border:none;border-radius:8px;padding:7px 13px;font-size:13px}
-.btn-s:hover{background:#334155;color:#e2e8f0}
-.main{max-width:1200px;margin:0 auto;padding:18px 14px}
-.stat-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
-.stat-card{background:#fff;border-radius:12px;padding:14px 16px;border:1px solid #e2e8f0;cursor:pointer}
-.stat-card:hover{box-shadow:0 4px 12px rgba(0,0,0,.08)}
-.stat-lbl{font-size:11px;color:#94a3b8;margin-bottom:5px;font-weight:500;letter-spacing:.5px}
-.stat-v{font-size:26px;font-weight:700}
-.chart-grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-bottom:14px}
-.chart-grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:14px}
-.chart-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:14px;cursor:pointer;transition:box-shadow .15s}
-.chart-card:hover{box-shadow:0 4px 16px rgba(0,0,0,.1)}
-.chart-ttl{font-size:12px;font-weight:700;color:#374151;margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
-.chart-wrap{position:relative;height:170px}
-.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:14px}
-.filter-bar{display:flex;gap:8px;flex-wrap:wrap;padding:10px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9}
-.filter-bar input,.filter-bar select{padding:7px 10px;border-radius:7px;border:1px solid #e2e8f0;font-size:12px;background:#fff;color:#374151}
-.filter-bar input{min-width:150px}
-.tw{background:#fff;border-radius:12px;border:1px solid #e2e8f0;overflow:hidden}
-.th{padding:12px 14px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px}
-.ttl{font-weight:700;font-size:14px}
-table{width:100%;border-collapse:collapse;font-size:12px}
-th{padding:8px 11px;text-align:left;color:#64748b;font-weight:700;font-size:11px;border-bottom:1px solid #e2e8f0;background:#f8fafc;white-space:nowrap;letter-spacing:.4px}
-td{padding:8px 11px;border-bottom:1px solid #f8fafc;vertical-align:middle}
-tr:last-child td{border-bottom:none}
-tr:hover td{background:#f8fafc}
-.nlink{color:#1d4ed8;font-weight:700;cursor:pointer}.nlink:hover{text-decoration:underline}
-.badge{display:inline-block;padding:2px 8px;border-radius:8px;font-size:11px;font-weight:700;white-space:nowrap}
-.s-潜在{background:#eff6ff;color:#3b82f6}.s-意向{background:#fffbeb;color:#d97706}
-.s-成交{background:#f0fdf4;color:#16a34a}.s-流失{background:#f9fafb;color:#94a3b8}
-.s-垃圾{background:#fff1f2;color:#f43f5e}.s-{background:#f8fafc;color:#94a3b8}
-.s-转交代理商{background:#ecfeff;color:#0891b2}
-.u-red{background:#fef2f2;color:#ef4444}
-.dup-w{background:#fff7ed;color:#c2410c;font-size:10px;padding:1px 5px;border-radius:4px;margin-left:3px}
-.acts{display:flex;gap:3px;flex-wrap:nowrap}
-.ab{font-size:11px;padding:3px 7px;border-radius:5px;border:1px solid;white-space:nowrap}
-.ag{background:#f0fdf4;color:#15803d;border-color:#bbf7d0}
-.ab2{background:#eff6ff;color:#2563eb;border-color:#bfdbfe}
-.ac{background:#f8fafc;color:#4b5563;border-color:#e5e7eb}
-.ao{background:#fff7ed;color:#c2410c;border-color:#fed7aa}
-.ar{background:#fef2f2;color:#dc2626;border-color:#fecaca}
-.overlay{position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:200;display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}
-.modal{background:#fff;border-radius:16px;width:100%;max-width:580px;margin:auto;flex-shrink:0}
-.mlg{max-width:700px}.msm{max-width:460px}
-.mh{padding:15px 20px;border-bottom:1px solid #f1f5f9;display:flex;justify-content:space-between;align-items:center;position:sticky;top:0;background:#fff;z-index:1;border-radius:16px 16px 0 0}
-.mt{font-weight:700;font-size:15px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-.xb{background:none;border:none;font-size:22px;color:#94a3b8;line-height:1;padding:2px;flex-shrink:0}
-.mb{padding:16px 20px;max-height:75vh;overflow-y:auto}
-.mf{display:flex;gap:8px;justify-content:flex-end;padding:12px 20px;border-top:1px solid #f1f5f9}
-.fg{margin-bottom:13px}
-.fl{font-size:12px;color:#4b5563;display:block;margin-bottom:3px;font-weight:600}
-.fi{width:100%;padding:8px 11px;border-radius:8px;border:1px solid #e2e8f0;font-size:13px;background:#fff;color:#1e293b}
-.fi:focus{border-color:#93c5fd}
-.g2{display:grid;grid-template-columns:1fr 1fr;gap:11px}
-.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:11px}
-.stitle{font-size:11px;font-weight:700;color:#64748b;letter-spacing:1px;text-transform:uppercase;margin:15px 0 9px;padding-bottom:5px;border-bottom:1px solid #f1f5f9}
-.tags{display:flex;gap:6px;flex-wrap:wrap}
-.tag{padding:5px 11px;border-radius:7px;font-size:12px;font-weight:500;transition:all .15s}
-.toff{border:1px solid #e2e8f0;background:#fff;color:#6b7280}
-.ton{border:1px solid #3b82f6;background:#eff6ff;color:#1d4ed8}
-.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.di{padding:8px 10px;background:#f8fafc;border-radius:8px}
-.dk{font-size:11px;color:#94a3b8;margin-bottom:2px}
-.dv{font-size:13px;color:#1e293b;font-weight:500;word-break:break-all}
-.task-card{background:#fff;border-radius:12px;border:1px solid #e2e8f0;padding:13px 16px;margin-bottom:10px}
-.task-top{display:flex;gap:11px;align-items:flex-start}
-.task-info{flex:1;min-width:0}
-.task-name{font-size:14px;font-weight:700;margin-bottom:3px;display:flex;align-items:center;gap:5px;flex-wrap:wrap}
-.task-meta{font-size:11px;color:#94a3b8;margin-bottom:5px}
-.task-note{font-size:12px;background:#f8fafc;border-left:3px solid #e2e8f0;padding:5px 9px;border-radius:0 6px 6px 0;color:#475569}
-.tbs{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
-.tb{padding:6px 11px;border-radius:8px;font-size:12px;font-weight:600;border:none;white-space:nowrap}
-.tbg{background:#10b981;color:#fff}
-.tbb{background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe!important}
-.tbc{background:#f8fafc;color:#4b5563;border:1px solid #e5e7eb!important}
-.ll{background:#f8fafc;border-radius:8px;padding:8px 11px;max-height:150px;overflow-y:auto}
-.li{font-size:12px;color:#475569;padding:4px 0;border-bottom:1px dashed #e2e8f0}
-.li:last-child{border-bottom:none}
-.ld{color:#94a3b8}
-.sdots{display:flex;gap:3px;align-items:center}
-.dot{width:6px;height:6px;border-radius:50%;background:#e2e8f0;flex-shrink:0}
-.dot.done{background:#10b981}.dot.cur{background:#f59e0b}
-.nf-pend{color:#94a3b8;font-size:12px}.nf-soon{color:#d97706;font-size:12px;font-weight:600}
-.nf-today{color:#ef4444;font-size:12px;font-weight:700}.nf-over{color:#dc2626;font-size:12px;font-weight:700}
-.nf-done{color:#16a34a;font-size:12px}
-.perf-row{padding:9px 14px;border-bottom:1px solid #f8fafc}
+.user-btn{padding:12px;border-radius:var(--r2);border:1.5px solid var(--border);background:var(--surface);font-size:13px;font-weight:600;color:var(--ts);transition:all .15s}
+.user-btn:hover{border-color:var(--brand);color:var(--brand);background:var(--brand-l)}
+.user-btn.admin{background:var(--tp);color:var(--bg);border-color:var(--tp);grid-column:span 2;margin-top:4px}
+
+/* APP LAYOUT */
+#app{display:flex;min-height:100vh}
+.sb{width:var(--sb);background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;position:fixed;inset:0 auto 0 0;z-index:50}
+.sb-logo{padding:20px 16px 16px;display:flex;align-items:center;gap:10px;border-bottom:1px solid var(--border-l)}
+.logo-mark{width:30px;height:30px;background:linear-gradient(135deg,var(--brand),#003d99);border-radius:9px;display:flex;align-items:center;justify-content:center;color:#fff;font-size:12px;font-weight:800;flex-shrink:0}
+.logo-text{font-size:13px;font-weight:700;color:var(--tp)}
+.logo-sub{font-size:10px;color:var(--tt);font-weight:600;letter-spacing:.5px;text-transform:uppercase}
+.sb-nav{flex:1;padding:8px;overflow-y:auto}
+.ng{margin-bottom:16px}
+.nlbl{font-size:10px;font-weight:700;color:var(--tt);letter-spacing:.8px;text-transform:uppercase;padding:0 8px;margin:6px 0 3px}
+.ni{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);cursor:pointer;transition:all .15s;color:var(--ts);font-size:13px;font-weight:500;position:relative;margin-bottom:1px;user-select:none;background:none;width:100%;text-align:left}
+.ni:hover{background:var(--surface2);color:var(--tp)}
+.ni:active{transform:scale(.98)}
+.ni.on{background:var(--brand-l);color:var(--brand);font-weight:600}
+.ni.on::before{content:'';position:absolute;left:0;top:50%;transform:translateY(-50%);width:3px;height:16px;background:var(--brand);border-radius:0 3px 3px 0}
+.nicon{font-size:15px;width:20px;text-align:center;flex-shrink:0}
+.nbadge{margin-left:auto;font-size:10px;font-weight:700;padding:1px 6px;border-radius:20px;background:var(--danger);color:#fff;line-height:1.5}
+.nbadge.warn{background:var(--warn)}
+.sb-foot{padding:8px;border-top:1px solid var(--border-l)}
+.urow{display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:var(--r);cursor:pointer;transition:background .15s}
+.urow:hover{background:var(--surface2)}
+.av{width:28px;height:28px;border-radius:50%;background:var(--brand-l);color:var(--brand);font-size:10px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+
+/* MAIN */
+.main-wrap{margin-left:var(--sb);flex:1;display:flex;flex-direction:column;min-height:100vh;overflow-x:hidden}
+.topbar{height:58px;background:var(--surface-blur);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;padding:0 24px;position:sticky;top:0;z-index:40}
+.tb-left{min-width:0}
+.tb-title{font-size:17px;font-weight:700;letter-spacing:-.3px}
+.tb-sub{font-size:12px;color:var(--tt);margin-top:1px}
+.tb-right{display:flex;align-items:center;gap:8px;flex-shrink:0}
+.content{padding:22px 24px}
+
+/* BUTTONS */
+.btn{display:inline-flex;align-items:center;gap:5px;padding:7px 14px;border-radius:var(--r);font-size:13px;font-weight:600;cursor:pointer;border:none;transition:all .2s var(--ease);font-family:inherit;line-height:1;white-space:nowrap}
+.btn:active{transform:scale(.96)}
+.bp{background:var(--brand);color:#fff;box-shadow:0 2px 8px rgba(0,102,204,.2)}.bp:hover{background:var(--brand-h)}
+.bg{background:transparent;color:var(--ts);border:1px solid var(--border)}.bg:hover{background:var(--surface2);color:var(--tp)}
+.ib{width:32px;height:32px;border-radius:var(--r);border:1px solid var(--border);background:transparent;color:var(--ts);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:all .2s;font-size:14px;flex-shrink:0}
+.ib:hover{background:var(--surface2);color:var(--tp)}
+
+/* FILTERS */
+.fsec{background:var(--surface);border-radius:var(--r2);padding:14px 18px;margin-bottom:16px;box-shadow:var(--sh);border:1px solid var(--border-l)}
+.frow{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.frow+.frow{margin-top:12px;padding-top:12px;border-top:1px solid var(--border-l)}
+.sbox{display:flex;align-items:center;gap:7px;background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:7px 11px;min-width:200px;flex:1;max-width:280px;transition:all .2s}
+.sbox:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,102,204,.1);background:var(--surface)}
+.sbox input{border:none;background:transparent;font-size:13px;color:var(--tp);width:100%;outline:none;font-family:inherit}
+.sbox input::placeholder{color:var(--tt)}
+.fsel{background:var(--bg);border:1px solid var(--border);border-radius:var(--r);padding:7px 10px;font-size:12px;color:var(--ts);font-family:inherit;cursor:pointer;transition:all .15s}
+.fsel:hover{border-color:var(--tt);color:var(--tp)}.fsel:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,102,204,.1)}
+.pill{padding:5px 13px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface);color:var(--ts);cursor:pointer;transition:all .15s;white-space:nowrap}
+.pill:hover{border-color:var(--brand);color:var(--brand)}.pill.on{border-color:var(--brand);background:var(--brand-l);color:var(--brand);font-weight:600}
+.flbl{font-size:11px;font-weight:700;color:var(--tt);white-space:nowrap;flex-shrink:0}
+.more-filter-btn{font-size:12px;color:var(--ts);cursor:pointer;padding:7px 12px;border-radius:var(--r);border:1px solid var(--border);background:transparent;font-family:inherit;transition:all .15s;white-space:nowrap}
+.more-filter-btn:hover{border-color:var(--tt);color:var(--tp);background:var(--surface2)}
+#adv-filters{display:none;gap:10px;flex-wrap:wrap;align-items:center;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-l)}
+#adv-filters.open{display:flex}
+
+/* TABLE */
+.tc{background:var(--surface);border-radius:var(--r2);box-shadow:var(--sh);border:1px solid var(--border-l);overflow:hidden;display:flex;flex-direction:column}
+.tc-head{padding:13px 20px;border-bottom:1px solid var(--border-l);display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.tc-title{font-size:14px;font-weight:700;color:var(--tp)}
+.tscroll{overflow-x:auto}
+table{width:100%;border-collapse:separate;border-spacing:0}
+thead th{position:sticky;top:0;z-index:10;background:var(--surface);padding:10px 12px;text-align:left;font-size:11px;font-weight:700;color:var(--tt);letter-spacing:.4px;text-transform:uppercase;border-bottom:1px solid var(--border);white-space:nowrap}
+thead th:first-child{padding-left:20px}
+tbody tr{transition:background .1s}
+tbody tr:hover td{background:var(--surface2)}
+tbody td{padding:10px 12px;border-bottom:1px solid var(--border-l);vertical-align:middle}
+tbody td:first-child{padding-left:20px}
+tbody tr:last-child td{border-bottom:none}
+body.compact tbody td{padding:6px 12px}
+body.compact tbody td:first-child{padding-left:20px}
+
+/* BADGES */
+.badge{display:inline-flex;align-items:center;padding:2px 8px;border-radius:6px;font-size:11px;font-weight:600;white-space:nowrap}
+.s-潜在{background:var(--brand-l);color:var(--brand)}.s-意向{background:var(--warn-l);color:var(--warn)}
+.s-成交{background:var(--success-l);color:var(--success)}.s-流失{background:var(--border-l);color:var(--ts)}
+.s-垃圾{background:var(--danger-l);color:var(--danger)}.s-{background:var(--border-l);color:var(--tt)}
+.s-转交代理商{background:var(--teal-l);color:var(--teal)}
+.rating{width:20px;height:20px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-weight:800;border:1px solid;flex-shrink:0}
+.r-A{background:var(--warn-l);color:var(--warn);border-color:rgba(255,149,0,.3)}
+.r-B{background:var(--brand-l);color:var(--brand);border-color:rgba(0,102,204,.2)}
+.r-C{background:var(--teal-l);color:var(--teal);border-color:rgba(8,145,178,.2)}
+.r-D{background:var(--rose-l);color:var(--rose);border-color:rgba(120,113,108,.25)}
+.rs{width:40px;height:40px;border-radius:var(--r);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;border:1px solid var(--border);background:var(--surface2);color:var(--tt);cursor:pointer;transition:all .15s}
+.rs:hover{border-color:var(--ts);color:var(--ts)}
+.sel-A{background:var(--warn-l)!important;color:var(--warn)!important;border-color:rgba(255,149,0,.3)!important}
+.sel-B{background:var(--brand-l)!important;color:var(--brand)!important;border-color:rgba(0,102,204,.2)!important}
+.sel-C{background:var(--teal-l)!important;color:var(--teal)!important;border-color:rgba(8,145,178,.2)!important}
+.sel-D{background:var(--rose-l)!important;color:var(--rose)!important;border-color:rgba(120,113,108,.25)!important}
+
+/* CONTACT BTNS */
+.wa-btn,.mail-btn{width:22px;height:22px;border-radius:5px;display:inline-flex;align-items:center;justify-content:center;font-size:11px;cursor:pointer;border:none;transition:all .15s;flex-shrink:0}
+.wa-btn{background:var(--success-l);color:var(--success)}.wa-btn:hover{background:var(--success);color:#fff}
+.mail-btn{background:var(--brand-l);color:var(--brand)}.mail-btn:hover{background:var(--brand);color:#fff}
+
+/* ROW ACTIONS */
+.acts{display:flex;gap:4px;align-items:center}
+.ab{font-size:11px;padding:4px 9px;border-radius:6px;border:1px solid;white-space:nowrap;cursor:pointer;font-family:inherit;transition:all .12s;background:transparent}
+.ag{color:var(--success);border-color:rgba(52,199,89,.3);background:var(--success-l)}.ag:hover{background:var(--success);color:#fff;border-color:var(--success)}
+.ab2{color:var(--brand);border-color:rgba(0,102,204,.2);background:var(--brand-l)}.ab2:hover{background:var(--brand);color:#fff}
+.ac{color:var(--ts);border-color:var(--border);background:var(--surface2)}.ac:hover{color:var(--tp);border-color:var(--ts)}
+.ar{color:var(--danger);border-color:rgba(255,59,48,.2);background:var(--danger-l)}.ar:hover{background:var(--danger);color:#fff}
+.more-dd-btn{width:26px;height:26px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;transition:all .15s;position:relative;font-family:inherit;vertical-align:middle}
+.more-dd-btn:hover{background:var(--surface2);color:var(--tp)}
+.dd{position:absolute;right:0;top:calc(100% + 4px);background:var(--surface);border:1px solid var(--border);border-radius:var(--r2);box-shadow:var(--sh2);z-index:200;min-width:110px;overflow:hidden;display:none}
+.dd.open{display:block}
+.ddi{padding:8px 14px;font-size:12px;cursor:pointer;color:var(--ts);transition:background .1s;white-space:nowrap}
+.ddi:hover{background:var(--surface2);color:var(--tp)}.ddi.danger{color:var(--danger)}.ddi.danger:hover{background:var(--danger-l)}
+
+/* STAT CARDS */
+.sg3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}
+.sg6{display:grid;grid-template-columns:repeat(6,1fr);gap:8px;margin-bottom:18px}
+.sc{background:var(--surface);border-radius:var(--r2);padding:18px 20px;box-shadow:var(--sh);border:1px solid var(--border-l);cursor:pointer;transition:all .25s var(--ease)}
+.sc:hover{box-shadow:var(--sh2);transform:translateY(-2px)}
+.sc-lbl{font-size:11px;font-weight:700;color:var(--tt);letter-spacing:.4px;text-transform:uppercase;margin-bottom:7px}
+.sc-val{font-size:30px;font-weight:700;letter-spacing:-1px;line-height:1}
+.sc.sm{padding:12px 14px}.sc.sm .sc-val{font-size:20px;letter-spacing:-.5px}.sc.sm .sc-lbl{font-size:9px;margin-bottom:4px}
+
+/* CHARTS */
+.cg3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
+.cg2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-bottom:12px}
+.db3{display:grid;grid-template-columns:3fr 2fr;gap:12px;margin-top:12px}
+.cc{background:var(--surface);border-radius:var(--r2);padding:18px 20px;box-shadow:var(--sh);border:1px solid var(--border-l)}
+.cc-title{font-size:11px;font-weight:700;color:var(--tt);letter-spacing:.4px;text-transform:uppercase;margin-bottom:12px;display:flex;justify-content:space-between;align-items:center}
+.bar-chart{max-height:200px;overflow-y:auto;padding-right:2px}
+.bar-chart::-webkit-scrollbar{width:3px}.bar-chart::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.bar-row{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+.bar-lbl{font-size:11px;color:var(--ts);width:90px;flex-shrink:0;text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bar-track{flex:1;height:5px;background:var(--border);border-radius:3px;overflow:hidden}
+.bar-fill{height:100%;border-radius:3px;transition:width .6s var(--ease)}
+.bar-val{font-size:11px;color:var(--tt);width:28px;font-family:monospace;text-align:right;flex-shrink:0}
+.chart-wrap{position:relative;height:150px}
+.perf-row{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-l)}
 .perf-row:last-child{border-bottom:none}
-.perf-top{display:flex;justify-content:space-between;font-size:13px;margin-bottom:5px}
-.perf-bar{height:4px;background:#f1f5f9;border-radius:2px;overflow:hidden}
-.perf-fill{height:100%;background:#10b981;border-radius:2px;transition:width .5s}
-.imp-tpl{font-family:monospace;font-size:11px;background:#f8fafc;padding:10px 12px;border-radius:8px;overflow-x:auto;white-space:pre;color:#374151;margin-bottom:10px;border:1px solid #e2e8f0}
-.empty{padding:40px;text-align:center;color:#94a3b8}
+.pav{width:24px;height:24px;border-radius:50%;background:var(--brand-l);color:var(--brand);font-size:9px;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.pname{font-size:13px;font-weight:600;flex:1}
+.ptrack{height:4px;background:var(--border);border-radius:2px;overflow:hidden;width:80px;flex-shrink:0}
+.pfill{height:100%;background:var(--success);border-radius:2px;transition:width .5s}
+.pstat{font-size:11px;color:var(--ts);font-family:monospace;min-width:72px;text-align:right}
+
+/* TASKS */
+.task-row{background:var(--surface);border-radius:var(--r);padding:12px 16px;display:flex;align-items:center;gap:10px;border:1px solid var(--border-l);transition:all .15s;margin-bottom:3px}
+.task-row:hover{border-color:var(--brand);box-shadow:var(--sh)}
+.tinfo{flex:1;min-width:0}
+.tname{font-size:13px;font-weight:600;display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:2px}
+.tmeta{font-size:11px;color:var(--tt);margin-bottom:2px}
+.tprev{font-size:12px;color:var(--ts);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:400px}
+.tr-right{display:flex;align-items:center;gap:5px;flex-shrink:0}
+
+/* DOTS */
+.sdots{display:flex;gap:3px;align-items:center;margin-top:3px}
+.dot{width:5px;height:5px;border-radius:50%;background:var(--border);flex-shrink:0}
+.dot.done{background:var(--success)}.dot.cur{background:var(--warn)}
+.nf-pend{color:var(--tt);font-size:12px}.nf-soon{color:var(--warn);font-size:12px;font-weight:600}
+.nf-today{color:var(--danger);font-size:12px;font-weight:700}.nf-over{color:var(--danger);font-size:12px;font-weight:700}
+.nf-done{color:var(--success);font-size:12px;font-weight:500}
+
+/* MISC */
+.dup-w{background:var(--warn-l);color:var(--warn);font-size:10px;padding:1px 5px;border-radius:4px;margin-left:3px;font-weight:600}
+.sea-badge{background:var(--danger-l);color:var(--danger);font-size:10px;padding:1px 5px;border-radius:4px;margin-left:3px;font-weight:600}
+
+/* PAGE BAR */
+.pbar{display:flex;align-items:center;gap:5px;padding:10px 20px;border-top:1px solid var(--border-l);flex-wrap:wrap}
+.pinfo{font-size:12px;color:var(--tt);flex:1}
+.pbtn{min-width:28px;height:28px;padding:0 6px;border-radius:6px;border:1px solid var(--border);background:transparent;display:flex;align-items:center;justify-content:center;font-size:12px;cursor:pointer;color:var(--ts);transition:all .12s;font-family:inherit}
+.pbtn:hover{background:var(--surface2)}.pbtn.on{background:var(--brand);color:#fff;border-color:var(--brand)}
+.pbtn:disabled{opacity:.4;cursor:not-allowed}
+
+/* DRAWER */
+.drawer-overlay{position:fixed;inset:0;background:rgba(0,0,0,.25);z-index:500;display:flex;justify-content:flex-end;animation:dvFade .25s var(--ease)}
+.drawer{width:460px;max-width:95vw;background:var(--surface);box-shadow:-4px 0 40px rgba(0,0,0,.12);display:flex;flex-direction:column;height:100%;animation:dvSlide .3s var(--ease)}
+@keyframes dvFade{from{opacity:0}to{opacity:1}}
+@keyframes dvSlide{from{transform:translateX(100%)}to{transform:translateX(0)}}
+.drawer-header{padding:20px 24px 16px;border-bottom:1px solid var(--border-l);flex-shrink:0;position:relative}
+.drawer-close{position:absolute;top:18px;right:18px;width:28px;height:28px;border-radius:50%;border:none;background:var(--surface2);color:var(--ts);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s}
+.drawer-close:hover{background:var(--border);color:var(--tp)}
+.cus-name{font-size:16px;font-weight:700;color:var(--tp)}
+.cus-meta{font-size:12px;color:var(--tt);display:flex;align-items:center;gap:5px;margin-top:4px;flex-wrap:wrap}
+.drawer-body{flex:1;overflow-y:auto;padding:18px 24px}
+.drawer-body::-webkit-scrollbar{width:4px}.drawer-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.drawer-footer{padding:12px 24px;border-top:1px solid var(--border-l);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.dfg{margin-bottom:15px}
+.dfl{font-size:12px;font-weight:600;color:var(--ts);display:block;margin-bottom:6px}
+.dfi{width:100%;padding:8px 11px;border-radius:var(--r);border:1px solid var(--border);font-size:13px;color:var(--tp);background:var(--surface);font-family:inherit;transition:all .2s}
+.dfi:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,102,204,.1)}
+textarea.dfi{resize:vertical;min-height:84px;line-height:1.6}.dfi::placeholder{color:var(--tt)}
+.stage-pills{display:flex;gap:6px;flex-wrap:wrap}
+.stage-pill{padding:6px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface2);color:var(--ts);cursor:pointer;transition:all .15s}
+.stage-pill:hover{border-color:var(--brand);color:var(--brand)}.stage-pill.on{border-color:var(--brand);background:var(--brand-l);color:var(--brand);font-weight:600}
+.quality-pills{display:flex;gap:6px;flex-wrap:wrap}
+.qp{padding:6px 11px;border-radius:var(--r);font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface2);color:var(--ts);cursor:pointer;transition:all .15s}
+.qp.on.qp-good{border-color:var(--success);background:var(--success-l);color:var(--success)}
+.qp.on.qp-neutral{border-color:var(--warn);background:var(--warn-l);color:var(--warn)}
+.qp.on.qp-bad{border-color:var(--danger);background:var(--danger-l);color:var(--danger)}
+.hist-item{padding:10px 0;border-bottom:1px dashed var(--border-l);display:flex;align-items:flex-start;gap:8px}
+.hist-item:last-child{border-bottom:none}
+.hist-date{font-size:11px;color:var(--tt);white-space:nowrap;flex-shrink:0;padding-top:1px;width:36px}
+.hist-content{flex:1;min-width:0}
+.hist-stage{font-size:11px;color:var(--brand);font-weight:600;margin-bottom:2px}
+.hist-text{font-size:12px;color:var(--ts);line-height:1.5;word-break:break-word}
+.hist-acts{display:flex;gap:3px;flex-shrink:0;padding-top:1px}
+.ha{font-size:10px;padding:2px 7px;border-radius:4px;cursor:pointer;border:1px solid var(--border);background:transparent;color:var(--tt);font-family:inherit;transition:all .12s}
+.ha:hover{color:var(--tp);border-color:var(--ts)}.ha.del:hover{color:var(--danger);border-color:rgba(255,59,48,.3);background:var(--danger-l)}
+
+/* MODAL */
+.overlay{position:fixed;inset:0;background:rgba(0,0,0,.3);z-index:400;display:flex;align-items:center;justify-content:center;padding:16px;animation:dvFade .2s var(--ease)}
+.modal{background:var(--surface);border-radius:var(--r3);width:100%;max-width:640px;max-height:88vh;display:flex;flex-direction:column;box-shadow:0 8px 40px rgba(0,0,0,.12);animation:dvModalIn .3s var(--ease)}
+.modal.msm{max-width:460px}.modal.mlg{max-width:720px}
+@keyframes dvModalIn{from{opacity:0;transform:scale(.96) translateY(8px)}to{opacity:1;transform:none}}
+.modal-header{padding:18px 24px 0;flex-shrink:0}
+.modal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px}
+.modal-title{font-size:15px;font-weight:700}
+.modal-close{width:28px;height:28px;border-radius:50%;border:none;background:var(--surface2);color:var(--ts);font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;flex-shrink:0}
+.modal-close:hover{background:var(--border);color:var(--tp)}
+.tabs{display:flex;border-bottom:1px solid var(--border-l);overflow-x:auto}
+.tab{padding:9px 16px;font-size:13px;font-weight:500;color:var(--ts);cursor:pointer;border-bottom:2px solid transparent;margin-bottom:-1px;transition:all .15s;white-space:nowrap}
+.tab:hover{color:var(--tp)}.tab.on{color:var(--brand);border-bottom-color:var(--brand);font-weight:600}
+.modal-body{flex:1;overflow-y:auto;padding:20px 24px}
+.modal-body::-webkit-scrollbar{width:4px}.modal-body::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+.tab-panel{display:none}.tab-panel.on{display:block;animation:dvFade .2s var(--ease)}
+.modal-footer{padding:12px 24px;border-top:1px solid var(--border-l);display:flex;gap:8px;justify-content:flex-end;flex-shrink:0}
+.simple-body{padding:16px 24px;max-height:70vh;overflow-y:auto}
+.fg{margin-bottom:14px}
+.fl{font-size:12px;font-weight:600;color:var(--ts);display:block;margin-bottom:5px}
+.fi{width:100%;padding:8px 11px;border-radius:var(--r);border:1px solid var(--border);font-size:13px;background:var(--surface);color:var(--tp);font-family:inherit;transition:all .2s}
+.fi:focus{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,102,204,.1)}
+textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.g3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}
+.stitle{font-size:10px;font-weight:700;color:var(--tt);letter-spacing:.6px;text-transform:uppercase;margin:16px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border-l)}
+.prod-tags{display:flex;gap:6px;flex-wrap:wrap}
+.ptag{padding:6px 13px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid var(--border);background:var(--surface2);color:var(--ts);cursor:pointer;transition:all .15s}
+.ptag:hover{border-color:var(--brand);color:var(--brand)}.ptag.on{border-color:var(--brand);background:var(--brand-l);color:var(--brand);font-weight:600}
+.tags-wrap{display:flex;flex-wrap:wrap;gap:6px;padding:8px 10px;border:1px solid var(--border);border-radius:var(--r);background:var(--surface);min-height:40px;cursor:text;transition:all .2s}
+.tags-wrap:focus-within{border-color:var(--brand);box-shadow:0 0 0 3px rgba(0,102,204,.1)}
+.det-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.di{padding:8px 10px;background:var(--surface2);border-radius:var(--r)}
+.dk{font-size:11px;color:var(--tt);margin-bottom:2px}
+.dv{font-size:13px;color:var(--tp);font-weight:500;word-break:break-all}
+.imp-tpl{font-family:monospace;font-size:11px;background:var(--surface2);padding:10px 12px;border-radius:var(--r);overflow-x:auto;white-space:pre;color:var(--ts);margin-bottom:10px;border:1px solid var(--border-l)}
+.drill-row{padding:9px 14px;border-bottom:1px solid var(--border-l);display:flex;align-items:center;gap:10px}
+.drill-row:hover{background:var(--surface2)}.drill-row:last-child{border-bottom:none}
+
+/* EMPTY / TOAST */
+.empty{padding:48px;text-align:center;color:var(--tt)}
 .empty-icon{font-size:32px;margin-bottom:8px}
-.empty-ttl{font-size:15px;font-weight:700;color:#374151;margin-bottom:4px}
-#toast{position:fixed;bottom:18px;right:18px;background:#0f172a;color:#fff;padding:10px 16px;border-radius:10px;font-size:13px;z-index:999;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none}
-#toast.show{opacity:1;transform:translateY(0)}
-.drill-row{padding:9px 14px;border-bottom:1px solid #f1f5f9;display:flex;align-items:center;gap:10px}
-.drill-row:hover{background:#f8fafc}.drill-row:last-child{border-bottom:none}
-.dash-filter{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center}
-.df-btn{padding:5px 12px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;transition:all .15s}
-.df-btn.on{border-color:#3b82f6;background:#eff6ff;color:#2563eb}
-.date-filter-bar{display:flex;gap:6px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
-.dfb{padding:5px 11px;border-radius:20px;font-size:12px;font-weight:500;border:1px solid #e2e8f0;background:#fff;color:#64748b;cursor:pointer;transition:all .15s}
-.dfb.on{border-color:#3b82f6;background:#eff6ff;color:#2563eb}
-.custom-date-row{display:flex;gap:6px;align-items:center;margin-top:6px;flex-wrap:wrap}
-.custom-date-row input{padding:5px 9px;border-radius:7px;border:1px solid #e2e8f0;font-size:12px;background:#fff}
-.custom-date-row button{padding:5px 12px;border-radius:7px;border:none;background:#3b82f6;color:#fff;font-size:12px;cursor:pointer}
-.page-bar{display:flex;align-items:center;gap:8px;padding:10px 14px;border-top:1px solid #f1f5f9;flex-wrap:wrap}
-.page-btn{padding:5px 11px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;font-size:12px;color:#374151;cursor:pointer}
-.page-btn:hover{background:#f8fafc}
-.page-btn.on{background:#3b82f6;color:#fff;border-color:#3b82f6}
-.page-btn:disabled{opacity:.4;cursor:not-allowed}
+.empty-ttl{font-size:15px;font-weight:700;color:var(--ts);margin-bottom:4px}
+#toast{position:fixed;bottom:22px;left:50%;transform:translateX(-50%) translateY(16px);background:var(--tp);color:var(--bg);padding:9px 18px;border-radius:20px;font-size:13px;font-weight:500;z-index:999;opacity:0;transition:all .25s var(--ease);pointer-events:none;white-space:nowrap;box-shadow:var(--sh2)}
+#toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* DASH FILTERS */
+.dash-filters{background:var(--surface);border-radius:var(--r2);padding:14px 18px;margin-bottom:16px;box-shadow:var(--sh);border:1px solid var(--border-l)}
+.df-row{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.df-row+.df-row{margin-top:10px;padding-top:10px;border-top:1px solid var(--border-l)}
+
+/* RESPONSIVE */
+@media(max-width:1100px){.cg3{grid-template-columns:1fr 1fr}.db3{grid-template-columns:1fr}}
 @media(max-width:768px){
-  .stat-grid{grid-template-columns:repeat(3,1fr)}
-  .chart-grid3,.chart-grid2{grid-template-columns:1fr}
-  .dash-row,.g2,.g3,.det-grid{grid-template-columns:1fr}
-  .nav-brand{display:none}
-  .nb{font-size:11px;padding:4px 6px}
-  .user-pill{display:none}
-  .btn-s{padding:5px 8px;font-size:11px}
-  .btn-p{padding:5px 8px;font-size:11px}
+  :root{--sb:0px}
+  .sb{transform:translateX(-100%)}
+  .main-wrap{margin-left:0}
+  .sg3{grid-template-columns:repeat(3,1fr)}.sg6{grid-template-columns:repeat(3,1fr)}
+  .g2,.g3,.det-grid{grid-template-columns:1fr}
   .col-hide{display:none}
-  th,td{padding:6px 8px;font-size:11px}
-  .acts{flex-wrap:wrap;gap:2px}
-  .ab{font-size:10px;padding:2px 5px}
+  .content{padding:14px 12px}
+  .topbar{padding:0 14px}.tb-title{font-size:15px}
+  .cg3,.cg2{grid-template-columns:1fr}
+  table{min-width:600px}
 }
 </style>
 </head>
@@ -161,7 +330,7 @@ tr:hover td{background:#f8fafc}
 
 <div id="login-screen">
   <div class="login-box">
-    <div class="login-logo">🏭</div>
+    <div class="login-logo">JL</div>
     <div class="login-title">JIALONG CRM</div>
     <div class="login-sub">选择你的身份开始使用</div>
     <div class="user-grid">
@@ -177,31 +346,50 @@ tr:hover td{background:#f8fafc}
 </div>
 
 <div id="app" style="display:none">
-  <nav class="nav">
-    <div class="nav-left">
-      <span class="nav-brand">JIALONG CRM</span>
-      <button class="nb active" id="nb-dashboard" onclick="setView('dashboard')">📊 看板</button>
-      <button class="nb" id="nb-customers" onclick="setView('customers')">👥 客户</button>
-      <button class="nb" id="nb-tasks" onclick="setView('tasks')">🔴 待办</button>
-      <button class="nb" id="nb-sea" onclick="setView('sea')">🌊 公海</button>
+  <aside class="sb" id="sidebar">
+    <div class="sb-logo">
+      <div class="logo-mark">JL</div>
+      <div><div class="logo-text">JIALONG CRM</div><div class="logo-sub">佳龙包装</div></div>
     </div>
-    <div class="nav-right">
-      <button class="btn-s" onclick="openImport()">📥 导入</button>
-      <button class="btn-p" onclick="openAdd()">+ 新建</button>
-      <div class="user-pill">当前：<b id="uname"></b></div>
-      <button class="btn-s" style="padding:5px 9px;font-size:12px" onclick="logout()">切换</button>
+    <nav class="sb-nav">
+      <div class="ng">
+        <div class="nlbl">主要功能</div>
+        <button class="ni on" id="ni-dashboard" onclick="setView('dashboard')"><span class="nicon">📊</span><span>数据看板</span></button>
+        <button class="ni" id="ni-customers" onclick="setView('customers')"><span class="nicon">👥</span><span>客户列表</span></button>
+        <button class="ni" id="ni-tasks" onclick="setView('tasks')"><span class="nicon">⚡</span><span>今日待办</span><span class="nbadge" id="task-badge" style="display:none">0</span></button>
+        <button class="ni" id="ni-sea" onclick="setView('sea')"><span class="nicon">🌊</span><span>公海客户</span><span class="nbadge warn" id="sea-badge" style="display:none">0</span></button>
+      </div>
+    </nav>
+    <div class="sb-foot">
+      <div class="urow">
+        <div class="av" id="user-av">?</div>
+        <div style="flex:1;min-width:0">
+          <div style="font-size:13px;font-weight:600;color:var(--tp);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="user-name-sb">—</div>
+          <div style="font-size:11px;color:var(--tt)" id="user-role-sb">—</div>
+        </div>
+        <button class="btn bg" style="font-size:11px;padding:4px 8px" onclick="logout()">切换</button>
+      </div>
     </div>
-  </nav>
-  <div class="main" id="main"></div>
+  </aside>
+  <div class="main-wrap">
+    <div id="main"></div>
+  </div>
 </div>
 <div id="toast"></div>
 
 <script>
-const SUPABASE_URL = 'https://otfqrrjwfxwiqanflocy.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_-dUNxzzwwKbksz8BF41Mlw_mZJh8HLY';
+// ===== SUPABASE =====
+// Before using new features, run in Supabase SQL Editor:
+// alter table customers add column if not exists rating text default '';
+// alter table customers add column if not exists tags text[] default '{}';
+// alter table follow_logs add column if not exists quality text default '';
+
+const SUPABASE_URL='https://otfqrrjwfxwiqanflocy.supabase.co';
+const SUPABASE_ANON_KEY='sb_publishable_-dUNxzzwwKbksz8BF41Mlw_mZJh8HLY';
 const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
+// ===== CONSTANTS =====
 const SALES=['Jacky','Jen','Jimmy','Chris','Tony','Gethin'];
 const SOURCES=['易询盘','外贸牛','阿里巴巴','中国制造','社媒','国内转交'];
 const PRODUCTS=['真空机','封口机','半自动','全自动','外购产品'];
@@ -211,19 +399,23 @@ const CTYPES=['终端客户','贸易商','机器经销商'];
 const VACUUM=['有','无','待确认'];
 const AUTO=['全自动','半自动','手动','待确认'];
 const SLABELS=['','首次跟进','3天回访','7天回访','15天回访','30天回访'];
-const COLORS=['#3b82f6','#f59e0b','#10b981','#ef4444','#8b5cf6','#f97316','#06b6d4','#84cc16','#ec4899','#94a3b8','#f43f5e','#14b8a6','#a855f7','#0ea5e9','#d946ef'];
+const RATINGS=['A','B','C','D'];
 const PASSWORDS={Jacky:'jacky123',Jen:'jen123',Jimmy:'jimmy123',Chris:'chris123',Tony:'tony123',Gethin:'gethin123','管理员':'admin888'};
+const RCOLORS={A:'var(--warn)',B:'var(--brand)',C:'var(--teal)',D:'var(--rose)'};
 
+// ===== STATE =====
 let CU=null,ALL=[],CUS=[],LOGS=[];
-let VIEW='dashboard',DF='全部';
-let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部',fDup=false;
+let VIEW='dashboard',dashSales='全部';
+let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部',fRating='全部',fDup=false;
 let fDateRange='all',fDateStart='',fDateEnd='';
-let dashDateRange='14',dashDateStart='',dashDateEnd='';
+let dashDateRange='14';
 let EID=null,LID=null,FD={},LFD={};
 let CI={};
 let cusPage=1,cusPageSize=20,selIds=new Set();
 let seaPage=1,seaPageSize=20,seaS='';
+let advFiltersOpen=false;
 
+// ===== UTILS =====
 const T=()=>new Date().toISOString().split('T')[0];
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
 const diffD=d=>d?Math.floor((new Date(d)-new Date(T()))/86400000):null;
@@ -231,32 +423,11 @@ const fmt=d=>d?new Date(d).toLocaleDateString('zh-CN',{month:'short',day:'numeri
 const fmtF=d=>d?new Date(d).toLocaleDateString('zh-CN',{year:'numeric',month:'short',day:'numeric'}):'—';
 const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 const isAdm=()=>CU==='管理员';
+const cusDate=c=>c.custom_date||c.created_at?.split('T')[0]||'';
+const waLink=p=>{if(!p)return null;const d=p.replace(/[^\d]/g,'');return d?`https://wa.me/${d}`:null};
+const mailLink=e=>e?`mailto:${e}`:null;
 
 function toast(m,t=2500){const e=document.getElementById('toast');e.textContent=m;e.classList.add('show');clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove('show'),t)}
-function cusDate(c){return c.custom_date||c.created_at?.split('T')[0]||''}
-
-function getDateRange(range,start,end){
-  const t=T();
-  if(range==='7')return{s:addD(t,-6),e:t};
-  if(range==='14')return{s:addD(t,-13),e:t};
-  if(range==='30')return{s:addD(t,-29),e:t};
-  if(range==='month'){const d=new Date();return{s:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`,e:t};}
-  if(range==='lastmonth'){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');const last=new Date(y,d.getMonth()+1,0).getDate();return{s:`${y}-${m}-01`,e:`${y}-${m}-${last}`};}
-  if(range==='custom')return{s:start,e:end};
-  return null;
-}
-
-function filterByDate(list,range,start,end){
-  const r=getDateRange(range,start,end);
-  if(!r||!r.s)return list;
-  return list.filter(c=>{const d=cusDate(c);return d>=r.s&&d<=r.e;});
-}
-
-function aggSorted(src,field){
-  const m={};
-  src.forEach(c=>{const v=c[field]||'';if(v)m[v]=(m[v]||0)+1;});
-  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
-}
 
 function isSea(c){
   if(DONE_STATUSES.includes(c.status))return false;
@@ -264,14 +435,19 @@ function isSea(c){
   if(!r)return false;
   return addD(r,30)<T();
 }
-
 function isTask(c){
   if(DONE_STATUSES.includes(c.status))return false;
   if((c.follow_stage||0)>=5)return false;
   if((c.follow_stage||0)===0)return true;
   return c.next_follow_date&&c.next_follow_date<=T();
 }
-
+function isNoResp(c){
+  if(DONE_STATUSES.includes(c.status)||!c.last_follow_date||(c.follow_stage||0)===0)return false;
+  return addD(c.last_follow_date,15)<T();
+}
+function isDup(c,skip=null){
+  return ALL.some(x=>x.id!==skip&&((c.name&&x.name===c.name)||(c.phone&&c.phone.length>5&&x.phone===c.phone)));
+}
 function nfi(c){
   const s=c.follow_stage||0;
   if(DONE_STATUSES.includes(c.status))return{t:'✅ 完成',cls:'nf-done'};
@@ -284,11 +460,11 @@ function nfi(c){
   if(d<=3)return{t:`${d}天后`,cls:'nf-soon'};
   return{t:fmt(c.next_follow_date),cls:'nf-pend'};
 }
+function ratingBadge(r){return r?`<span class="rating r-${r}">${r}</span>`:'';}
+function dots(stage){return`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${stage>i?'done':stage===i?'cur':''}"></div>`).join('')}</div>`;}
+function tagChips(tags){return(tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.15);white-space:nowrap">${esc(t)}</span>`).join('');}
 
-function isDup(c,skip=null){
-  return ALL.some(x=>x.id!==skip&&((c.name&&x.name===c.name)||(c.phone&&c.phone.length>5&&x.phone===c.phone)));
-}
-
+// ===== DATA =====
 async function fetchAll(table,orderCol){
   let all=[],from=0;
   while(true){
@@ -300,39 +476,293 @@ async function fetchAll(table,orderCol){
   }
   return all;
 }
-
 async function load(){
-  const[cr,lr]=await Promise.all([
-    fetchAll('customers','custom_date'),
-    fetchAll('follow_logs','created_at')
-  ]);
-  ALL=cr;LOGS=lr;
-  applyFilter();render();
+  const[cr,lr]=await Promise.all([fetchAll('customers','custom_date'),fetchAll('follow_logs','created_at')]);
+  ALL=cr;LOGS=lr;applyFilter();render();
 }
-
 function applyFilter(){
-  if(isAdm())CUS=DF==='全部'?[...ALL]:ALL.filter(c=>c.sales===DF);
+  if(isAdm())CUS=dashSales==='全部'?[...ALL]:ALL.filter(c=>c.sales===dashSales);
   else CUS=ALL.filter(c=>c.sales===CU);
 }
-
-async function saveCus(){
-  if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
-  const p={
-    name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',
-    source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],
-    packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',
-    packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',
-    automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',
-    self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',
-    project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',
-    custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||''
-  };
-  if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
-  const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(EID?'✅ 已更新':'✅ 添加成功');closeM();await load();
+function updateBadges(){
+  const taskN=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).length;
+  const seaN=ALL.filter(isSea).length;
+  const tb=document.getElementById('task-badge'),sb=document.getElementById('sea-badge');
+  if(tb){tb.textContent=taskN;tb.style.display=taskN?'inline-flex':'none';}
+  if(sb){sb.textContent=seaN;sb.style.display=seaN?'inline-flex':'none';}
+}
+function getDateRange(range,start,end){
+  const t=T();
+  if(range==='today')return{s:t,e:t};
+  if(range==='yesterday'){const y=addD(t,-1);return{s:y,e:y};}
+  if(range==='7')return{s:addD(t,-6),e:t};
+  if(range==='15')return{s:addD(t,-14),e:t};
+  if(range==='14')return{s:addD(t,-13),e:t};
+  if(range==='30')return{s:addD(t,-29),e:t};
+  if(range==='month'){const d=new Date();return{s:`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-01`,e:t};}
+  if(range==='lastmonth'){const d=new Date();d.setDate(1);d.setMonth(d.getMonth()-1);const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0');const last=new Date(y,d.getMonth()+1,0).getDate();return{s:`${y}-${m}-01`,e:`${y}-${m}-${last}`};}
+  if(range==='custom')return{s:start,e:end};
+  return null;
+}
+function filterByDate(list,range,start,end){
+  const r=getDateRange(range,start,end);
+  if(!r||!r.s)return list;
+  return list.filter(c=>{const d=cusDate(c);return d>=r.s&&d<=r.e;});
+}
+function aggSorted(src,field){
+  const m={};
+  src.forEach(c=>{const v=c[field]||'';if(v)m[v]=(m[v]||0)+1;});
+  return Object.entries(m).sort((a,b)=>b[1]-a[1]);
+}
+function barChartHtml(data,color='var(--brand)'){
+  if(!data.length)return'<div style="color:var(--tt);font-size:12px">暂无数据</div>';
+  const max=Math.max(...data.map(d=>d[1]),1);
+  return data.slice(0,15).map(([label,count])=>`<div class="bar-row"><div class="bar-lbl" title="${esc(label)}">${esc(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(count/max*100)}%;background:${color}"></div></div><div class="bar-val">${count}</div></div>`).join('');
 }
 
+// ===== RENDER =====
+function setView(v){
+  VIEW=v;
+  ['dashboard','customers','tasks','sea'].forEach(k=>document.getElementById('ni-'+k)?.classList.toggle('on',k===v));
+  render();
+}
+function render(){
+  applyFilter();updateBadges();
+  const el=document.getElementById('main');if(!el)return;
+  if(VIEW==='dashboard')el.innerHTML=renderDash();
+  else if(VIEW==='customers')el.innerHTML=renderCus();
+  else if(VIEW==='tasks')el.innerHTML=renderTasks();
+  else if(VIEW==='sea')el.innerHTML=renderSea();
+  if(VIEW==='dashboard')setTimeout(renderDashChart,80);
+}
+function tbHtml(title,sub,rightHtml){
+  return`<div class="topbar"><div class="tb-left"><div class="tb-title">${title}</div>${sub?`<div class="tb-sub">${sub}</div>`:''}</div><div class="tb-right"><button class="ib" onclick="document.body.classList.toggle('dark')" title="暗色模式">🌙</button><button class="ib" onclick="document.body.classList.toggle('compact')" title="紧凑模式">⊟</button>${rightHtml}</div></div><div class="content">`;
+}
+
+// ===== DASHBOARD =====
+function renderDash(){
+  const src=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
+  const bs=s=>src.filter(c=>c.status===s).length;
+  const taskN=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).length;
+  const seaN=ALL.filter(isSea).length;
+  const salesPills=(isAdm()?['全部',...SALES]:[CU]).map(s=>`<span class="pill ${dashSales===s?'on':''}" onclick="dashSales='${s}';applyFilter();render()">${s}</span>`).join('');
+  const datePills=[['近7天','7'],['近14天','14'],['近30天','30'],['本月','month'],['上月','lastmonth'],['全部','all']].map(([l,v])=>`<span class="pill ${dashDateRange===v?'on':''}" onclick="dashDateRange='${v}';render()">${l}</span>`).join('');
+  const ratingData=RATINGS.map(r=>[r,src.filter(c=>c.rating===r).length]).filter(([,n])=>n>0);
+  const maxR=Math.max(...ratingData.map(d=>d[1]),1);
+  const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
+  const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
+  const todList=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).slice(0,6);
+  const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
+  return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  <div class="dash-filters">
+    ${isAdm()?`<div class="df-row"><span class="flbl">销售：</span>${salesPills}</div>`:''}
+    <div class="df-row"><span class="flbl">日期：</span>${datePills}</div>
+  </div>
+  <div class="sg3">
+    <div class="sc" onclick="setView('customers')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>
+    <div class="sc" onclick="setView('tasks')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>
+    <div class="sc" onclick="setView('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>
+  </div>
+  <div class="sg6">${[['潜在',bs('潜在'),'var(--brand)'],['意向',bs('意向'),'var(--warn)'],['成交',bs('成交'),'var(--success)'],['转交',bs('转交代理商'),'var(--teal)'],['流失',bs('流失'),'var(--ts)'],['垃圾',bs('垃圾'),'var(--danger)']].map(([l,v,c])=>`<div class="sc sm"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${v}</div></div>`).join('')}</div>
+  <div class="cg3">
+    <div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>
+    <div class="cc"><div class="cc-title">📦 行业（包装物料）</div><div class="bar-chart">${barChartHtml(aggSorted(src,'packaging_material'),'var(--success)')}</div></div>
+    <div class="cc">
+      <div class="cc-title">⭐ 客户评级</div><div style="margin-bottom:12px">${ratingBars}</div>
+      <div style="border-top:1px solid var(--border-l);padding-top:10px">
+        <div class="cc-title" style="margin-bottom:8px">📡 来源 & 🏢 类型</div>
+        ${barChartHtml(aggSorted(src,'source').slice(0,5),'var(--purple)')}
+        <div style="margin-top:8px">${barChartHtml(aggSorted(src,'customer_type'),'var(--teal)')}</div>
+      </div>
+    </div>
+  </div>
+  <div class="db3">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+      <div class="cc"><div class="cc-title">👤 各销售客户数</div>${perfRows||'<div style="color:var(--tt);font-size:12px">暂无数据</div>'}</div>
+      <div class="cc"><div class="cc-title" style="margin-bottom:8px">📅 新增客户统计</div><div class="chart-wrap"><canvas id="cd"></canvas></div></div>
+    </div>
+    <div class="cc">
+      <div class="cc-title" style="margin-bottom:10px">🔴 今日待办 <span style="color:var(--danger);font-size:14px;font-weight:700">${taskN}</span></div>
+      <div style="max-height:320px;overflow-y:auto">${todHtml}</div>
+      ${taskN>6?`<div style="text-align:center;padding:8px 0;font-size:12px;color:var(--tt)">还有 ${taskN-6} 条 · <span style="color:var(--brand);cursor:pointer" onclick="setView('tasks')">查看全部 →</span></div>`:''}
+    </div>
+  </div>
+  </div>`;
+}
+function renderDashChart(){
+  const src=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
+  Object.values(CI).forEach(c=>{try{c.destroy()}catch(e){}});CI={};
+  const r=getDateRange(dashDateRange,'','');
+  let days;
+  if(!r||!r.s)days=Array.from({length:14},(_,i)=>addD(T(),i-13));
+  else{days=[];let d=r.s;while(d<=r.e){days.push(d);d=addD(d,1);}}
+  const ctx=document.getElementById('cd');if(!ctx)return;
+  CI['cd']=new Chart(ctx,{type:'bar',data:{labels:days.map(d=>fmt(d)),datasets:[{data:days.map(d=>src.filter(c=>cusDate(c)===d).length),backgroundColor:'rgba(0,102,204,.65)',borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,color:'#86868B',font:{size:10}},grid:{color:'rgba(0,0,0,.04)'}},x:{ticks:{maxRotation:45,font:{size:9},color:'#86868B'},grid:{display:false}}}}});
+}
+
+// ===== CUSTOMERS =====
+function renderCus(){
+  let filtered=CUS.filter(c=>{
+    const q=fS.toLowerCase();
+    return(!q||c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.phone?.includes(q)||c.country?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||(c.tags||[]).some(t=>t.toLowerCase().includes(q)))
+      &&(fSales==='全部'||c.sales===fSales)
+      &&(fStat==='全部'||(c.status||'')===fStat)
+      &&(fCo==='全部'||c.country===fCo)
+      &&(fSrc==='全部'||c.source===fSrc)
+      &&(fCtype==='全部'||(c.customer_type||'')===fCtype)
+      &&(fRating==='全部'||(c.rating||'')===fRating)
+      &&(!fDup||isDup(c,c.id));
+  });
+  filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
+  window._filtered=filtered;
+  const total=filtered.length;
+  const totalPages=Math.max(1,Math.ceil(total/cusPageSize));
+  if(cusPage>totalPages)cusPage=totalPages;
+  const paged=filtered.slice((cusPage-1)*cusPageSize,cusPage*cusPageSize);
+  const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
+  const allSel=paged.length>0&&paged.every(c=>selIds.has(c.id));
+
+  const rows=paged.length===0?`<tr><td colspan="11"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div></td></tr>`:paged.map(c=>{
+    const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
+    const wa=waLink(c.phone),ml=mailLink(c.email);
+    return`<tr>
+      <td style="width:36px;text-align:center"><input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></td>
+      <td style="font-size:11px;color:var(--tt);white-space:nowrap">${fmt(cusDate(c))}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:4px;flex-wrap:wrap">
+          <span style="font-size:13px;font-weight:600;color:var(--brand);cursor:pointer" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
+          ${noResp?'<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--danger);flex-shrink:0" title="超15天未回复"></span>':''}
+          ${sea?'<span class="sea-badge">公海</span>':''}
+          ${dup?'<span class="dup-w">⚠重复</span>':''}
+        </div>
+        <div style="font-size:11px;color:var(--tt);margin-top:1px">${esc(c.company)}</div>
+      </td>
+      <td class="col-hide"><div style="display:flex;align-items:center;gap:4px">${ratingBadge(c.rating)}${tagChips((c.tags||[]).slice(0,2))}</div></td>
+      <td class="col-hide" style="font-size:12px">
+        ${c.email?`<div style="color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:4px" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')">✉ ${esc(c.email)}${ml?`<button class="mail-btn" onclick="event.stopPropagation();window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}</div>`:''}
+        ${c.phone?`<div style="color:var(--ts);cursor:pointer;display:flex;align-items:center;gap:4px;margin-top:2px" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')">📞 ${esc(c.phone)}${wa?`<button class="wa-btn" onclick="event.stopPropagation();window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''}</div>`:''}
+        ${!c.email&&!c.phone?'<span style="color:var(--border)">—</span>':''}
+      </td>
+      <td class="col-hide" style="font-size:12px;color:var(--ts)">${esc(c.country)||'—'}</td>
+      <td class="col-hide"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
+      <td class="col-hide" style="font-size:12px;color:var(--ts)">${esc(c.source)||'—'}</td>
+      <td class="col-hide" style="font-size:12px;font-weight:500;color:var(--tp)">${esc(c.sales)||'—'}</td>
+      <td><span class="${n.cls}">${n.t}</span>${dots(c.follow_stage||0)}</td>
+      <td><div class="acts">
+        <button class="ab ag" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button>
+        <button class="ab ab2" onclick="event.stopPropagation();openLog('${c.id}')">📝</button>
+        <button class="ab ac" onclick="event.stopPropagation();openEdit('${c.id}')">编辑</button>
+        <div class="more-dd-btn" onclick="event.stopPropagation();toggleDD(this)">···<div class="dd">${isAdm()||c.sales===CU?`<div class="ddi" onclick="transfer('${c.id}')">👤 转移</div>`:''}<div class="ddi danger" onclick="delCus('${c.id}')">🗑 删除</div></div></div>
+      </div></td>
+    </tr>`;}).join('');
+
+  const pageNums=[];
+  for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
+  const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button></div>`;
+
+  return tbHtml('客户列表',`共 ${total} 条`,`<button onclick="batchExport(window._filtered)" class="btn bg">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  <div class="fsec">
+    <div class="frow">
+      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(fS)}" oninput="fS=this.value;cusPage=1;render()" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
+      ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
+      <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
+      <select class="fsel" onchange="fRating=this.value;cusPage=1;render()"><option value="全部">全部评级</option>${RATINGS.map(r=>`<option value="${r}" ${fRating===r?'selected':''}>${r}级</option>`).join('')}</select>
+      <button class="more-filter-btn" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
+    </div>
+    <div id="adv-filters" ${advFiltersOpen?'class="open"':''}>
+      <select class="fsel" onchange="fCo=this.value;cusPage=1;render()"><option value="全部">全部国家</option>${coOpts.map(s=>`<option ${fCo===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
+      <select class="fsel" onchange="fSrc=this.value;cusPage=1;render()"><option value="全部">全部来源</option>${SOURCES.map(s=>`<option ${fSrc===s?'selected':''}>${s}</option>`).join('')}</select>
+      <select class="fsel" onchange="fCtype=this.value;cusPage=1;render()"><option value="全部">全部类型</option>${CTYPES.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}</select>
+      <button onclick="fDup=!fDup;cusPage=1;render()" style="padding:7px 12px;border-radius:var(--r);border:1px solid ${fDup?'var(--danger)':'var(--border)'};background:${fDup?'var(--danger-l)':'transparent'};color:${fDup?'var(--danger)':'var(--ts)'};font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">⚠ ${fDup?'已筛重复':'筛重复'}</button>
+    </div>
+    <div class="frow">
+      <span class="flbl">创建时间：</span>
+      ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['近15天','15'],['本月','month'],['上月','lastmonth'],['全部','all'],['自定义','custom']].map(([l,v])=>`<span class="pill ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</span>`).join('')}
+      ${fDateRange==='custom'?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px"><input type="date" value="${fDateStart}" onchange="fDateStart=this.value" id="cs1" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><span style="font-size:12px;color:var(--tt)">至</span><input type="date" value="${fDateEnd}" onchange="fDateEnd=this.value" id="cs2" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><button onclick="setCusDR('custom2')" style="padding:5px 12px;border-radius:var(--r);border:none;background:var(--brand);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">确定</button></div>`:''}
+    </div>
+  </div>
+  ${selIds.size>0?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 16px;background:var(--warn-l);border-radius:var(--r2);border:1px solid rgba(255,149,0,.2);align-items:center">
+    <span style="font-size:12px;font-weight:600;color:var(--warn)">已选 ${selIds.size} 条</span>
+    <button onclick="batchStatus()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--warn);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✏ 改状态</button>
+    <button onclick="batchTransfer()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--brand);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">👤 转移</button>
+    <button onclick="batchProducts()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--purple);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📦 改产品</button>
+    <button onclick="batchCtype()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🏢 改类型</button>
+    <button onclick="batchDel()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🗑 删除</button>
+    <button onclick="selIds.clear();render()" style="padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:12px;cursor:pointer;font-family:inherit">✕ 取消</button>
+  </div>`:''}
+  <div class="tc">
+    <div class="tc-head">
+      <span class="tc-title">全部客户 <span style="font-size:12px;color:var(--tt);font-weight:400">${total}条</span></span>
+      <select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select>
+    </div>
+    <div class="tscroll"><table>
+      <thead><tr>
+        <th style="width:36px;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></th>
+        <th>创建时间</th><th style="min-width:160px">客户</th>
+        <th class="col-hide">评级/标签</th><th class="col-hide" style="min-width:200px">邮箱/电话</th>
+        <th class="col-hide">国家</th><th class="col-hide">状态</th>
+        <th class="col-hide">来源</th><th class="col-hide">负责人</th>
+        <th style="min-width:110px">下次跟进</th><th style="min-width:160px;text-align:right;padding-right:20px">操作</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    ${pageBar}
+  </div>
+  </div>`;
+}
+
+// ===== TASKS =====
+function renderTasks(){
+  const list=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU));
+  if(!list.length)return tbHtml('今日待办',T(),`<button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-ttl">今日无待办</div><div style="font-size:13px">所有客户跟进正常</div></div></div>`;
+  return tbHtml('今日待办',`${T()} · ${list.length}条需跟进`,`<button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  <div style="display:flex;flex-direction:column;gap:3px">
+    ${list.map(c=>{
+      const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id).slice(0,1);
+      const wa=waLink(c.phone),ml=mailLink(c.email);
+      return`<div class="task-row">${ratingBadge(c.rating)}<div class="tinfo"><div class="tname"><span style="cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</span><span class="badge s-${c.status||''}">${c.status||'未设置'}</span>${isNoResp(c)?'<span style="font-size:10px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:1px 6px;border-radius:4px">●超15天未回</span>':''}</div><div class="tmeta">${esc(c.country||'—')} · ${esc(c.source||'—')} · ${esc(c.sales)}</div>${cl.length?`<div class="tprev">${esc(cl[0].notes)}</div>`:''}</div><div class="tr-right"><div class="${n.cls}" style="white-space:nowrap">${n.t}</div>${wa?`<button class="wa-btn" onclick="window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''} ${ml?`<button class="mail-btn" onclick="window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}<button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></div>`;
+    }).join('')}
+  </div>
+  </div>`;
+}
+
+// ===== SEA =====
+function renderSea(){
+  let list=ALL.filter(isSea);
+  if(seaS){const q=seaS.toLowerCase();list=list.filter(c=>c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.country?.toLowerCase().includes(q)||c.sales?.toLowerCase().includes(q));}
+  const total=list.length;
+  const totalPages=Math.max(1,Math.ceil(total/seaPageSize));
+  if(seaPage>totalPages)seaPage=totalPages;
+  const paged=list.slice((seaPage-1)*seaPageSize,seaPage*seaPageSize);
+  if(!total)return tbHtml('公海客户','超30天未跟进，任意销售可认领','')+`<div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">没有公海客户</div></div></div>`;
+  const pageNums=[];
+  for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-seaPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
+  const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="seaPageSize=+this.value;seaPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${seaPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="seaPage=Math.max(1,seaPage-1);render()" ${seaPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${seaPage===n?'on':''}" onclick="seaPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="seaPage=Math.min(${totalPages},seaPage+1);render()" ${seaPage===totalPages?'disabled':''}>›</button></div>`;
+  const rows=paged.map(c=>{
+    const wa=waLink(c.phone),ml=mailLink(c.email);
+    const lastLog=LOGS.filter(l=>l.customer_id===c.id).sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1)[0];
+    return`<tr><td style="padding-left:20px"><div style="font-size:13px;font-weight:600;cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt);margin-top:1px">${esc(c.company)}</div></td>
+    <td class="col-hide" style="font-size:12px">${ml?`<div style="color:var(--brand);display:flex;align-items:center;gap:4px">✉ ${esc(c.email)}<button class="mail-btn" onclick="window.open('${ml}','_blank')">✉</button></div>`:''}${wa?`<div style="color:var(--ts);display:flex;align-items:center;gap:4px;margin-top:2px">📞 ${esc(c.phone)}<button class="wa-btn" onclick="window.open('${wa}','_blank')">💬</button></div>`:''}${!c.email&&!c.phone?'<span style="color:var(--border)">—</span>':''}</td>
+    <td class="col-hide" style="font-size:12px;color:var(--ts)">${esc(c.country)||'—'}</td>
+    <td class="col-hide" style="font-size:12px;font-weight:500">${esc(c.sales)||'—'}</td>
+    <td class="col-hide">${ratingBadge(c.rating)}</td>
+    <td class="col-hide" style="max-width:200px">${lastLog?`<div style="font-size:11px;color:var(--tt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lastLog.notes)}</div><div style="font-size:10px;color:var(--tt);margin-top:1px">${fmt(lastLog.log_date||lastLog.created_at)}</div>`:'<span style="color:var(--border);font-size:12px">—</span>'}</td>
+    <td><div class="acts"><button class="ab ac" onclick="openDetail('${c.id}')">详情</button><button class="ab ag" onclick="claimSea('${c.id}')">认领</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></td></tr>`;
+  }).join('');
+  return tbHtml('公海客户',`${total}条 · 超30天未跟进，任意销售可认领`,`<button class="btn bg" onclick="batchExport([...ALL.filter(isSea)])">📤 导出</button>`)+`
+  <div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(seaS)}" oninput="seaS=this.value;seaPage=1;render()" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div>
+  <div class="tc">
+    <div class="tc-head"><span class="tc-title">公海客户 <span style="font-size:12px;color:var(--tt);font-weight:400">${total}条</span></span></div>
+    <div class="tscroll"><table>
+      <thead><tr><th style="padding-left:20px;min-width:160px">客户</th><th class="col-hide" style="min-width:200px">邮箱/电话</th><th class="col-hide">国家</th><th class="col-hide">原负责人</th><th class="col-hide">评级</th><th class="col-hide" style="min-width:180px">最后日志</th><th>操作</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table></div>
+    ${pageBar}
+  </div>
+  </div>`;
+}
+
+// ===== ACTIONS =====
 async function followUp(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
   const t=T(),ns=Math.min((c.follow_stage||0)+1,5);
@@ -346,28 +776,175 @@ async function followUp(id){
   await db.from('follow_logs').insert([{customer_id:id,sales:CU,stage_label:SLABELS[ns]||'已完成',notes:'标记已跟进',status_update:'',log_date:t}]);
   toast(`✅ ${SLABELS[ns]||'跟进完成'}`);await load();
 }
-
 async function claimSea(id){
   const t=T();
   await db.from('customers').update({sales:CU,last_follow_date:t,follow_stage:1,first_follow_date:t,next_follow_date:addD(t,3)}).eq('id',id);
   toast('✅ 已认领，开始跟进');await load();
 }
-
 async function transfer(id){
   const tgt=prompt('转移给谁？\n'+SALES.join(' / '));
   if(!tgt||!SALES.includes(tgt)){toast('销售人员不存在');return;}
   await db.from('customers').update({sales:tgt}).eq('id',id);
   toast(`✅ 已转移给 ${tgt}`);await load();
 }
-
 async function delCus(id){
   if(!confirm('确定删除？'))return;
   await db.from('follow_logs').delete().eq('customer_id',id);
   await db.from('customers').delete().eq('id',id);
-  selIds.delete(id);
-  toast('已删除');await load();
+  selIds.delete(id);toast('已删除');await load();
+}
+function toggleSel(id,checked){if(checked)selIds.add(id);else selIds.delete(id);render();}
+function toggleAll(cb){document.querySelectorAll('.row-sel').forEach(b=>{if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);});render();}
+async function batchDel(){
+  if(!confirm(`确定删除选中的 ${selIds.size} 条客户记录？`))return;
+  const ids=[...selIds];
+  await db.from('follow_logs').delete().in('customer_id',ids);
+  await db.from('customers').delete().in('id',ids);
+  selIds.clear();toast(`✅ 已删除 ${ids.length} 条`);await load();
+}
+async function batchStatus(){
+  const opts=STATUSES.filter(s=>s);
+  const s=prompt(`批量改状态（选中 ${selIds.size} 条）\n请输入：\n${opts.join(' / ')}`);
+  if(!s)return;if(!opts.includes(s)){toast('状态不存在');return;}
+  const{error}=await db.from('customers').update({status:s}).in('id',[...selIds]);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);selIds.clear();await load();
+}
+async function batchTransfer(){
+  const tgt=prompt(`批量转移（选中 ${selIds.size} 条）\n请输入销售姓名：\n${SALES.join(' / ')}`);
+  if(!tgt||!SALES.includes(tgt)){toast('销售人员不存在');return;}
+  const{error}=await db.from('customers').update({sales:tgt}).in('id',[...selIds]);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已将 ${selIds.size} 条转移给 ${tgt}`);selIds.clear();await load();
+}
+async function batchProducts(){
+  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
+  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+async function confirmBatchProducts(){
+  const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
+  if(!selected.length){toast('请至少选一个');return;}
+  const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
+}
+async function batchCtype(){
+  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
+  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">🏢 批量改客户类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bct-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择客户类型</label><div class="prod-tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="ptag" onclick="document.querySelectorAll('#bct-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${p}</button>`).join('')}</div></div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bct-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchCtype()">确认</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+async function confirmBatchCtype(){
+  const sel=document.querySelector('#bct-tags .on');
+  if(!sel){toast('请选择一个');return;}
+  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
+}
+function batchExport(filtered){
+  const ids=[...selIds];
+  const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
+  if(!list.length){toast('没有可导出的数据');return;}
+  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
+  const fields=['name','company','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
+  const csvQ=v=>{const s=Array.isArray(v)?v.join(';'):String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
+  const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
+  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`佳龙客户_${T()}.csv`;a.click();
+  toast(`✅ 已导出 ${list.length} 条`);
 }
 
+// ===== FILTER HELPERS =====
+function setCusDR(v){
+  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
+  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
+  fDateRange=v;cusPage=1;render();
+}
+function toggleAdvFilters(){
+  advFiltersOpen=!advFiltersOpen;
+  const f=document.getElementById('adv-filters'),a=document.getElementById('adv-arrow');
+  if(f)f.classList.toggle('open',advFiltersOpen);
+  if(a)a.textContent=advFiltersOpen?'▴':'▾';
+}
+function toggleDD(btn){
+  document.querySelectorAll('.dd').forEach(d=>{if(d!==btn.querySelector('.dd'))d.classList.remove('open')});
+  btn.querySelector('.dd')?.classList.toggle('open');
+}
+
+// ===== DETAIL =====
+function openDetail(id){
+  const c=ALL.find(x=>x.id===id);if(!c)return;
+  const n=nfi(c);const dup=isDup(c,c.id);
+  const cl=LOGS.filter(l=>l.customer_id===id);
+  const wa=waLink(c.phone),ml=mailLink(c.email);
+  const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],['真空需求',c.vacuum_need],['自动化',c.automation_need],['包装物料',c.packaging_material],['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],['创建时间',fmtF(cusDate(c))]].filter(([,v])=>v);
+  const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ratingBadge(c.rating)} 👤 ${esc(c.name)}${c.company?`<span style="font-size:13px;color:var(--tt);font-weight:400">· ${esc(c.company)}</span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div><button class="modal-close" onclick="document.getElementById('detail-ov').remove()">×</button></div></div>
+  <div class="simple-body">
+    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
+      <span class="badge s-${c.status||''}">${c.status||'未设置'}</span><span class="${n.cls}">${n.t}</span>
+      ${isSea(c)?'<span class="sea-badge">公海</span>':''}
+      ${isNoResp(c)?'<span style="font-size:11px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:2px 8px;border-radius:4px">超15天未回</span>':''}
+      <span style="font-size:12px;color:var(--tt)">负责：${esc(c.sales)}</span>
+      <div style="margin-left:auto;display:flex;gap:6px">${ml?`<a href="${ml}" target="_blank" class="btn bg" style="padding:5px 11px;font-size:12px;text-decoration:none">✉ 发邮件</a>`:''}${wa?`<a href="${wa}" target="_blank" class="btn bg" style="padding:5px 11px;font-size:12px;text-decoration:none;color:var(--success);border-color:rgba(52,199,89,.3)">💬 WhatsApp</a>`:''}</div>
+    </div>
+    ${c.tags?.length?`<div style="margin-bottom:12px">${tagChips(c.tags)}</div>`:''}
+    <div class="det-grid">${fields.map(([k,v])=>`<div class="di"><div class="dk">${k}</div><div class="dv">${esc(v)}</div></div>`).join('')}</div>
+    ${c.products?.length?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:5px">产品兴趣</div><div>${c.products.map(p=>`<span class="badge" style="background:var(--brand-l);color:var(--brand);margin:2px">${p}</span>`).join('')}</div></div>`:''}
+    ${c.project_details?`<div style="margin-top:12px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:var(--surface2);padding:10px;border-radius:var(--r);line-height:1.6">${esc(c.project_details)}</div></div>`:''}
+    ${c.notes?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:var(--ts)">${esc(c.notes)}</div></div>`:''}
+    <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">跟进记录 (${cl.length}条)</div>${cl.length?cl.map(l=>`<div style="padding:8px 10px;background:var(--surface2);border-radius:var(--r);margin-bottom:4px"><div style="font-size:11px;color:var(--brand);font-weight:600;margin-bottom:3px">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''} · ${esc(l.sales)}</div><div style="font-size:12px;color:var(--ts)">${esc(l.notes)}</div></div>`).join(''):'<div style="color:var(--tt);font-size:12px">暂无记录</div>'}</div>
+  </div>
+  <div class="modal-footer"><button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button><button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button><button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button></div>
+  </div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+
+// ===== LOG DRAWER =====
+function openLog(id){LID=id;LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:''};renderLogDrawer();}
+function renderLogDrawer(){
+  document.getElementById('log-drawer')?.remove();
+  const c=ALL.find(x=>x.id===LID);if(!c)return;
+  const cl=LOGS.filter(l=>l.customer_id===LID);
+  const wa=waLink(c.phone),ml=mailLink(c.email);
+  const el=document.createElement('div');el.className='drawer-overlay';el.id='log-drawer';
+  el.innerHTML=`<div class="drawer">
+    <div class="drawer-header">
+      <button class="drawer-close" onclick="document.getElementById('log-drawer').remove()">×</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px">${ratingBadge(c.rating)}<span class="cus-name">${esc(c.name)}</span><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></div>
+      <div class="cus-meta"><span>${esc(c.country||'—')}</span><span>·</span><span>${esc(c.source||'—')}</span><span>·</span><span>${esc(c.sales)} 负责</span>${wa?`<a href="${wa}" target="_blank" class="wa-btn" style="margin-left:4px;text-decoration:none">💬</a>`:''}${ml?`<a href="${ml}" target="_blank" class="mail-btn" style="text-decoration:none">✉</a>`:''}</div>
+    </div>
+    <div class="drawer-body">
+      <div class="dfg"><label class="dfl">跟进阶段</label><div class="stage-pills">${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<span class="stage-pill ${LFD.stage_label===s?'on':''}" onclick="LFD.stage_label='${s}';this.closest('.stage-pills').querySelectorAll('.stage-pill').forEach(p=>p.classList.remove('on'));this.classList.add('on')">${s}</span>`).join('')}</div></div>
+      <div class="dfg"><label class="dfl">跟进日期</label><input class="dfi" type="date" value="${LFD.log_date}" onchange="LFD.log_date=this.value"/></div>
+      <div class="dfg"><label class="dfl">沟通详情</label><textarea class="dfi" oninput="LFD.notes=this.value" placeholder="留空则自动记录「标记已跟进」">${esc(LFD.notes)}</textarea></div>
+      <div class="dfg"><label class="dfl">本次沟通质量</label><div class="quality-pills">
+        <span class="qp qp-good" onclick="setQuality(this,'😊 客户主动回复','good')">😊 主动回复</span>
+        <span class="qp qp-good" onclick="setQuality(this,'📈 意向提升','good')">📈 意向提升</span>
+        <span class="qp qp-neutral" onclick="setQuality(this,'⏳ 客户推迟','neutral')">⏳ 客户推迟</span>
+        <span class="qp qp-neutral" onclick="setQuality(this,'🔄 待确认','neutral')">🔄 待确认</span>
+        <span class="qp qp-bad" onclick="setQuality(this,'😶 无回应','bad')">😶 无回应</span>
+        <span class="qp qp-bad" onclick="setQuality(this,'❌ 明确拒绝','bad')">❌ 明确拒绝</span>
+      </div></div>
+      <div class="dfg"><label class="dfl">更新客户状态（可选）</label><select class="dfi" onchange="LFD.status_update=this.value">${STATUSES.map(s=>`<option value="${s}">${s||'（不修改）'}</option>`).join('')}</select></div>
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border-l);margin-bottom:16px">
+        <input type="checkbox" id="advance-stage" checked style="width:15px;height:15px;cursor:pointer;accent-color:var(--brand)"/>
+        <label for="advance-stage" style="font-size:13px;cursor:pointer;color:var(--ts)">推进跟进阶段 <span style="color:var(--tt);font-size:11px">（补录历史时取消勾选）</span></label>
+      </div>
+      <div style="margin-top:4px">
+        <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">历史记录 (${cl.length}条)</div>
+        ${cl.length?cl.map(l=>`<div class="hist-item"><div class="hist-date">${(l.log_date||l.created_at?.split('T')[0]||'').slice(5)}</div><div class="hist-content"><div class="hist-stage">${esc(l.stage_label||'—')}${l.status_update?` → ${l.status_update}`:''}</div><div class="hist-text">${esc(l.notes)}</div></div><div class="hist-acts"><button class="ha" onclick="editLog('${l.id}')">编辑</button><button class="ha del" onclick="deleteLog('${l.id}')">删</button></div></div>`).join(''):'<div style="color:var(--tt);font-size:12px;padding:8px 0">暂无历史记录</div>'}
+      </div>
+    </div>
+    <div class="drawer-footer"><button class="btn bg" onclick="document.getElementById('log-drawer').remove()">关闭</button><button class="btn bp" onclick="saveLog()">保存日志</button></div>
+  </div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+function setQuality(el,val,type){
+  const was=el.classList.contains('on');
+  el.closest('.quality-pills').querySelectorAll('.qp').forEach(p=>p.classList.remove('on'));
+  if(!was){el.classList.add('on');LFD.quality=val;}else{LFD.quality='';}
+}
 async function saveLog(){
   const logDate=LFD.log_date||T();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
@@ -382,958 +959,179 @@ async function saveLog(){
   else upd.next_follow_date=null;
   if(LFD.status_update)upd.status=LFD.status_update;
   await db.from('customers').update(upd).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate}]);
-  toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T()};
-  await load();renderLogM(LID);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate,quality:LFD.quality||''}]);
+  toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:''};
+  await load();renderLogDrawer();
 }
-
 async function editLog(logId){
   const log=LOGS.find(l=>l.id===logId);if(!log)return;
-  const newNotes=prompt('修改沟通详情：',log.notes);
-  if(newNotes===null)return;
+  const newNotes=prompt('修改沟通详情：',log.notes);if(newNotes===null)return;
   const curDate=log.log_date||log.created_at?.split('T')[0];
-  const newDate=prompt('修改跟进日期（格式 2024-03-15）：',curDate);
-  if(newDate===null)return;
+  const newDate=prompt('修改跟进日期（格式 2024-03-15）：',curDate);if(newDate===null)return;
   const fd=fixDate(newDate)||curDate;
   await db.from('follow_logs').update({notes:newNotes.trim(),log_date:fd}).eq('id',logId);
-  toast('✅ 日志已更新');await load();renderLogM(LID);
+  toast('✅ 日志已更新');await load();renderLogDrawer();
 }
-
 async function deleteLog(logId){
   if(!confirm('确定删除这条跟进记录？'))return;
   await db.from('follow_logs').delete().eq('id',logId);
   const remaining=LOGS.filter(l=>l.customer_id===LID&&l.id!==logId);
-  const c=ALL.find(x=>x.id===LID);if(c){
-    if(remaining.length===0){
-      await db.from('customers').update({follow_stage:0,first_follow_date:null,last_follow_date:null,next_follow_date:null}).eq('id',LID);
-    } else {
-      const sorted=remaining.sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1);
-      const latest=sorted[0];
-      const latestDate=latest.log_date||latest.created_at?.split('T')[0];
-      const ns=Math.min(remaining.length,5);
-      const first=sorted[sorted.length-1];
-      const firstDate=first.log_date||first.created_at?.split('T')[0];
-      const nextMap={1:addD(firstDate,3),2:addD(firstDate,7),3:addD(firstDate,15),4:addD(firstDate,30),5:null};
-      await db.from('customers').update({follow_stage:ns,first_follow_date:firstDate,last_follow_date:latestDate,next_follow_date:nextMap[ns]||null}).eq('id',LID);
-    }
+  const c=ALL.find(x=>x.id===LID);
+  if(c){
+    if(remaining.length===0){await db.from('customers').update({follow_stage:0,first_follow_date:null,last_follow_date:null,next_follow_date:null}).eq('id',LID);}
+    else{const sorted=remaining.sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1);const first=sorted[sorted.length-1];const firstDate=first.log_date||first.created_at?.split('T')[0];const ns=Math.min(remaining.length,5);const nextMap={1:addD(firstDate,3),2:addD(firstDate,7),3:addD(firstDate,15),4:addD(firstDate,30),5:null};await db.from('customers').update({follow_stage:ns,first_follow_date:firstDate,last_follow_date:sorted[0].log_date||sorted[0].created_at?.split('T')[0],next_follow_date:nextMap[ns]||null}).eq('id',LID);}
   }
-  toast('已删除');await load();renderLogM(LID);
+  toast('已删除');await load();renderLogDrawer();
 }
 
-function toggleSel(id,checked){
-  if(checked)selIds.add(id);else selIds.delete(id);
-  render();
+// ===== EDIT/ADD MODAL (TABS) =====
+function openAdd(){
+  EID=null;
+  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',vacuum_need:'',automation_need:'',customer_type:'',self_type:'',purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,status:'',custom_date:T(),first_record_date:'',notes:'',rating:'',tags:[]};
+  showFormModal('新建客户',0);
 }
-
-function toggleAll(cb){
-  const boxes=document.querySelectorAll('.row-sel');
-  boxes.forEach(b=>{
-    if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);
-  });
-  render();
+function openEdit(id){
+  const c=ALL.find(x=>x.id===id);if(!c)return;
+  EID=id;FD={...c,products:[...(c.products||[])],tags:[...(c.tags||[])]};
+  showFormModal(`编辑客户 — ${c.name}`,0);
 }
-
-async function batchDel(){
-  if(!confirm(`确定删除选中的 ${selIds.size} 条客户记录？此操作不可恢复。`))return;
-  const ids=[...selIds];
-  await db.from('follow_logs').delete().in('customer_id',ids);
-  await db.from('customers').delete().in('id',ids);
-  selIds.clear();
-  toast(`✅ 已删除 ${ids.length} 条`);
-  await load();
-}
-
-async function batchStatus(){
-  const opts=STATUSES.filter(s=>s);
-  const s=prompt(`批量改状态（选中 ${selIds.size} 条）\n请输入：\n${opts.join(' / ')}`);
-  if(!s)return;
-  if(!opts.includes(s)){toast('状态不存在，请重新输入');return;}
-  const ids=[...selIds];
-  const{error}=await db.from('customers').update({status:s}).in('id',ids);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${ids.length} 条客户改为「${s}」`);
-  selIds.clear();await load();
-}
-
-async function batchTransfer(){
-  const tgt=prompt(`批量转移负责人（选中 ${selIds.size} 条）\n请输入销售姓名：\n${SALES.join(' / ')}`);
-  if(!tgt)return;
-  if(!SALES.includes(tgt)){toast('销售人员不存在');return;}
-  const ids=[...selIds];
-  const{error}=await db.from('customers').update({sales:tgt}).in('id',ids);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${ids.length} 条客户转移给 ${tgt}`);
-  selIds.clear();await load();
-}
-
-async function batchProducts(){
-  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
-  el.innerHTML=`<div class="modal msm">
-    <div class="mh"><div class="mt">📦 批量改产品类型（${selIds.size}条）</div><button class="xb" onclick="document.getElementById('bp-ov').remove()">×</button></div>
-    <div class="mb">
-      <div class="fg"><label class="fl">选择产品类型（可多选）</label>
-        <div class="tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="tag toff" onclick="this.classList.toggle('ton');this.classList.toggle('toff')">${p}</button>`).join('')}</div>
+function showFormModal(title,activeTab){
+  document.getElementById('form-ov')?.remove();
+  const d=FD;
+  const salesRow=isAdm()?`<div class="fg"><label class="fl">负责销售</label><select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`:`<div class="fg"><label class="fl">负责销售</label><div style="padding:8px 11px;background:var(--surface2);border-radius:var(--r);font-size:13px;font-weight:600">${CU}</div></div>`;
+  const el=document.createElement('div');el.className='overlay';el.id='form-ov';
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">${title}</div><button class="modal-close" onclick="document.getElementById('form-ov').remove()">×</button></div>
+  <div class="tabs" id="form-tabs">${['基本信息','产品需求','业务信息','CRM'].map((t,i)=>`<div class="tab ${i===activeTab?'on':''}" onclick="switchFormTab(${i})">${t}</div>`).join('')}</div></div>
+  <div class="modal-body">
+    <div class="tab-panel ${activeTab===0?'on':''}" id="ft0">
+      <div class="g2"><div class="fg"><label class="fl">客户姓名 <span style="color:var(--danger)">*</span></label><input class="fi" value="${esc(d.name)}" oninput="FD.name=this.value" placeholder="联系人姓名"/></div><div class="fg"><label class="fl">公司名称</label><input class="fi" value="${esc(d.company)}" oninput="FD.company=this.value"/></div></div>
+      <div class="g2"><div class="fg"><label class="fl">邮箱</label><input class="fi" type="email" value="${esc(d.email)}" oninput="FD.email=this.value"/></div><div class="fg"><label class="fl">电话</label><input class="fi" value="${esc(d.phone)}" oninput="FD.phone=this.value"/></div></div>
+      <div class="g3"><div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写"/></div><div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div></div>
+      <div class="fg"><label class="fl">创建时间 <span style="color:var(--tt);font-weight:400;font-size:11px">（可修改，用于历史客户）</span></label><input class="fi" type="date" value="${esc(d.custom_date||T())}" onchange="FD.custom_date=this.value"/></div>
+    </div>
+    <div class="tab-panel ${activeTab===1?'on':''}" id="ft1">
+      <div class="fg"><label class="fl">产品类型（可多选）</label><div class="prod-tags" id="ptags">${PRODUCTS.map(p=>`<button type="button" class="ptag ${d.products.includes(p)?'on':''}" onclick="toggleProd('${p}')">${p}</button>`).join('')}</div></div>
+      <div class="g3"><div class="fg"><label class="fl">包装物料</label><input class="fi" value="${esc(d.packaging_material)}" oninput="FD.packaging_material=this.value" placeholder="食品/电子…"/></div><div class="fg"><label class="fl">包装重量</label><input class="fi" value="${esc(d.packaging_weight)}" oninput="FD.packaging_weight=this.value" placeholder="5-10kg"/></div><div class="fg"><label class="fl">包装速度</label><input class="fi" value="${esc(d.packaging_speed)}" oninput="FD.packaging_speed=this.value" placeholder="30包/分钟"/></div></div>
+      <div class="g2"><div class="fg"><label class="fl">真空需求</label><select class="fi" onchange="FD.vacuum_need=this.value"><option value="">—</option>${VACUUM.map(s=>`<option ${d.vacuum_need===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">自动化需求</label><select class="fi" onchange="FD.automation_need=this.value"><option value="">—</option>${AUTO.map(s=>`<option ${d.automation_need===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
+    </div>
+    <div class="tab-panel ${activeTab===2?'on':''}" id="ft2">
+      <div class="g2"><div class="fg"><label class="fl">客户类型</label><select class="fi" onchange="FD.customer_type=this.value"><option value="">—</option>${CTYPES.map(s=>`<option ${d.customer_type===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="贸易商、小型工厂…"/></div></div>
+      <div class="g2"><div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div><div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${esc(d.first_record_date||'')}" onchange="FD.first_record_date=this.value"/></div></div>
+      <div class="fg"><label class="fl">项目详情</label><textarea class="fi" rows="3" oninput="FD.project_details=this.value" placeholder="客户背景、具体需求…">${esc(d.project_details)}</textarea></div>
+      <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新备注…">${esc(d.notes)}</textarea></div>
+    </div>
+    <div class="tab-panel ${activeTab===3?'on':''}" id="ft3">
+      <div class="g2">${salesRow}<div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div></div>
+      <div class="fg"><label class="fl">客户评级</label>
+        <div style="display:flex;gap:8px;margin-top:2px" id="rating-btns">${RATINGS.map(r=>`<div class="rs ${d.rating===r?'sel-'+r:''}" onclick="setFDRating('${r}')">${r}</div>`).join('')}</div>
+        <div style="font-size:11px;color:var(--tt);margin-top:6px">A = 高优先级（橙）· B = 积极跟进（蓝）· C = 冷跟进（青）· D = 低意向（灰）</div>
       </div>
-      <div style="font-size:12px;color:#94a3b8;margin-top:8px">⚠ 会替换选中客户的产品类型，不是追加</div>
+      <div class="fg"><label class="fl">自定义标签 <span style="color:var(--tt);font-weight:400;font-size:11px">（输入后回车添加）</span></label>
+        <div class="tags-wrap" id="tags-wrap-edit" onclick="document.getElementById('tag-input-edit').focus()">
+          ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
+          <input id="tag-input-edit" type="text" placeholder="输入标签回车添加…" style="border:none;outline:none;font-size:12px;color:var(--tp);background:transparent;font-family:inherit;min-width:80px;flex:1" onkeydown="addTagEdit(event)"/>
+        </div>
+      </div>
     </div>
-    <div class="mf">
-      <button class="btn-s" onclick="document.getElementById('bp-ov').remove()">取消</button>
-      <button class="btn-p" onclick="confirmBatchProducts()">确认修改</button>
-    </div>
+  </div>
+  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('form-ov').remove()">取消</button><button class="btn bp" onclick="saveCus()">保存</button></div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
+function switchFormTab(i){
+  document.querySelectorAll('#form-tabs .tab').forEach((t,j)=>t.classList.toggle('on',j===i));
+  document.querySelectorAll('[id^="ft"]').forEach((p,j)=>p.classList.toggle('on',j===i));
+}
+function setFDRating(r){
+  FD.rating=FD.rating===r?'':r;
+  document.getElementById('rating-btns').querySelectorAll('.rs').forEach((b,i)=>{RATINGS.forEach(rr=>b.classList.remove('sel-'+rr));if(RATINGS[i]===FD.rating)b.classList.add('sel-'+RATINGS[i]);});
+}
+function toggleProd(p){
+  if(FD.products.includes(p))FD.products=FD.products.filter(x=>x!==p);else FD.products.push(p);
+  document.getElementById('ptags').innerHTML=PRODUCTS.map(pp=>`<button type="button" class="ptag ${FD.products.includes(pp)?'on':''}" onclick="toggleProd('${pp}')">${pp}</button>`).join('');
+}
+function addTagEdit(e){
+  if(e.key==='Enter'){e.preventDefault();const val=e.target.value.trim();if(!val||FD.tags.includes(val))return;FD.tags.push(val);e.target.value='';const wrap=document.getElementById('tags-wrap-edit');const chip=document.createElement('span');chip.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)';chip.innerHTML=`${esc(val)}<span onclick="removeTagEdit('${esc(val)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span>`;wrap.insertBefore(chip,e.target);}
+}
+function removeTagEdit(tag){FD.tags=FD.tags.filter(t=>t!==tag);showFormModal(EID?`编辑客户 — ${FD.name}`:'新建客户',3);}
 
-async function confirmBatchProducts(){
-  const selected=[...document.querySelectorAll('#bp-tags .ton')].map(b=>b.textContent);
-  if(!selected.length){toast('请至少选择一个产品类型');return;}
-  const ids=[...selIds];
-  const{error}=await db.from('customers').update({products:selected}).in('id',ids);
+async function saveCus(){
+  if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
+  const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[]};
+  if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
+  const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
   if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已更新 ${ids.length} 条客户的产品类型`);
-  document.getElementById('bp-ov')?.remove();
-  selIds.clear();await load();
+  toast(EID?'✅ 已更新':'✅ 添加成功');document.getElementById('form-ov')?.remove();await load();
 }
 
-async function batchCtype(){
-  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
-  el.innerHTML=`<div class="modal msm">
-    <div class="mh"><div class="mt">🏢 批量改客户类型（${selIds.size}条）</div><button class="xb" onclick="document.getElementById('bct-ov').remove()">×</button></div>
-    <div class="mb">
-      <div class="fg"><label class="fl">选择客户类型</label>
-        <div class="tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="tag toff" onclick="document.querySelectorAll('#bct-tags .tag').forEach(b=>{b.classList.remove('ton');b.classList.add('toff')});this.classList.add('ton');this.classList.remove('toff')">${p}</button>`).join('')}</div>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn-s" onclick="document.getElementById('bct-ov').remove()">取消</button>
-      <button class="btn-p" onclick="confirmBatchCtype()">确认修改</button>
-    </div>
+// ===== IMPORT =====
+function openImport(){
+  document.getElementById('imp-ov')?.remove();
+  const el=document.createElement('div');el.className='overlay';el.id='imp-ov';
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">📥 批量导入客户</div><button class="modal-close" onclick="document.getElementById('imp-ov').remove()">×</button></div></div>
+  <div class="simple-body">
+    <p style="font-size:13px;color:var(--ts);margin-bottom:12px">第一行为表头，从第二行开始填数据。创建时间格式：2024-03-15</p>
+    <div class="imp-tpl">姓名,公司,邮箱,电话,来源,国家,地区,负责销售,状态,包装物料,包装重量,包装速度,真空需求,自动化需求,客户类型,客户性质,预计购买,项目详情,备注,创建时间
+张三,ABC公司,zhang@abc.com,+8613800000001,阿里巴巴,印度,孟买,Jacky,潜在,食品,25-50kg,30包/分钟,有,全自动,终端客户,小型工厂,Q3 2025,需要整套包装线,有意向,2024-01-15</div>
+    <div class="fg"><label class="fl">粘贴 CSV 数据</label><textarea class="fi" id="imp-txt" rows="8" placeholder="粘贴 CSV 内容…"></textarea></div>
+    <div style="display:flex;gap:10px;align-items:center"><label style="padding:7px 13px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;cursor:pointer;background:var(--surface2);color:var(--ts)">📁 选择文件 <input type="file" accept=".csv,.txt" style="display:none" onchange="loadFile(this)"/></label><span id="fn" style="font-size:12px;color:var(--tt)"></span></div>
+  </div>
+  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('imp-ov').remove()">取消</button><button class="btn bp" onclick="doImp()">导入</button></div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
-
-async function confirmBatchCtype(){
-  const sel=document.querySelector('#bct-tags .ton');
-  if(!sel){toast('请选择一个客户类型');return;}
-  const ids=[...selIds];
-  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',ids);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${ids.length} 条客户改为「${sel.textContent}」`);
-  document.getElementById('bct-ov')?.remove();
-  selIds.clear();await load();
+function loadFile(inp){
+  const f=inp.files[0];if(!f)return;document.getElementById('fn').textContent=f.name;
+  const tryRead=(enc)=>{const r=new FileReader();r.onload=e=>{const txt=e.target.result;if(enc==='UTF-8'&&txt.includes('\uFFFD')){tryRead('GBK');}else{document.getElementById('imp-txt').value=txt;}};r.readAsText(f,enc);};tryRead('UTF-8');
+}
+function parseCSV(raw){
+  const rows=[];let cur='',inQ=false,fields=[];
+  for(let i=0;i<raw.length;i++){const ch=raw[i],nx=raw[i+1];if(ch==='"'){if(inQ&&nx==='"'){cur+='"';i++;}else inQ=!inQ;}else if(ch===','&&!inQ){fields.push(cur.trim());cur='';}else if((ch==='\n'||ch==='\r')&&!inQ){if(ch==='\r'&&nx==='\n')i++;fields.push(cur.trim());cur='';if(fields.some(f=>f!==''))rows.push(fields);fields=[];}else{cur+=ch;}}
+  if(cur||fields.length){fields.push(cur.trim());if(fields.some(f=>f!==''))rows.push(fields);}
+  return rows;
+}
+function fixDate(s){if(!s)return null;const m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);if(!m)return null;return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;}
+async function doImp(){
+  const raw=document.getElementById('imp-txt')?.value;if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
+  const rows=parseCSV(raw);if(rows.length<2){toast('至少需要表头+一行数据');return;}
+  const headers=rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
+  const map={姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',创建时间:'custom_date'};
+  const data=[];
+  for(let i=1;i<rows.length;i++){const vals=rows[i];const obj={products:[],tags:[],rating:''};headers.forEach((h,j)=>{if(map[h])obj[map[h]]=(vals[j]||'').trim();});if(!obj.name)continue;if(!obj.sales)obj.sales=CU;obj.custom_date=fixDate(obj.custom_date)||T();data.push(obj);}
+  if(!data.length){toast('没有有效数据行');return;}
+  let total=0;
+  for(let i=0;i<data.length;i+=50){const batch=data.slice(i,i+50);const{error}=await db.from('customers').insert(batch);if(error){toast(`导入失败(第${i+1}行起): ${error.message}`);return;}total+=batch.length;}
+  toast(`✅ 成功导入 ${total} 条`);document.getElementById('imp-ov')?.remove();await load();
 }
 
-function batchExport(filtered){
-  const ids=[...selIds];
-  const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
-  if(!list.length){toast('没有可导出的数据');return;}
-  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
-  const fields=['name','company','email','phone','source','country','region','sales','status','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
-  const csvQ=v=>{const s=String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
-  const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
-  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);
-  a.download=`佳龙客户_${T()}.csv`;a.click();
-  toast(`✅ 已导出 ${list.length} 条`);
-}
-
+// ===== AUTH =====
 function login(n){
-  const pwd=prompt(`请输入 ${n} 的登录密码：`);
-  if(pwd===null)return;
+  const pwd=prompt(`请输入 ${n} 的登录密码：`);if(pwd===null)return;
   if(pwd!==PASSWORDS[n]){toast('❌ 密码错误');return;}
   CU=n;localStorage.setItem('crm_u',n);
   document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='block';
-  document.getElementById('uname').textContent=n;
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-av').textContent=n.slice(0,2);
+  document.getElementById('user-name-sb').textContent=n;
+  document.getElementById('user-role-sb').textContent=isAdm()?'管理员 · 全部数据':'销售';
   load();
 }
 function logout(){
-  localStorage.removeItem('crm_u');CU=null;selIds.clear();
+  localStorage.removeItem('crm_u');CU=null;selIds.clear();dashSales='全部';
   document.getElementById('login-screen').style.display='flex';
   document.getElementById('app').style.display='none';
 }
 
-function setView(v){
-  VIEW=v;
-  ['dashboard','customers','tasks','sea'].forEach(k=>{
-    const b=document.getElementById('nb-'+k);
-    if(b)b.classList.toggle('active',k===v);
-  });
-  render();
-}
-
-function render(){
-  applyFilter();
-  const el=document.getElementById('main');if(!el)return;
-  if(VIEW==='dashboard')el.innerHTML=renderDash();
-  else if(VIEW==='customers')el.innerHTML=renderCus();
-  else if(VIEW==='tasks')el.innerHTML=renderTasks();
-  else if(VIEW==='sea')el.innerHTML=renderSea();
-  if(VIEW==='dashboard')setTimeout(renderCharts,60);
-  updateBadge();
-}
-
-function updateBadge(){
-  const n=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).length;
-  const b=document.getElementById('nb-tasks');
-  if(b)b.textContent=`${n?'🔴':'⬜'} 待办${n?` (${n})`:''}`;
-}
-
-function renderDateFilterBar(range,start,end,onchange){
-  const opts=[['7','近7天'],['14','近14天'],['30','近30天'],['month','本月'],['lastmonth','上月'],['custom','自定义'],['all','全部']];
-  return`<div class="date-filter-bar">
-    ${opts.map(([v,l])=>`<button class="dfb ${range===v?'on':''}" onclick="${onchange}('${v}')">${l}</button>`).join('')}
-    ${range==='custom'?`<div class="custom-date-row">
-      <input type="date" value="${start}" onchange="dashDateStart=this.value" id="ds1"/>
-      <span style="font-size:12px;color:#94a3b8">至</span>
-      <input type="date" value="${end}" onchange="dashDateEnd=this.value" id="ds2"/>
-      <button onclick="${onchange}('custom2')">确定</button>
-    </div>`:''}
-  </div>`;
-}
-
-function setCusDR(v){
-  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
-  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
-  fDateRange=v;cusPage=1;render();
-}
-
-function setDashDR(v){
-  if(v==='custom'){dashDateRange='custom';dashDateStart='';dashDateEnd='';render();return;}
-  if(v==='custom2'){dashDateRange='custom';dashDateStart=document.getElementById('ds1')?.value||'';dashDateEnd=document.getElementById('ds2')?.value||'';render();return;}
-  dashDateRange=v;render();
-}
-
-function renderDash(){
-  const src=isAdm()&&DF==='全部'?ALL:CUS;
-  const bs=s=>src.filter(c=>c.status===s).length;
-  const todN=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).length;
-  const seaN=ALL.filter(isSea).length;
-  const dfHtml=isAdm()?`<div class="dash-filter">
-    <span style="font-size:12px;color:#94a3b8;font-weight:600">筛选销售：</span>
-    ${['全部',...SALES].map(s=>`<button class="df-btn ${DF===s?'on':''}" onclick="DF='${s}';applyFilter();render()">${s}</button>`).join('')}
-  </div>`:'';
-  const stats=[
-    ['总客户',src.length,'#3b82f6','all',null],
-    ['今日待办',todN,'#ef4444','tasks',null],
-    ['公海',seaN,'#f59e0b','sea',null],
-    ['潜在',bs('潜在'),'#3b82f6','status','潜在'],
-    ['意向',bs('意向'),'#d97706','status','意向'],
-    ['成交',bs('成交'),'#16a34a','status','成交'],
-    ['转交',bs('转交代理商'),'#0891b2','status','转交代理商'],
-    ['流失',bs('流失'),'#94a3b8','status','流失'],
-    ['垃圾',bs('垃圾'),'#f43f5e','status','垃圾'],
-  ];
-  return`${dfHtml}
-  <div class="stat-grid">
-    ${stats.map(([l,v,c,t,val])=>`<div class="stat-card" onclick="statClick('${t}','${val||''}')"><div class="stat-lbl">${l}</div><div class="stat-v" style="color:${c}">${v}</div></div>`).join('')}
-  </div>
-  <div class="chart-grid3">
-    <div class="chart-card" onclick="showDrill('country',null,event)">
-      <div class="chart-ttl">🌍 国家分布</div>
-      <div class="chart-wrap"><canvas id="cc"></canvas></div>
-    </div>
-    <div class="chart-card" onclick="showDrill('packaging_material',null,event)">
-      <div class="chart-ttl">📦 行业（包装物料）</div>
-      <div class="chart-wrap"><canvas id="cm"></canvas></div>
-    </div>
-    <div class="chart-card" onclick="showDrill('customer_type',null,event)">
-      <div class="chart-ttl">🏢 客户类型</div>
-      <div class="chart-wrap"><canvas id="cct"></canvas></div>
-    </div>
-  </div>
-  <div class="chart-grid2">
-    <div class="chart-card" onclick="showDrill('source',null,event)">
-      <div class="chart-ttl">📡 客户来源</div>
-      <div class="chart-wrap"><canvas id="csr"></canvas></div>
-    </div>
-    <div class="chart-card" onclick="showDrill('status',null,event)">
-      <div class="chart-ttl">📊 跟进阶段</div>
-      <div class="chart-wrap"><canvas id="cs"></canvas></div>
-    </div>
-  </div>
-  <div class="dash-row">
-    <div class="chart-card" onclick="showDrill('sales',null,event)">
-      <div class="chart-ttl">👤 各销售客户数</div>
-      <div class="chart-wrap"><canvas id="cv"></canvas></div>
-    </div>
-    <div class="tw" style="border-radius:12px">
-      <div style="padding:12px 14px;border-bottom:1px solid #f1f5f9">
-        <div class="chart-ttl" style="margin-bottom:8px">📅 新增客户统计</div>
-        ${renderDateFilterBar(dashDateRange,dashDateStart,dashDateEnd,'setDashDR')}
-      </div>
-      <div class="chart-wrap" style="padding:12px"><canvas id="cd"></canvas></div>
-    </div>
-  </div>
-  <div class="dash-row">
-    <div class="tw">
-      <div class="th"><span class="ttl">🔴 今日待办</span><span style="font-size:11px;color:#94a3b8">${todN}条</span></div>
-      ${renderTodMini(ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU)).slice(0,6))}
-    </div>
-    <div class="tw">
-      <div class="th"><span class="ttl">📈 销售业绩</span></div>
-      ${renderPerf(src)}
-    </div>
-  </div>`;
-}
-
-function renderTodMini(list){
-  if(!list.length)return'<div class="empty" style="padding:20px;font-size:13px">今天暂无待办 🎉</div>';
-  return list.map(c=>{const n=nfi(c);return`
-    <div style="padding:8px 13px;border-bottom:1px solid #f8fafc;display:flex;align-items:center;gap:8px">
-      <div style="flex:1"><div style="font-size:13px;font-weight:600">${esc(c.name)}</div>
-      <div style="font-size:11px;color:#94a3b8">${esc(c.sales)} · ${esc(c.country)}</div></div>
-      <span class="${n.cls}">${n.t}</span>
-      <button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button>
-    </div>`}).join('');
-}
-
-function renderPerf(src){
-  const rows=SALES.map(s=>{
-    const own=src.filter(c=>c.sales===s);
-    const won=own.filter(c=>c.status==='成交').length;
-    const tot=own.length;
-    return{s,won,tot,p:tot?Math.round(won/tot*100):0};
-  }).filter(x=>x.tot>0);
-  if(!rows.length)return'<div class="empty" style="padding:16px;font-size:13px">暂无数据</div>';
-  return rows.map(({s,won,tot,p})=>`<div class="perf-row">
-    <div class="perf-top"><span style="font-weight:500">${s}</span><span style="color:#64748b;font-size:12px">${won}/${tot} 成交·${p}%</span></div>
-    <div class="perf-bar"><div class="perf-fill" style="width:${p}%"></div></div>
-  </div>`).join('');
-}
-
-function getDashDays(){
-  const r=getDateRange(dashDateRange,dashDateStart,dashDateEnd);
-  if(!r||!r.s||!r.e)return Array.from({length:14},(_,i)=>addD(T(),i-13));
-  const days=[];let d=r.s;
-  while(d<=r.e){days.push(d);d=addD(d,1);}
-  return days;
-}
-
-function renderCharts(){
-  const src=isAdm()&&DF==='全部'?ALL:CUS;
-  Object.values(CI).forEach(c=>{try{c.destroy()}catch(e){}});CI={};
-  const pie=(id,entries,onClick)=>{
-    if(!entries.length)return;
-    const ctx=document.getElementById(id);if(!ctx)return;
-    const labels=entries.map(e=>e[0]);
-    const vals=entries.map(e=>e[1]);
-    CI[id]=new Chart(ctx,{type:'pie',
-      data:{labels,datasets:[{data:vals,backgroundColor:COLORS.slice(0,labels.length),borderWidth:2,borderColor:'#fff'}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{position:'right',labels:{font:{size:10},padding:6}}},
-        onClick:(_,el)=>{if(onClick&&el.length)onClick(labels[el[0].index]);}}});
-  };
-  pie('cc',aggSorted(src,'country'),l=>showDrill('country',l));
-  pie('cm',aggSorted(src,'packaging_material'),l=>showDrill('packaging_material',l));
-  pie('cct',aggSorted(src,'customer_type'),l=>showDrill('customer_type',l));
-  pie('csr',aggSorted(src,'source'),l=>showDrill('source',l));
-  const sd={};src.forEach(c=>{const v=c.status||'未设置';sd[v]=(sd[v]||0)+1});
-  pie('cs',Object.entries(sd).sort((a,b)=>b[1]-a[1]),l=>showDrill('status',l==='未设置'?'':l));
-  const ctx2=document.getElementById('cv');
-  if(ctx2)CI['cv']=new Chart(ctx2,{type:'bar',
-    data:{labels:SALES,datasets:[{data:SALES.map(s=>src.filter(c=>c.sales===s).length),backgroundColor:'#3b82f6',borderRadius:6}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true,ticks:{stepSize:1}}},
-      onClick:(_,el)=>{if(el.length)showDrill('sales',SALES[el[0].index]);}}});
-  const days=getDashDays();
-  const ctx3=document.getElementById('cd');
-  if(ctx3)CI['cd']=new Chart(ctx3,{type:'bar',
-    data:{labels:days.map(d=>fmt(d)),datasets:[{data:days.map(d=>src.filter(c=>cusDate(c)===d).length),backgroundColor:'#10b981',borderRadius:4}]},
-    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
-      scales:{y:{beginAtZero:true,ticks:{stepSize:1}},x:{ticks:{maxRotation:45,font:{size:10}}}},
-      onClick:(_,el)=>{if(el.length)showDrill('date',days[el[0].index]);}}});
-}
-
-function statClick(type,val){
-  if(type==='tasks'){setView('tasks');return;}
-  if(type==='sea'){setView('sea');return;}
-  if(type==='all'){showDrill('all',null);return;}
-  showDrill('status',val);
-}
-
-function showDrill(field,value,e){
-  if(e&&e.target.tagName==='CANVAS')return;
-  const src=isAdm()&&DF==='全部'?ALL:CUS;
-  const list=field==='all'?src
-    :field==='date'?src.filter(c=>cusDate(c)===value)
-    :value!==undefined?src.filter(c=>(c[field]||'')===(value||''))
-    :src;
-  const labels={country:'国家',status:'状态',packaging_material:'行业',sales:'销售',date:'日期',all:'全部客户',source:'客户来源',customer_type:'客户类型'};
-  const el=document.createElement('div');el.className='overlay';el.id='drill-ov';
-  const rows=list.length===0?'<div class="empty">暂无数据</div>':list.map(c=>{
-    return`<div class="drill-row">
-      <div style="flex:1;min-width:0">
-        <div class="nlink" style="font-size:13px" onclick="openDetail('${c.id}')">${esc(c.name)}</div>
-        <div style="font-size:11px;color:#94a3b8">${esc(c.company)} · ${esc(c.sales)}</div>
-      </div>
-      <div style="min-width:60px;font-size:12px;color:#64748b">${esc(c.country)||'—'}</div>
-      <div style="min-width:60px;font-size:12px;color:#64748b">${esc(c.source)||'—'}</div>
-      <div style="min-width:70px"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></div>
-    </div>`;}).join('');
-  el.innerHTML=`<div class="modal mlg">
-    <div class="mh">
-      <div class="mt">${labels[field]||field}：${esc(value||'全部')} <span style="font-size:13px;color:#94a3b8;font-weight:400">${list.length}个客户</span></div>
-      <button class="xb" onclick="document.getElementById('drill-ov').remove()">×</button>
-    </div>
-    <div style="padding:0 0 8px">
-      <div style="padding:7px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9;display:grid;grid-template-columns:1fr 70px 70px 70px;font-size:11px;font-weight:700;color:#64748b;letter-spacing:.5px">
-        <span>客户名称</span><span>国家</span><span>来源</span><span>状态</span>
-      </div>
-      <div style="max-height:55vh;overflow-y:auto">${rows}</div>
-    </div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',ev=>{if(ev.target===el)el.remove()});
-}
-
-function renderCus(){
-  let filtered=CUS.filter(c=>{
-    const q=fS.toLowerCase();
-    return(!q||c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.phone?.includes(q)||c.country?.toLowerCase().includes(q))
-      &&(fSales==='全部'||c.sales===fSales)
-      &&(fStat==='全部'||(c.status||'')===fStat)
-      &&(fCo==='全部'||c.country===fCo)
-      &&(fSrc==='全部'||c.source===fSrc)
-      &&(fCtype==='全部'||(c.customer_type||'')===fCtype)
-      &&(!fDup||isDup(c,c.id));
-  });
-  filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
-  window._filtered=filtered;
-  const total=filtered.length;
-  const totalPages=Math.max(1,Math.ceil(total/cusPageSize));
-  if(cusPage>totalPages)cusPage=totalPages;
-  const paged=filtered.slice((cusPage-1)*cusPageSize,cusPage*cusPageSize);
-  const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
-  const saOpts=isAdm()?['全部',...SALES]:['全部',CU];
-  const ctypeOpts=['全部',...CTYPES];
-  const allPagedSelected=paged.length>0&&paged.every(c=>selIds.has(c.id));
-
-  const rows=paged.length===0?`<tr><td colspan="13" class="empty">暂无数据</td></tr>`:paged.map(c=>{
-    const n=nfi(c);
-    const dup=isDup(c,c.id);
-    const sea=isSea(c)?'<span class="badge u-red" style="margin-left:3px;font-size:10px">公海</span>':'';
-    const dupW=dup?`<span class="dup-w">⚠重复</span>`:'';
-    const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
-    return`<tr>
-      <td style="width:32px;text-align:center"><input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="width:14px;height:14px;cursor:pointer"/></td>
-      <td>
-        <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>${sea}${dupW}
-        <br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span>
-      </td>
-      <td class="col-hide" style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(cusDate(c))}</td>
-      <td class="col-hide" style="font-size:12px">
-        ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
-        ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
-        ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
-      </td>
-      <td class="col-hide" style="color:#64748b">${esc(c.country)||'—'}</td>
-      <td class="col-hide" style="color:#64748b">${esc(c.source)||'—'}</td>
-      <td class="col-hide">${(c.products||[]).map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:1px;font-size:10px">${p}</span>`).join('')||'—'}</td>
-      <td class="col-hide" style="color:#64748b">${esc(c.customer_type)||'—'}</td>
-      <td class="col-hide" style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
-      <td><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
-      <td class="col-hide" style="color:#64748b;white-space:nowrap">${fmt(c.last_follow_date)}</td>
-      <td><span class="${n.cls}">${n.t}</span><br>${dots}</td>
-      <td><div class="acts">
-        <button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button>
-        <button class="ab ab2" onclick="openLog('${c.id}')">📝</button>
-        <button class="ab ac" onclick="openEdit('${c.id}')">编辑</button>
-        ${isAdm()||c.sales===CU?`<button class="ab ao" onclick="transfer('${c.id}')">转移</button>`:''}
-        <button class="ab ar" onclick="delCus('${c.id}')">删</button>
-      </div></td>
-    </tr>`;}).join('');
-
-  const pageNums=[];
-  for(let i=1;i<=totalPages;i++){
-    if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);
-    else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');
-  }
-  const pageBar=`<div class="page-bar">
-    <span style="font-size:12px;color:#64748b">共 ${total} 条</span>
-    <select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;background:#fff">
-      ${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}
-    </select>
-    <button class="page-btn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>
-    ${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:#94a3b8;padding:0 4px">…</span>`:`<button class="page-btn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}
-    <button class="page-btn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button>
-  </div>`;
-
-  return`<div class="tw">
-    <div class="th">
-      <span class="ttl">👥 客户列表 (${total})</span>
-      <div style="display:flex;gap:6px;flex-wrap:wrap">
-        <button onclick="batchExport(window._filtered)" style="padding:6px 12px;border-radius:7px;border:1px solid #e2e8f0;background:#fff;color:#374151;font-size:12px;cursor:pointer">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button>
-        ${selIds.size>0?`
-        <button onclick="batchStatus()" style="padding:6px 12px;border-radius:7px;border:none;background:#f59e0b;color:#fff;font-size:12px;font-weight:600;cursor:pointer">✏️ 改状态 (${selIds.size})</button>
-        <button onclick="batchTransfer()" style="padding:6px 12px;border-radius:7px;border:none;background:#3b82f6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">👤 转移 (${selIds.size})</button>
-        <button onclick="batchProducts()" style="padding:6px 12px;border-radius:7px;border:none;background:#8b5cf6;color:#fff;font-size:12px;font-weight:600;cursor:pointer">📦 改产品 (${selIds.size})</button>
-        <button onclick="batchCtype()" style="padding:6px 12px;border-radius:7px;border:none;background:#0891b2;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🏢 改类型 (${selIds.size})</button>
-        <button onclick="batchDel()" style="padding:6px 12px;border-radius:7px;border:none;background:#ef4444;color:#fff;font-size:12px;font-weight:600;cursor:pointer">🗑 删除 (${selIds.size})</button>
-        `:''}
-      </div>
-    </div>
-    <div class="filter-bar">
-      <input value="${esc(fS)}" oninput="fS=this.value;cusPage=1;render()" placeholder="搜索姓名/公司/电话…"/>
-      ${isAdm()?`<select onchange="fSales=this.value;cusPage=1;render()">${saOpts.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
-      <select onchange="fStat=this.value;cusPage=1;render()">
-        ${['全部',...STATUSES].map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s||'（空）'}</option>`).join('')}
-      </select>
-      <select onchange="fCo=this.value;cusPage=1;render()">
-        <option>全部</option>${coOpts.map(s=>`<option ${fCo===s?'selected':''}>${esc(s)}</option>`).join('')}
-      </select>
-      <select onchange="fSrc=this.value;cusPage=1;render()">
-        <option>全部</option>${SOURCES.map(s=>`<option ${fSrc===s?'selected':''}>${s}</option>`).join('')}
-      </select>
-      <select onchange="fCtype=this.value;cusPage=1;render()">
-        ${ctypeOpts.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}
-      </select>
-      <button onclick="fDup=!fDup;cusPage=1;render()" style="padding:7px 12px;border-radius:7px;border:1px solid ${fDup?'#ef4444':'#e2e8f0'};background:${fDup?'#fef2f2':'#fff'};color:${fDup?'#ef4444':'#64748b'};font-size:12px;cursor:pointer;white-space:nowrap">⚠ ${fDup?'已筛重复':'筛重复'}</button>
-    </div>
-    <div style="padding:8px 14px;background:#f8fafc;border-bottom:1px solid #f1f5f9">
-      <div style="font-size:11px;color:#64748b;font-weight:700;margin-bottom:6px;letter-spacing:.5px">按创建时间筛选</div>
-      ${renderCusDateBar()}
-    </div>
-    <div style="overflow-x:auto"><table>
-      <thead><tr>
-        <th style="width:32px;text-align:center"><input type="checkbox" id="sel-all" ${allPagedSelected?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer"/></th>
-        <th>客户姓名</th>
-        <th class="col-hide">创建时间</th>
-        <th class="col-hide">邮箱/电话</th>
-        <th class="col-hide">国家</th>
-        <th class="col-hide">来源</th>
-        <th class="col-hide">产品</th>
-        <th class="col-hide">客户类型</th>
-        <th class="col-hide">负责人</th>
-        <th>状态</th>
-        <th class="col-hide">最近跟进</th>
-        <th>下次跟进</th>
-        <th>操作</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    ${pageBar}
-  </div>`;
-}
-
-function renderCusDateBar(){
-  const opts=[['7','近7天'],['14','近14天'],['30','近30天'],['month','本月'],['lastmonth','上月'],['custom','自定义'],['all','全部']];
-  return`<div class="date-filter-bar">
-    ${opts.map(([v,l])=>`<button class="dfb ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</button>`).join('')}
-    ${fDateRange==='custom'?`<div class="custom-date-row">
-      <input type="date" value="${fDateStart}" onchange="fDateStart=this.value" id="cs1"/>
-      <span style="font-size:12px;color:#94a3b8">至</span>
-      <input type="date" value="${fDateEnd}" onchange="fDateEnd=this.value" id="cs2"/>
-      <button onclick="setCusDR('custom2')">确定</button>
-    </div>`:''}
-  </div>`;
-}
-
-function renderTasks(){
-  const list=ALL.filter(c=>isTask(c)&&(isAdm()||c.sales===CU));
-  if(!list.length)return`<div class="empty"><div class="empty-icon">🎉</div><div class="empty-ttl">今日无待办</div><div>所有客户跟进正常</div></div>`;
-  return`<div style="font-weight:700;font-size:16px;margin-bottom:14px">🔴 今日待办 · ${T()} · ${list.length}条</div>
-  ${list.map(c=>{
-    const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id).slice(0,2);
-    return`<div class="task-card">
-      <div class="task-top">
-        <div class="task-info">
-          <div class="task-name">
-            <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
-            <span class="${n.cls}">${n.t}</span>
-            <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
-          </div>
-          <div class="task-meta">${esc(c.country)} · ${esc(c.source)} · ${esc(c.sales)}</div>
-          ${c.notes?`<div class="task-note">${esc(c.notes)}</div>`:''}
-          ${cl.length?`<div style="margin-top:7px">${cl.map(l=>`<div class="li"><span class="ld">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label)}]</span> ${esc(l.notes)}</div>`).join('')}</div>`:''}
-        </div>
-        <div class="tbs">
-          <button class="tb tbg" onclick="followUp('${c.id}')">✓ 已跟进</button>
-          <button class="tb tbb" onclick="openLog('${c.id}')">📝 日志</button>
-          <button class="tb tbc" onclick="openEdit('${c.id}')">编辑</button>
-        </div>
-      </div>
-    </div>`;}).join('')}`;
-}
-
-function renderSea(){
-  let list=ALL.filter(isSea);
-  if(seaS){const q=seaS.toLowerCase();list=list.filter(c=>c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.country?.toLowerCase().includes(q)||c.sales?.toLowerCase().includes(q));}
-  const total=list.length;
-  const totalPages=Math.max(1,Math.ceil(total/seaPageSize));
-  if(seaPage>totalPages)seaPage=totalPages;
-  const paged=list.slice((seaPage-1)*seaPageSize,seaPage*seaPageSize);
-  if(!total)return`<div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">没有公海客户</div></div>`;
-  const pageNums=[];
-  for(let i=1;i<=totalPages;i++){
-    if(i===1||i===totalPages||Math.abs(i-seaPage)<=2)pageNums.push(i);
-    else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');
-  }
-  const pageBar=`<div class="page-bar">
-    <span style="font-size:12px;color:#64748b">共 ${total} 条</span>
-    <select onchange="seaPageSize=+this.value;seaPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid #e2e8f0;font-size:12px;background:#fff">
-      ${[20,50,100].map(n=>`<option value="${n}" ${seaPageSize===n?'selected':''}>${n}条/页</option>`).join('')}
-    </select>
-    <button class="page-btn" onclick="seaPage=Math.max(1,seaPage-1);render()" ${seaPage===1?'disabled':''}>‹</button>
-    ${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:#94a3b8;padding:0 4px">…</span>`:`<button class="page-btn ${seaPage===n?'on':''}" onclick="seaPage=${n};render()">${n}</button>`).join('')}
-    <button class="page-btn" onclick="seaPage=Math.min(${totalPages},seaPage+1);render()" ${seaPage===totalPages?'disabled':''}>›</button>
-  </div>`;
-  const rows=paged.map(c=>{
-    const n=nfi(c);
-    const dots=`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${(c.follow_stage||0)>i?'done':(c.follow_stage||0)===i?'cur':''}"></div>`).join('')}</div>`;
-    return`<tr>
-      <td>
-        <span class="nlink" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
-        <br><span style="font-size:11px;color:#94a3b8">${esc(c.company)}</span>
-      </td>
-      <td class="col-hide" style="color:#64748b;white-space:nowrap;font-size:12px">${fmt(cusDate(c))}</td>
-      <td class="col-hide" style="font-size:12px">
-        ${c.email?`<div style="color:#2563eb;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')" title="点击复制">✉ ${esc(c.email)}</div>`:''}
-        ${c.phone?`<div style="color:#374151;cursor:pointer" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')" title="点击复制">📞 ${esc(c.phone)}</div>`:''}
-        ${!c.email&&!c.phone?'<span style="color:#cbd5e1">—</span>':''}
-      </td>
-      <td class="col-hide" style="color:#64748b">${esc(c.country)||'—'}</td>
-      <td class="col-hide" style="color:#64748b">${esc(c.source)||'—'}</td>
-      <td class="col-hide" style="color:#374151;font-weight:500">${esc(c.sales)||'—'}</td>
-      <td><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
-      <td class="col-hide" style="color:#64748b;white-space:nowrap">${fmt(c.last_follow_date)}</td>
-      <td><span class="${n.cls}">${n.t}</span><br>${dots}</td>
-      <td><div class="acts">
-        <button class="ab ag" onclick="claimSea('${c.id}')">认领</button>
-        <button class="ab ab2" onclick="openLog('${c.id}')">📝</button>
-        <button class="ab ac" onclick="openDetail('${c.id}')">详情</button>
-      </div></td>
-    </tr>`;}).join('');
-  return`<div class="tw">
-    <div class="th">
-      <span class="ttl">🌊 公海客户 (${total})</span>
-      <span style="font-size:12px;color:#94a3b8">超30天未跟进，任何销售可认领</span>
-    </div>
-    <div class="filter-bar">
-      <input value="${esc(seaS)}" oninput="seaS=this.value;seaPage=1;render()" placeholder="搜索姓名/公司/国家/负责人…"/>
-    </div>
-    <div style="overflow-x:auto"><table>
-      <thead><tr>
-        <th>客户姓名</th>
-        <th class="col-hide">创建时间</th>
-        <th class="col-hide">邮箱/电话</th>
-        <th class="col-hide">国家</th>
-        <th class="col-hide">来源</th>
-        <th class="col-hide">原负责人</th>
-        <th>状态</th>
-        <th class="col-hide">最近跟进</th>
-        <th>下次跟进</th>
-        <th>操作</th>
-      </tr></thead>
-      <tbody>${rows}</tbody>
-    </table></div>
-    ${pageBar}
-  </div>`;
-}
-
-function closeM(id='modal-ov'){document.getElementById(id)?.remove()}
-
-function openAdd(){
-  EID=null;
-  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',
-    products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',
-    vacuum_need:'',automation_need:'',customer_type:'',self_type:'',
-    purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,
-    status:'',custom_date:T(),first_record_date:'',notes:''};
-  showFormM('新建客户');
-}
-
-function openEdit(id){
-  const c=ALL.find(x=>x.id===id);if(!c)return;
-  EID=id;FD={...c,products:[...(c.products||[])]};
-  showFormM('编辑客户');
-}
-
-function showFormM(title){
-  closeM();const d=FD;
-  const salesRow=isAdm()
-    ?`<div class="fg"><label class="fl">负责销售</label>
-       <select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>
-       ${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`
-    :`<div class="fg"><label class="fl">负责销售</label>
-       <div style="padding:8px 11px;background:#f8fafc;border-radius:8px;font-size:13px;font-weight:600">${CU}</div></div>`;
-  const el=document.createElement('div');el.className='overlay';el.id='modal-ov';
-  el.innerHTML=`<div class="modal mlg">
-    <div class="mh">
-      <div class="mt">${title}</div>
-      <button class="xb" onclick="closeM()">×</button>
-    </div>
-    <div class="mb">
-      <div class="stitle">基本信息</div>
-      <div class="g2">
-        <div class="fg"><label class="fl">客户姓名 *</label><input class="fi" value="${esc(d.name)}" oninput="FD.name=this.value" placeholder="联系人姓名"/></div>
-        <div class="fg"><label class="fl">公司名称</label><input class="fi" value="${esc(d.company)}" oninput="FD.company=this.value"/></div>
-      </div>
-      <div class="g2">
-        <div class="fg"><label class="fl">邮箱</label><input class="fi" type="email" value="${esc(d.email)}" oninput="FD.email=this.value"/></div>
-        <div class="fg"><label class="fl">电话</label><input class="fi" value="${esc(d.phone)}" oninput="FD.phone=this.value"/></div>
-      </div>
-      <div class="g3">
-        <div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写国家名称"/></div>
-        <div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div>
-      </div>
-      <div class="stitle">产品需求</div>
-      <div class="fg"><label class="fl">产品类型</label><div class="tags" id="ptags">${PRODUCTS.map(p=>`<button type="button" class="tag ${d.products.includes(p)?'ton':'toff'}" onclick="tP('${p}')">${p}</button>`).join('')}</div></div>
-      <div class="g3">
-        <div class="fg"><label class="fl">包装物料</label><input class="fi" value="${esc(d.packaging_material)}" oninput="FD.packaging_material=this.value" placeholder="食品/电子…"/></div>
-        <div class="fg"><label class="fl">包装重量</label><input class="fi" value="${esc(d.packaging_weight)}" oninput="FD.packaging_weight=this.value" placeholder="5-10kg"/></div>
-        <div class="fg"><label class="fl">包装速度</label><input class="fi" value="${esc(d.packaging_speed)}" oninput="FD.packaging_speed=this.value" placeholder="30包/分钟"/></div>
-      </div>
-      <div class="g2">
-        <div class="fg"><label class="fl">真空需求</label><select class="fi" onchange="FD.vacuum_need=this.value"><option value="">—</option>${VACUUM.map(s=>`<option ${d.vacuum_need===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">自动化需求</label><select class="fi" onchange="FD.automation_need=this.value"><option value="">—</option>${AUTO.map(s=>`<option ${d.automation_need===s?'selected':''}>${s}</option>`).join('')}</select></div>
-      </div>
-      <div class="stitle">业务信息</div>
-      <div class="g2">
-        <div class="fg"><label class="fl">客户类型</label><select class="fi" onchange="FD.customer_type=this.value"><option value="">—</option>${CTYPES.map(s=>`<option ${d.customer_type===s?'selected':''}>${s}</option>`).join('')}</select></div>
-        <div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="自由填写，如：贸易商、小型工厂…"/></div>
-      </div>
-      <div class="g2">
-        <div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div>
-        <div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${esc(d.first_record_date||'')}" onchange="FD.first_record_date=this.value"/></div>
-      </div>
-      <div class="fg"><label class="fl">项目详情</label><textarea class="fi" rows="3" oninput="FD.project_details=this.value" placeholder="客户背景、具体需求…">${esc(d.project_details)}</textarea></div>
-      <div class="stitle">CRM</div>
-      <div class="g2">
-        ${salesRow}
-        <div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div>
-      </div>
-      <div class="fg"><label class="fl">创建时间（可修改，用于历史客户）</label><input class="fi" type="date" value="${esc(d.custom_date||T())}" onchange="FD.custom_date=this.value"/></div>
-      <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新跟进备注…">${esc(d.notes)}</textarea></div>
-    </div>
-    <div class="mf">
-      <button class="btn-s" onclick="closeM()">取消</button>
-      <button class="btn-p" onclick="saveCus()">保存</button>
-    </div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)closeM()});
-}
-
-function tP(p){
-  if(FD.products.includes(p))FD.products=FD.products.filter(x=>x!==p);
-  else FD.products.push(p);
-  document.getElementById('ptags').innerHTML=PRODUCTS.map(pp=>`<button type="button" class="tag ${FD.products.includes(pp)?'ton':'toff'}" onclick="tP('${pp}')">${pp}</button>`).join('');
-}
-
-function openDetail(id){
-  const c=ALL.find(x=>x.id===id);if(!c)return;
-  const n=nfi(c);const dup=isDup(c,c.id);
-  const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
-  const fields=[
-    ['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],
-    ['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],
-    ['真空需求',c.vacuum_need],['自动化',c.automation_need],
-    ['包装物料',c.packaging_material],['包装重量',c.packaging_weight],
-    ['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],
-    ['创建时间',fmtF(cusDate(c))]
-  ].filter(([,v])=>v);
-  el.innerHTML=`<div class="modal mlg">
-    <div class="mh">
-      <div class="mt">👤 ${esc(c.name)} ${c.company?`<span style="font-size:13px;color:#94a3b8;font-weight:400">· ${esc(c.company)}</span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div>
-      <button class="xb" onclick="document.getElementById('detail-ov').remove()">×</button>
-    </div>
-    <div class="mb">
-      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">
-        <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
-        <span class="${n.cls}">${n.t}</span>
-        ${isSea(c)?'<span class="badge u-red">公海</span>':''}
-        <span style="font-size:12px;color:#94a3b8">负责：${esc(c.sales)}</span>
-      </div>
-      <div class="det-grid">${fields.map(([k,v])=>`<div class="di"><div class="dk">${k}</div><div class="dv">${esc(v)}</div></div>`).join('')}</div>
-      ${c.products?.length?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:5px">产品兴趣</div><div>${c.products.map(p=>`<span class="badge" style="background:#eff6ff;color:#2563eb;margin:2px">${p}</span>`).join('')}</div></div>`:''}
-      ${c.project_details?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:#f8fafc;padding:9px;border-radius:8px;line-height:1.6">${esc(c.project_details)}</div></div>`:''}
-      ${c.notes?`<div style="margin-top:8px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:#374151">${esc(c.notes)}</div></div>`:''}
-      <div style="margin-top:12px">
-        <div class="dk" style="margin-bottom:5px">跟进记录 (${LOGS.filter(l=>l.customer_id===c.id).length}条)</div>
-        <div class="ll">${LOGS.filter(l=>l.customer_id===c.id).length
-          ?LOGS.filter(l=>l.customer_id===c.id).map(l=>`<div class="li"><span class="ld">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''} · ${esc(l.sales)}</span><br>${esc(l.notes)}</div>`).join('')
-          :'<div style="color:#cbd5e1;font-size:12px">暂无记录</div>'}</div>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn-s" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button>
-      <button class="btn-s" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button>
-      <button class="btn-p" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button>
-    </div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-
-function openLog(id){LID=id;LFD={stage_label:'',notes:'',status_update:'',log_date:T()};renderLogM(id);}
-
-function renderLogM(id){
-  document.getElementById('log-ov')?.remove();
-  const c=ALL.find(x=>x.id===id);if(!c)return;
-  const cl=LOGS.filter(l=>l.customer_id===id);
-  const el=document.createElement('div');el.className='overlay';el.id='log-ov';
-  el.innerHTML=`<div class="modal msm">
-    <div class="mh">
-      <div class="mt">📝 跟进日志 — ${esc(c.name)}</div>
-      <button class="xb" onclick="document.getElementById('log-ov').remove()">×</button>
-    </div>
-    <div class="mb">
-      <div class="g2">
-        <div class="fg"><label class="fl">跟进阶段</label>
-          <select class="fi" onchange="LFD.stage_label=this.value">
-            <option value="">请选择</option>
-            ${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<option ${LFD.stage_label===s?'selected':''}>${s}</option>`).join('')}
-          </select>
-        </div>
-        <div class="fg"><label class="fl">跟进日期</label>
-          <input class="fi" type="date" value="${LFD.log_date||T()}" onchange="LFD.log_date=this.value"/>
-        </div>
-      </div>
-      <div class="fg"><label class="fl">沟通详情</label>
-        <textarea class="fi" rows="4" oninput="LFD.notes=this.value" placeholder="留空则自动记录「标记已跟进」">${esc(LFD.notes)}</textarea>
-      </div>
-      <div class="fg"><label class="fl">更新客户状态（可选）</label>
-        <select class="fi" onchange="LFD.status_update=this.value">
-          ${STATUSES.map(s=>`<option value="${s}" ${LFD.status_update===s?'selected':''}>${s||'（不修改）'}</option>`).join('')}
-        </select>
-      </div>
-      <div class="fg"><label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer"><input type="checkbox" id="advance-stage" checked style="width:16px;height:16px;cursor:pointer"/><span>推进跟进阶段（补录历史数据时取消勾选）</span></label></div>
-      <div><label class="fl" style="margin-bottom:6px">历史记录 (${cl.length}条)</label>
-        <div class="ll" style="max-height:220px">${cl.length
-          ?cl.map(l=>`<div class="li" style="display:flex;gap:6px;align-items:flex-start;padding:5px 0">
-              <div style="flex:1;min-width:0">
-                <span class="ld">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` →${l.status_update}`:''}</span>
-                <div style="margin-top:2px;word-break:break-all">${esc(l.notes)}</div>
-              </div>
-              <div style="display:flex;gap:3px;flex-shrink:0;padding-top:2px">
-                <button onclick="editLog('${l.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #bfdbfe;background:#eff6ff;color:#2563eb;cursor:pointer;white-space:nowrap">编辑</button>
-                <button onclick="deleteLog('${l.id}')" style="font-size:10px;padding:2px 6px;border-radius:4px;border:1px solid #fecaca;background:#fef2f2;color:#dc2626;cursor:pointer">删</button>
-              </div>
-            </div>`).join('')
-          :'<div style="color:#cbd5e1;font-size:12px">暂无历史</div>'}</div>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn-s" onclick="document.getElementById('log-ov').remove()">关闭</button>
-      <button class="btn-p" onclick="saveLog()">保存日志</button>
-    </div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-
-function openImport(){
-  closeM('imp-ov');
-  const el=document.createElement('div');el.className='overlay';el.id='imp-ov';
-  el.innerHTML=`<div class="modal mlg">
-    <div class="mh"><div class="mt">📥 批量导入客户</div><button class="xb" onclick="document.getElementById('imp-ov').remove()">×</button></div>
-    <div class="mb">
-      <p style="font-size:13px;color:#64748b;margin-bottom:10px">第一行为表头，从第二行开始填数据。创建时间格式：2024-03-15</p>
-      <div class="imp-tpl">姓名,公司,邮箱,电话,来源,国家,地区,负责销售,状态,包装物料,包装重量,包装速度,真空需求,自动化需求,客户类型,客户性质,预计购买,项目详情,备注,创建时间
-张三,ABC公司,zhang@abc.com,+8613800000001,阿里巴巴,印度,孟买,Jacky,潜在,食品,25-50kg,30包/分钟,有,全自动,终端客户,小型工厂,Q3 2025,需要整套包装线,有意向,2024-01-15</div>
-      <div class="fg"><label class="fl">粘贴 CSV 数据</label>
-        <textarea class="fi" id="imp-txt" rows="8" placeholder="粘贴 CSV 内容…"></textarea>
-      </div>
-      <div style="display:flex;gap:10px;align-items:center">
-        <label style="padding:7px 13px;border:1px solid #e2e8f0;border-radius:8px;font-size:13px;cursor:pointer;background:#f8fafc">
-          📁 选择文件 <input type="file" accept=".csv,.txt" style="display:none" onchange="loadFile(this)"/>
-        </label>
-        <span id="fn" style="font-size:12px;color:#94a3b8"></span>
-      </div>
-    </div>
-    <div class="mf">
-      <button class="btn-s" onclick="document.getElementById('imp-ov').remove()">取消</button>
-      <button class="btn-p" onclick="doImp()">导入</button>
-    </div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-
-function loadFile(inp){
-  const f=inp.files[0];if(!f)return;
-  document.getElementById('fn').textContent=f.name;
-  const tryRead=(enc)=>{
-    const r=new FileReader();
-    r.onload=e=>{
-      const txt=e.target.result;
-      if(enc==='UTF-8'&&txt.includes('\uFFFD')){tryRead('GBK');}
-      else{document.getElementById('imp-txt').value=txt;}
-    };
-    r.readAsText(f,enc);
-  };
-  tryRead('UTF-8');
-}
-
-function parseCSV(raw){
-  const rows=[];
-  let cur='',inQ=false,fields=[];
-  for(let i=0;i<raw.length;i++){
-    const ch=raw[i],nx=raw[i+1];
-    if(ch==='"'){
-      if(inQ&&nx==='"'){cur+='"';i++;}
-      else inQ=!inQ;
-    } else if(ch===','&&!inQ){
-      fields.push(cur.trim());cur='';
-    } else if((ch==='\n'||ch==='\r')&&!inQ){
-      if(ch==='\r'&&nx==='\n')i++;
-      fields.push(cur.trim());cur='';
-      if(fields.some(f=>f!==''))rows.push(fields);
-      fields=[];
-    } else {
-      cur+=ch;
-    }
-  }
-  if(cur||fields.length){fields.push(cur.trim());if(fields.some(f=>f!==''))rows.push(fields);}
-  return rows;
-}
-
-function fixDate(s){
-  if(!s)return null;
-  const m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);
-  if(!m)return null;
-  return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
-}
-
-async function doImp(){
-  const raw=document.getElementById('imp-txt')?.value;
-  if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
-  const rows=parseCSV(raw);
-  if(rows.length<2){toast('至少需要表头+一行数据');return;}
-  const headers=rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
-  const map={
-    姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',
-    地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',
-    包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',
-    自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',
-    预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',创建时间:'custom_date'
-  };
-  const data=[];
-  for(let i=1;i<rows.length;i++){
-    const vals=rows[i];
-    const obj={products:[]};
-    headers.forEach((h,j)=>{if(map[h])obj[map[h]]=(vals[j]||'').trim();});
-    if(!obj.name)continue;
-    if(!obj.sales)obj.sales=CU;
-    obj.custom_date=fixDate(obj.custom_date)||T();
-    data.push(obj);
-  }
-  if(!data.length){toast('没有有效数据行');return;}
-  let total=0;
-  for(let i=0;i<data.length;i+=50){
-    const batch=data.slice(i,i+50);
-    const{error}=await db.from('customers').insert(batch);
-    if(error){toast(`导入失败(第${i+1}行起): ${error.message}`);return;}
-    total+=batch.length;
-  }
-  toast(`✅ 成功导入 ${total} 条`);
-  document.getElementById('imp-ov')?.remove();
-  await load();
-}
-
+// ===== INIT =====
+document.addEventListener('click',e=>{if(!e.target.closest('.more-dd-btn'))document.querySelectorAll('.dd').forEach(d=>d.classList.remove('open'))});
 const saved=localStorage.getItem('crm_u');
-if(saved){
+if(saved&&PASSWORDS[saved]!==undefined){
   CU=saved;
   document.getElementById('login-screen').style.display='none';
-  document.getElementById('app').style.display='block';
-  document.getElementById('uname').textContent=saved;
+  document.getElementById('app').style.display='flex';
+  document.getElementById('user-av').textContent=saved.slice(0,2);
+  document.getElementById('user-name-sb').textContent=saved;
+  document.getElementById('user-role-sb').textContent=CU==='管理员'?'管理员 · 全部数据':'销售';
   load();
 }
 </script>
