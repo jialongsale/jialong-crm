@@ -312,6 +312,8 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
 
 /* RESPONSIVE & MOBILE */
 .menu-btn { display:none; background:transparent; border:none; font-size:24px; color:var(--tp); cursor:pointer; margin-right:12px; padding:0; line-height:1; }
+.mobile-list { display:none; padding: 0 4px; } 
+
 @media(max-width:1100px){.cg3{grid-template-columns:1fr 1fr}.db3{grid-template-columns:1fr}}
 @media(max-width:768px){
   :root{--sb:0px}
@@ -330,23 +332,29 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
   .sg3 { grid-template-columns: 1fr 1fr; }
   .sg6 { grid-template-columns: 1fr 1fr 1fr; }
   .cg3, .cg2, .db3, .g2, .g3, .det-grid { grid-template-columns: 1fr; }
-
+  
   .fsec { padding: 12px; }
   .frow { gap: 8px; flex-wrap: wrap; }
   .sbox { min-width: 100%; margin-bottom: 4px; }
   .fsel { flex: 1; min-width: 45%; }
   .pill { margin-bottom: 4px; }
 
-  .tc { width: calc(100% + 24px); margin: 0 -12px; border-radius: 0; border-left: none; border-right: none; }
-  .tscroll { overflow-x: auto !important; -webkit-overflow-scrolling: touch; width: 100%; padding: 0 12px; }
-  table { min-width: 800px; } 
+  .tc { display: none; }
 
-  .task-row { flex-direction: column; align-items: flex-start; gap: 8px; }
-  .tr-right { width: 100%; justify-content: flex-start; padding-top: 8px; border-top: 1px dashed var(--border-l); margin-top: 4px; }
-  .tprev { max-width: 100%; white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .mobile-list { display: block; }
+  .mobile-card { background: var(--surface); margin-bottom: 12px; border-radius: 12px; border: 1px solid var(--border-l); box-shadow: var(--sh); padding: 16px; position: relative; }
+  .mc-header { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; }
+  .mc-name { font-size: 15px; font-weight: 700; color: var(--brand); cursor: pointer; }
+  .mc-company { font-size: 12px; color: var(--tt); margin-bottom: 8px; border-bottom: 1px dashed var(--border-l); padding-bottom: 8px; }
+  .mc-row { display: flex; font-size: 12px; color: var(--ts); margin-bottom: 5px; gap: 8px; flex-wrap: wrap; }
+  .mc-label { font-weight: 600; color: var(--ts); min-width: 60px; }
+
+  .mc-follow-up { display: flex; flex-direction: column; gap: 6px; padding: 12px; background: var(--surface2); border-radius: 8px; border: 1px solid var(--border-l); margin: 10px 0; }
+  .mc-fu-item { display: flex; align-items: center; justify-content: space-between; font-size: 12px; }
+  
+  .mc-acts { display: flex; gap: 5px; justify-content: flex-end; margin-top: 12px; border-top: 1px dashed var(--border-l); padding-top: 12px; }
 
   .content { padding: 14px 12px; }
-  .col-hide { display:none; }
   .modal { max-height: 90vh; margin: 10px; width: calc(100% - 20px); }
   .drawer { width: 85vw; }
 }
@@ -737,7 +745,6 @@ function renderDashChart(){
 }
 
 // ===== CUSTOMERS =====
-// ===== CUSTOMERS =====
 function renderCus(){
   let filtered=CUS.filter(c=>{
     const q=fS.toLowerCase();
@@ -795,45 +802,77 @@ function renderCus(){
       </div></td>
     </tr>`;}).join('');
 
+  const mobileCards=paged.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div>`:paged.map(c=>{
+    const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
+    const wa=waLink(c.phone),ml=mailLink(c.email);
+    return`<div class="mobile-card">
+      <input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="position:absolute;top:16px;right:16px;width:18px;height:18px;accent-color:var(--brand)"/>
+      <div class="mc-header">${ratingBadge(c.rating)}<span class="mc-name" onclick="openDetail('${c.id}')">${esc(c.name)}</span></div>
+      <div class="mc-company">${esc(c.company)||'（未填写公司）'}</div>
+      
+      <div class="mc-row"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span>${dup?'<span class="dup-w">⚠重复</span>':''}${sea?'<span class="sea-badge">公海</span>':''}${noResp?'<span style="font-size:10px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:1px 6px;border-radius:4px">超15天未回</span>':''}</div>
+      <div class="mc-row" style="margin-top:8px">${tagChips((c.tags||[]).slice(0,3))}</div>
+      
+      <div style="margin-top:10px;display:flex;gap:8px;font-size:12px;color:var(--ts)">
+        ${ml?`<a href="${ml}" target="_blank" style="color:var(--brand);text-decoration:none">✉ 复制</a>`:''}
+        ${wa?`<a href="${wa}" target="_blank" style="color:var(--success);text-decoration:none">💬 WhatsApp</a>`:''}
+      </div>
+
+      <div style="margin-top:10px;font-size:11px;color:var(--tt);display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <div>🌍 ${esc(c.country)||'—'}</div>
+        <div>📡 ${esc(c.source)||'—'}</div>
+        <div>👤 FZ: ${esc(c.sales)||'—'}</div>
+        <div>📦 ${c.products?c.products.slice(0,1).join(''):'—'}</div>
+      </div>
+
+      <div class="mc-follow-up">
+        <div class="mc-fu-item"><span class="mc-label">📅 最近跟进:</span><span>${c.last_follow_date?fmt(c.last_follow_date):'—'}</span></div>
+        <div class="mc-fu-item"><span class="mc-label">Next 跟进:</span><div style="display:flex;align-items:center;gap:4px"><span class="${n.cls}">${n.t}</span>${dots(c.follow_stage||0)}</div></div>
+      </div>
+
+      <div class="mc-acts">
+        <button class="ab ag" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button>
+        <button class="ab ab2" onclick="event.stopPropagation();openLog('${c.id}')">📝 写日志</button>
+        <button class="ab ac" onclick="event.stopPropagation();openEdit('${c.id}')">编辑</button>
+        <button class="ab ar" style="padding:5px 8px" onclick="event.stopPropagation();delCus('${c.id}')">🗑</button>
+      </div>
+    </div>`;}).join('');
+
   const pageNums=[];
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button></div>`;
 
-  return tbHtml('客户列表',`共 ${total} 条`,`<button onclick="batchExport(window._filtered)" class="btn bg">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  return tbHtml('客户列表',`共 ${total} 条`,`<button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
   <div class="fsec">
     <div class="frow">
       <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(fS)}" oninput="fS=this.value;cusPage=1;render()" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
       ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
       <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
       <select class="fsel" onchange="fRating=this.value;cusPage=1;render()"><option value="全部">全部评级</option>${RATINGS.map(r=>`<option value="${r}" ${fRating===r?'selected':''}>${r}级</option>`).join('')}</select>
-      <button class="more-filter-btn" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
+      <button class="more-filter-btn col-hide" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
     </div>
     <div id="adv-filters" ${advFiltersOpen?'class="open"':''}>
       <select class="fsel" onchange="fCo=this.value;cusPage=1;render()"><option value="全部">全部国家</option>${coOpts.map(s=>`<option ${fCo===s?'selected':''}>${esc(s)}</option>`).join('')}</select>
       <select class="fsel" onchange="fSrc=this.value;cusPage=1;render()"><option value="全部">全部来源</option>${SOURCES.map(s=>`<option ${fSrc===s?'selected':''}>${s}</option>`).join('')}</select>
       <select class="fsel" onchange="fCtype=this.value;cusPage=1;render()"><option value="全部">全部类型</option>${CTYPES.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}</select>
-      <button onclick="fDup=!fDup;cusPage=1;render()" style="padding:7px 12px;border-radius:var(--r);border:1px solid ${fDup?'var(--danger)':'var(--border)'};background:${fDup?'var(--danger-l)':'transparent'};color:${fDup?'var(--danger)':'var(--ts)'};font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">⚠ ${fDup?'已筛重复':'筛重复'}</button>
+      <button onclick="fDup=!fDup;cusPage=1;render()" class="col-hide" style="padding:7px 12px;border-radius:var(--r);border:1px solid ${fDup?'var(--danger)':'var(--border)'};background:${fDup?'var(--danger-l)':'transparent'};color:${fDup?'var(--danger)':'var(--ts)'};font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">⚠ ${fDup?'已筛重复':'筛重复'}</button>
     </div>
     <div class="frow" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-l)">
       <span class="flbl">创建时间：</span>
-      ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['近15天','15'],['本月','month'],['上月','lastmonth'],['全部','all'],['自定义','custom']].map(([l,v])=>`<span class="pill ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</span>`).join('')}
-      ${fDateRange==='custom'?`<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:6px"><input type="date" value="${fDateStart}" onchange="fDateStart=this.value" id="cs1" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><span style="font-size:12px;color:var(--tt)">至</span><input type="date" value="${fDateEnd}" onchange="fDateEnd=this.value" id="cs2" style="padding:5px 9px;border-radius:var(--r);border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--tp)"/><button onclick="setCusDR('custom2')" style="padding:5px 12px;border-radius:var(--r);border:none;background:var(--brand);color:#fff;font-size:12px;cursor:pointer;font-family:inherit">确定</button></div>`:''}
+      ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['全部','all'],['自定义','custom']].map(([l,v])=>`<span class="pill ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</span>`).join('')}
     </div>
   </div>
-  ${selIds.size>0?`<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px;padding:10px 16px;background:var(--warn-l);border-radius:var(--r2);border:1px solid rgba(255,149,0,.2);align-items:center">
-    <span style="font-size:12px;font-weight:600;color:var(--warn)">已选 ${selIds.size} 条</span>
-    <button onclick="batchStatus()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--warn);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">✏ 改状态</button>
-    <button onclick="batchTransfer()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--brand);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">👤 转移</button>
-    <button onclick="batchProducts()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--purple);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">📦 改产品</button>
-    <button onclick="batchCtype()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🏢 改类型</button>
-    <button onclick="batchDel()" style="padding:5px 11px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:12px;font-weight:600;cursor:pointer;font-family:inherit">🗑 删除</button>
-    <button onclick="selIds.clear();render()" style="padding:5px 11px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:12px;cursor:pointer;font-family:inherit">✕ 取消</button>
+  
+  ${selIds.size>0?`<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--warn-l);border-radius:var(--r2);border:1px solid rgba(255,149,0,.2);align-items:center">
+    <span style="font-size:12px;font-weight:600;color:var(--warn)">选 ${selIds.size} 条</span>
+    <button onclick="batchStatus()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--warn);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">改状态</button>
+    <button onclick="batchProducts()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--purple);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">📦改产品</button>
+    <button onclick="batchTransfer()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--brand);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">👤转移</button>
+    <button onclick="selIds.clear();render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:11px;cursor:pointer;font-family:inherit">✕取消</button>
   </div>`:''}
+
   <div class="tc">
-    <div class="tc-head">
-      <span class="tc-title">全部客户 <span style="font-size:12px;color:var(--tt);font-weight:400">${total}条</span></span>
-      <select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select>
-    </div>
+    <div class="tc-head"><span class="tc-title">全部客户 <span style="font-size:12px;color:var(--tt);font-weight:400">${total}条</span></span></div>
     <div class="tscroll"><table>
       <thead><tr>
         <th style="width:1%;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></th>
@@ -854,6 +893,12 @@ function renderCus(){
     </table></div>
     ${pageBar}
   </div>
+  
+  <div class="mobile-list">
+    ${mobileCards}
+    <div style="padding:10px 0;">${pageBar}</div>
+  </div>
+  
   </div>`;
 }
 
