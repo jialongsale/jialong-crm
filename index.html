@@ -540,6 +540,61 @@ function tbHtml(title,sub,rightHtml){
 }
 
 // ===== DASHBOARD =====
+  function openDashDrill(type, param='') {
+  let baseSrc = isAdm() && dashSales === '全部' ? ALL : (isAdm() ? ALL.filter(c => c.sales === dashSales) : CUS);
+  const src = filterByDate(baseSrc, dashDateRange, '', '');
+  
+  let list = [], title = '';
+  const rangeMap = { 'all':'全部时间', 'today':'今日', 'yesterday':'昨日', '7':'近7天', '14':'近14天', '30':'近30天', 'month':'本月', 'lastmonth':'上月' };
+  const rangeLabel = rangeMap[dashDateRange] || '筛选区间';
+
+  if (type === 'all') { list = src; title = `${rangeLabel} - 总客户`; }
+  else if (type === 'task') { list = src.filter(c => isTask(c)); title = `${rangeLabel} - 今日待办`; }
+  else if (type === 'sea') { list = src.filter(isSea); title = `${rangeLabel} - 公海客户`; }
+  else if (type === 'status') { list = src.filter(c => c.status === param); title = `${rangeLabel} - ${param}客户`; }
+
+  document.getElementById('dash-drill-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'dash-drill-ov';
+  
+  const rowsHtml = list.length ? list.map(c => `
+    <div class="drill-row" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-l);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+      <div style="width:85px;font-size:11px;color:var(--ts);flex-shrink:0">${fmt(cusDate(c))}</div>
+      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:6px">
+        <span style="font-size:13px;font-weight:600;color:var(--brand);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
+        <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
+        ${ratingBadge(c.rating)}
+      </div>
+      <div style="flex:1;min-width:0;display:flex;gap:4px;flex-wrap:wrap">
+        ${tagChips((c.tags||[]).slice(0,3))}
+      </div>
+      <div style="width:60px;font-size:12px;color:var(--tp);font-weight:500;text-align:right;flex-shrink:0">${esc(c.sales)}</div>
+    </div>
+  `).join('') : '<div class="empty"><div class="empty-ttl">当前区间暂无数据</div></div>';
+
+  el.innerHTML = `
+  <div class="modal mlg">
+    <div class="modal-header">
+      <div class="modal-top">
+        <div class="modal-title">${title} <span style="font-size:13px;color:var(--tt);font-weight:400">(${list.length}条)</span></div>
+        <button class="modal-close" onclick="document.getElementById('dash-drill-ov').remove()">×</button>
+      </div>
+    </div>
+    <div class="simple-body" style="padding:0;max-height:65vh;overflow-y:auto">
+      ${list.length ? `
+      <div style="display:flex;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border-l);font-size:11px;font-weight:700;color:var(--tt);text-transform:uppercase;position:sticky;top:0;z-index:10">
+        <div style="width:85px">创建时间</div>
+        <div style="flex:1">客户 (状态/评级)</div>
+        <div style="flex:1">标签</div>
+        <div style="width:60px;text-align:right">负责人</div>
+      </div>` : ''}
+      ${rowsHtml}
+    </div>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if(e.target === el) el.remove() });
+}
 function renderDash(){
   let baseSrc=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
   const src=filterByDate(baseSrc,dashDateRange,'','');
@@ -560,12 +615,11 @@ function renderDash(){
     <div class="df-row"><span class="flbl">日期：</span>${datePills}</div>
   </div>
   <div class="sg3">
-    <div class="sc" onclick="setView('customers')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>
-    <div class="sc" onclick="setView('tasks')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>
-    <div class="sc" onclick="setView('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>
-  </div>
-<div class="sg6">${[['潜在','潜在','var(--brand)'],['意向','意向','var(--warn)'],['成交','成交','var(--success)'],['转交','转交代理商','var(--teal)'],['流失','流失','var(--ts)'],['垃圾','垃圾','var(--danger)']].map(([l,s,c])=>`<div class="sc sm" onclick="fStat='${s}';cusPage=1;setView('customers')"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${bs(s)}</div></div>`).join('')}</div>  <div class="cg3">
-    <div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>
+    <div class="sc" onclick="openDashDrill('all')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>
+    <div class="sc" onclick="openDashDrill('task')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>
+    <div class="sc" onclick="openDashDrill('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>
+  </div>
+<div class="sg6">${[['潜在','潜在','var(--brand)'],['意向','意向','var(--warn)'],['成交','成交','var(--success)'],['转交','转交代理商','var(--teal)'],['流失','流失','var(--ts)'],['垃圾','垃圾','var(--danger)']].map(([l,s,c])=>`<div class="sc sm" onclick="openDashDrill('status', '${s}')"><div class="sc-lbl">${l}</div><div class="sc-val" style="color:${c}">${bs(s)}</div></div>`).join('')}</div>    <div class="cc"><div class="cc-title">🌍 国家分布</div><div class="bar-chart">${barChartHtml(aggSorted(src,'country'),'var(--brand)')}</div></div>
     <div class="cc"><div class="cc-title">📦 行业（包装物料）</div><div class="bar-chart">${barChartHtml(aggSorted(src,'packaging_material'),'var(--success)')}</div></div>
     <div class="cc">
       <div class="cc-title">⭐ 客户评级</div><div style="margin-bottom:12px">${ratingBars}</div>
