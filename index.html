@@ -421,7 +421,12 @@ let VIEW='dashboard',dashSales='全部';
 let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部',fRating='全部',fDup=false;
 let fDateRange='all',fDateStart='',fDateEnd='';
 let fTag='';
-let dashDateRange='14';
+let dashDateRange='14', dashDateStart='', dashDateEnd='';
+function setDashDR(v){
+  if(v==='custom'){dashDateRange='custom'; dashDateStart=''; dashDateEnd=''; render(); return;}
+  if(v==='custom2'){dashDateRange='custom'; dashDateStart=document.getElementById('dash-ds')?.value||''; dashDateEnd=document.getElementById('dash-de')?.value||''; render(); return;}
+  dashDateRange=v; render();
+}
 let EID=null,LID=null,FD={},LFD={};
 let CI={};
 let cusPage=1,cusPageSize=20,selIds=new Set();
@@ -644,7 +649,7 @@ function openDashDrill(type, param='') {
 
 function renderDash(){
   let baseSrc=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
-  const src=filterByDate(baseSrc,dashDateRange,'','');
+  const src=filterByDate(baseSrc,dashDateRange, dashDateStart, dashDateEnd);
   const bs=s=>src.filter(c=>c.status===s).length;
   const taskN=src.filter(c=>isTask(c)).length;
   const seaN=src.filter(isSea).length;
@@ -654,10 +659,12 @@ function renderDash(){
     return `<div onclick="dashSales='${s}';applyFilter();render()" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:${isOn?'600':'500'}; background:${isOn?'var(--surface)':'transparent'}; color:${isOn?'var(--tp)':'var(--ts)'}; box-shadow:${isOn?'0 2px 8px rgba(0,0,0,.08)':'none'}; cursor:pointer; transition:all .2s; white-space:nowrap;">${s}</div>`;
   }).join('');
 
-  const datePills=[['近7天','7'],['近14天','14'],['近30天','30'],['本月','month'],['上月','lastmonth'],['全部','all']].map(([l,v])=>{
+  const datePills=[['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['本月','month'],['上月','lastmonth'],['全部','all'],['自定义','custom']].map(([l,v])=>{
     const isOn = dashDateRange === v;
-    return `<div onclick="dashDateRange='${v}';render()" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:${isOn?'600':'500'}; background:${isOn?'var(--surface)':'transparent'}; color:${isOn?'var(--tp)':'var(--ts)'}; box-shadow:${isOn?'0 2px 8px rgba(0,0,0,.08)':'none'}; cursor:pointer; transition:all .2s; white-space:nowrap;">${l}</div>`;
+    return `<div onclick="setDashDR('${v}')" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:${isOn?'600':'500'}; background:${isOn?'var(--surface)':'transparent'}; color:${isOn?'var(--tp)':'var(--ts)'}; box-shadow:${isOn?'0 2px 8px rgba(0,0,0,.08)':'none'}; cursor:pointer; transition:all .2s; white-space:nowrap;">${l}</div>`;
   }).join('');
+
+  const customDateHtml = dashDateRange === 'custom' ? `<div style="display:flex; align-items:center; gap:8px; margin-top:10px;"><input type="date" id="dash-ds" value="${dashDateStart}" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><span style="color:var(--ts);font-size:12px;">至</span><input type="date" id="dash-de" value="${dashDateEnd}" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><button class="btn bp" style="padding:5px 12px; font-size:12px; border-radius:6px;" onclick="setDashDR('custom2')">查询</button></div>` : '';
 
   const ratingData=RATINGS.map(r=>[r,src.filter(c=>c.rating===r).length]).filter(([,n])=>n>0);
   const maxR=Math.max(...ratingData.map(d=>d[1]),1);
@@ -668,7 +675,6 @@ function renderDash(){
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
   
-  // 👇 修复了语法的容器，调整了呼吸感间距 👇
   `<div class="dash-filters" style="padding:16px 20px; margin-bottom:20px; background:var(--surface); border-radius:var(--r3); box-shadow:var(--sh); border:1px solid var(--border-l);">` +
     (isAdm()?`<div style="display:flex; align-items:flex-start; gap:16px;">
       <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tt); line-height:34px;">销售</div>
@@ -676,7 +682,10 @@ function renderDash(){
     </div>`:'') +
     `<div style="display:flex; align-items:flex-start; gap:16px; margin-top:${isAdm()?'12px':'0'}; padding-top:${isAdm()?'12px':'0'}; border-top:${isAdm()?'1px dashed var(--border-l)':'none'};">
       <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tt); line-height:34px;">日期</div>
-      <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px;">${datePills}</div>
+      <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+        <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px; align-self:flex-start;">${datePills}</div>
+        ${customDateHtml}
+      </div>
     </div>` +
   `</div>` +
   
@@ -716,7 +725,7 @@ function renderDash(){
 function renderDashChart(){
   const src=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
   Object.values(CI).forEach(c=>{try{c.destroy()}catch(e){}});CI={};
-  const r=getDateRange(dashDateRange,'','');
+  const r=getDateRange(dashDateRange, dashDateStart, dashDateEnd);
   let days;
   if(!r||!r.s)days=Array.from({length:14},(_,i)=>addD(T(),i-13));
   else{days=[];let d=r.s;while(d<=r.e){days.push(d);d=addD(d,1);}}
