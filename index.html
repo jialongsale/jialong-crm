@@ -427,6 +427,18 @@ let cusPage=1,cusPageSize=20,selIds=new Set();
 let seaPage=1,seaPageSize=20,seaS='';
 let advFiltersOpen=false;
 
+let searchTimer = null;
+
+function handleSearch(val, type) {
+  if (type === 'cus') fS = val, cusPage = 1;
+  if (type === 'sea') seaS = val, seaPage = 1;
+
+  clearTimeout(searchTimer);
+  searchTimer = setTimeout(() => {
+    render();
+  }, 300);
+}
+
 // ===== UTILS =====
 const T=()=>new Date().toISOString().split('T')[0];
 const addD=(d,n)=>{const r=new Date(d);r.setDate(r.getDate()+n);return r.toISOString().split('T')[0]};
@@ -827,7 +839,7 @@ function renderCus(){
   return tbHtml('客户列表',`共 ${total} 条`,`<button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
   <div class="fsec">
     <div class="frow">
-      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(fS)}" oninput="fS=this.value;cusPage=1;render()" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
+      <div class="sbox"><span style="color:var(--tt)">🔍</span><input id="cus-search" value="${esc(fS)}" oninput="handleSearch(this.value, 'cus')" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
       ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
       <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
       <select class="fsel" onchange="fRating=this.value;cusPage=1;render()"><option value="全部">全部评级</option>${RATINGS.map(r=>`<option value="${r}" ${fRating===r?'selected':''}>${r}级</option>`).join('')}</select>
@@ -952,7 +964,7 @@ function renderSea(){
     </div>`;
   }).join('');
   return tbHtml('公海客户',`${total}条 · 超30天未跟进，任意销售可认领`,`<button class="btn bg col-hide" onclick="batchExport([...ALL.filter(isSea)])">📤 导出</button>`)+`
-  <div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(seaS)}" oninput="seaS=this.value;seaPage=1;render()" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div>
+  <div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input id="sea-search" value="${esc(seaS)}" oninput="handleSearch(this.value, 'sea')" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div>
   <div class="tc">
     <div class="tc-head"><span class="tc-title">公海客户 <span style="font-size:12px;color:var(--tt);font-weight:400">${total}条</span></span></div>
     <div class="tscroll"><table>
