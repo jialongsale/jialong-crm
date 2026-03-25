@@ -522,6 +522,20 @@ function nfi(c){
 function ratingBadge(r){return r?`<span class="rating r-${r}">${r}</span>`:'';}
 function dots(stage){return`<div class="sdots">${[1,2,3,4,5].map(i=>`<div class="dot ${stage>i?'done':stage===i?'cur':''}"></div>`).join('')}</div>`;}
 function tagChips(tags){return(tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;padding:1px 7px;border-radius:4px;font-size:10px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.15);white-space:nowrap;max-width:90px;overflow:hidden;text-overflow:ellipsis" title="${esc(t)}">${esc(t)}</span>`).join('');}
+function showLoading(show) {
+  let el = document.getElementById('global-loading');
+  if (show) {
+    if (!el) {
+      el = document.createElement('div');
+      el.id = 'global-loading';
+      el.style.cssText = 'position:fixed;inset:0;background:rgba(255,255,255,0.4);backdrop-filter:blur(2px);-webkit-backdrop-filter:blur(2px);z-index:9999;display:flex;align-items:center;justify-content:center;cursor:wait;';
+      el.innerHTML = '<div style="padding:12px 24px;background:var(--surface);border-radius:30px;box-shadow:0 8px 32px rgba(0,0,0,0.12);font-size:13px;font-weight:600;color:var(--brand);border:1px solid var(--border);">🔄 数据同步中...</div>';
+      document.body.appendChild(el);
+    }
+  } else {
+    if (el) el.remove();
+  }
+}
 // ===== DATA =====
 async function fetchAll(table,orderCol){
   let all=[],from=0;
@@ -1366,8 +1380,12 @@ async function saveLog(){
   else if(ns===4)upd.next_follow_date=addD(c.first_follow_date||logDate,30);
   else upd.next_follow_date=null;
   if(LFD.status_update)upd.status=LFD.status_update;
+  
+  showLoading(true);
   await db.from('customers').update(upd).eq('id',LID);
   await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate,quality:LFD.quality||''}]);
+  showLoading(false);
+  
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:''};
   await load();renderLogDrawer();
 }
@@ -1468,7 +1486,11 @@ async function saveCus(){
   if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
   const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[]};
   if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
+  
+  showLoading(true);
   const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
+  showLoading(false);
+  
   if(error){toast('失败:'+error.message);return;}
   toast(EID?'✅ 已更新':'✅ 添加成功');document.getElementById('form-ov')?.remove();await load();
 }
