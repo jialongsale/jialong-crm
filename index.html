@@ -867,7 +867,7 @@ function renderCus(){
       ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
       <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
       <select class="fsel" onchange="fRating=this.value;cusPage=1;render()"><option value="全部">全部评级</option>${RATINGS.map(r=>`<option value="${r}" ${fRating===r?'selected':''}>${r}级</option>`).join('')}</select>
-      <button class="more-filter-btn col-hide" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
+      <button class="more-filter-btn" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
       <button class="more-filter-btn" onclick="openTagManager()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🏷️ 标签管理</button>
     </div>
     ${fTag ? `<div style="margin-top:10px;padding-top:10px;border-top:1px dashed var(--border-l);display:flex;align-items:center;"><span style="padding:4px 12px;background:var(--brand);border-radius:20px;font-size:12px;color:#fff;font-weight:600;display:inline-flex;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,102,204,.2)">🏷️ 正在筛选标签：${esc(fTag)} <button onclick="fTag='';cusPage=1;render()" style="background:transparent;border:none;color:#fff;font-size:14px;cursor:pointer;line-height:1;margin-left:4px;opacity:0.8">×</button></span></div>` : ''}
