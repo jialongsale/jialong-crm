@@ -618,7 +618,7 @@ function tbHtml(title,sub,rightHtml){
       <div><div class="tb-title">${title}</div>${sub?`<div class="tb-sub">${sub}</div>`:''}</div>
     </div>
     <div class="tb-right">
-      <button class="ib col-hide" onclick="document.body.classList.toggle('dark')" title="暗色模式">🌙</button>
+      <button class="ib col-hide" onclick="toggleTheme()" title="切换主题">🌙</button>
       ${rightHtml}
     </div>
   </div><div class="content">`;
@@ -1561,6 +1561,11 @@ function logout(){
 }
 
 // ===== INIT =====
+function toggleTheme(){
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('crm_theme', isDark ? 'dark' : 'light');
+}
+if(localStorage.getItem('crm_theme') === 'dark') document.body.classList.add('dark');
 document.addEventListener('click',e=>{if(!e.target.closest('.more-dd-btn'))document.querySelectorAll('.dd').forEach(d=>d.classList.remove('open'))});
 const saved=localStorage.getItem('crm_u');
 if(saved&&PASSWORDS[saved]!==undefined){
