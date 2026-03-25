@@ -668,6 +668,7 @@ function renderDash(){
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
   
+  // 👇 修复了语法的容器，调整了呼吸感间距 👇
   `<div class="dash-filters" style="padding:16px 20px; margin-bottom:20px; background:var(--surface); border-radius:var(--r3); box-shadow:var(--sh); border:1px solid var(--border-l);">` +
     (isAdm()?`<div style="display:flex; align-items:flex-start; gap:16px;">
       <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tt); line-height:34px;">销售</div>
