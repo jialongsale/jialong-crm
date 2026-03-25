@@ -1437,6 +1437,7 @@ function login(n){
   const el = document.createElement('div');
   el.className = 'overlay';
   el.id = 'login-pwd-ov';
+  el.style.zIndex = '2000';
   el.innerHTML = `
     <div class="modal msm" style="max-width:320px; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
       <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
