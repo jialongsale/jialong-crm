@@ -1266,7 +1266,7 @@ function showFormModal(title,activeTab){
         <div class="tags-wrap" id="tags-wrap-edit" onclick="document.getElementById('tag-input-edit').focus()">
           ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
           <input id="tag-input-edit" type="text" placeholder="输入标签回车或点右侧添加…" style="border:none;outline:none;font-size:12px;color:var(--tp);background:transparent;font-family:inherit;min-width:100px;flex:1" onkeydown="addTagEdit(event)"/>
-          <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){FD.tags.push(v);e.value='';showFormModal(EID?`编辑客户 — ${FD.name}`:'新建客户',3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
+          <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){FD.tags.push(v);e.value='';showFormModal(EID ? '编辑客户 — ' + FD.name : '新建客户', 3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
         </div>
       </div>
     </div>
