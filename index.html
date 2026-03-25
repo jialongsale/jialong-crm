@@ -38,6 +38,10 @@ body.dark{
   --sh:0 1px 3px rgba(0,0,0,.4);--sh2:0 4px 24px rgba(0,0,0,.5);
 }
 *{box-sizing:border-box;margin:0;padding:0}
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+::-webkit-scrollbar-thumb:hover { background: var(--ts); }
 body{font-family:'DM Sans',-apple-system,'PingFang SC','Microsoft YaHei',sans-serif;background:var(--bg);color:var(--tp);min-height:100vh;font-size:14px;-webkit-font-smoothing:antialiased;transition:background .3s,color .3s}
 button{cursor:pointer;font-family:inherit;border:none}
 input,select,textarea{font-family:inherit;outline:none}
