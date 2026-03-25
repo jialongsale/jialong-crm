@@ -886,9 +886,17 @@ function renderCus(){
       <select class="fsel" onchange="fCtype=this.value;cusPage=1;render()"><option value="全部">全部类型</option>${CTYPES.map(s=>`<option ${fCtype===s?'selected':''}>${s}</option>`).join('')}</select>
       <button onclick="fDup=!fDup;cusPage=1;render()" class="col-hide" style="padding:7px 12px;border-radius:var(--r);border:1px solid ${fDup?'var(--danger)':'var(--border)'};background:${fDup?'var(--danger-l)':'transparent'};color:${fDup?'var(--danger)':'var(--ts)'};font-size:12px;cursor:pointer;font-family:inherit;white-space:nowrap;transition:all .15s">⚠ ${fDup?'已筛重复':'筛重复'}</button>
     </div>
-    <div class="frow" style="margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border-l)">
-      <span class="flbl">创建时间：</span>
-      ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['全部','all'],['自定义','custom']].map(([l,v])=>`<span class="pill ${fDateRange===v?'on':''}" onclick="setCusDR('${v}')">${l}</span>`).join('')}
+    <div class="frow" style="margin-top: 12px; padding-top: 12px; border-top: 1px dashed var(--border-l); align-items: flex-start;">
+      <span class="flbl" style="margin-top: 8px;">创建时间：</span>
+      <div style="display:flex; flex-direction:column; flex:1; min-width:0;">
+        <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px; align-self:flex-start;">
+          ${[['今日','today'],['昨日','yesterday'],['近7天','7'],['全部','all'],['自定义','custom']].map(([l,v])=>{
+            const isOn = fDateRange === v;
+            return `<div onclick="setCusDR('${v}')" style="padding:5px 14px; border-radius:6px; font-size:12px; font-weight:${isOn?'600':'500'}; background:${isOn?'var(--surface)':'transparent'}; color:${isOn?'var(--tp)':'var(--ts)'}; box-shadow:${isOn?'0 2px 6px rgba(0,0,0,.06)':'none'}; cursor:pointer; transition:all .2s; white-space:nowrap;">${l}</div>`;
+          }).join('')}
+        </div>
+        ${fDateRange === 'custom' ? `<div style="display:flex; align-items:center; gap:8px; margin-top:8px;"><input type="date" id="cs1" value="${fDateStart}" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><span style="color:var(--ts);font-size:12px;">至</span><input type="date" id="cs2" value="${fDateEnd}" style="padding:5px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><button class="btn bp" style="padding:5px 12px; font-size:12px; border-radius:6px;" onclick="setCusDR('custom2')">查询</button></div>` : ''}
+      </div>
     </div>
   </div>
   
