@@ -582,42 +582,32 @@ function openDashDrill(type, param='') {
   const el = document.createElement('div');
   el.className = 'overlay';
   el.id = 'dash-drill-ov';
-  
+
   const rowsHtml = list.length ? list.map(c => `
-    <div class="drill-row" style="display:flex;align-items:center;gap:12px;padding:12px 16px;border-bottom:1px solid var(--border-l);transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
-      <div style="width:85px;font-size:11px;color:var(--ts);flex-shrink:0">${fmt(cusDate(c))}</div>
-      <div style="flex:1;min-width:0;display:flex;align-items:center;gap:6px">
-        <span style="font-size:13px;font-weight:600;color:var(--brand);cursor:pointer;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
-        <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
-        ${ratingBadge(c.rating)}
+    <div class="drill-row" style="padding:14px 18px;border-bottom:1px solid var(--border-l);display:flex;flex-direction:column;gap:8px;transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+        <div style="display:flex;align-items:center;gap:6px;font-size:15px;font-weight:700;color:var(--brand);cursor:pointer;" onclick="openDetail('${c.id}')">
+          ${ratingBadge(c.rating)} ${esc(c.name)}
+        </div>
+        <div style="font-size:12px;font-weight:600;color:var(--tp);"><span style="color:var(--tt);font-weight:400">负责人:</span> ${esc(c.sales)}</div>
       </div>
-      <div style="flex:1;min-width:0;display:flex;gap:4px;flex-wrap:wrap">
-        ${tagChips((c.tags||[]).slice(0,3))}
+      <div style="display:flex;align-items:center;gap:12px;font-size:12px;color:var(--ts);flex-wrap:wrap;">
+        <span>🌍 ${esc(c.country)||'—'}</span>
+        <span>📡 ${esc(c.source)||'—'}</span>
+        <div style="display:flex;gap:4px;">${tagChips((c.tags||[]).slice(0,3))}</div>
       </div>
-      <div style="width:120px;font-size:12px;color:var(--ts);overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.phone || c.email || '')}">
-        ${esc(c.phone || c.email || '—')}
-      </div>
-      <div style="width:60px;font-size:12px;color:var(--tp);font-weight:500;text-align:right;flex-shrink:0">${esc(c.sales)}</div>
     </div>
   `).join('') : '<div class="empty"><div class="empty-ttl">当前区间暂无数据</div></div>';
 
   el.innerHTML = `
   <div class="modal mlg">
-    <div class="modal-header">
-      <div class="modal-top">
+    <div class="modal-header" style="padding-bottom:12px;border-bottom:1px solid var(--border-l)">
+      <div class="modal-top" style="margin-bottom:0">
         <div class="modal-title">${title} <span style="font-size:13px;color:var(--tt);font-weight:400">(${list.length}条)</span></div>
         <button class="modal-close" onclick="document.getElementById('dash-drill-ov').remove()">×</button>
       </div>
     </div>
-    <div class="simple-body" style="padding:0;max-height:65vh;overflow-y:auto">
-      ${list.length ? `
-      <div style="display:flex;padding:10px 16px;background:var(--surface2);border-bottom:1px solid var(--border-l);font-size:11px;font-weight:700;color:var(--tt);text-transform:uppercase;position:sticky;top:0;z-index:10">
-        <div style="width:85px">创建时间</div>
-        <div style="flex:1">客户 (状态/评级)</div>
-        <div style="flex:1">标签</div>
-        <div style="width:120px">联系方式</div>
-        <div style="width:60px;text-align:right">负责人</div>
-      </div>` : ''}
+    <div class="simple-body" style="padding:0;max-height:65vh;overflow-y:auto;background:var(--surface)">
       ${rowsHtml}
     </div>
   </div>`;
@@ -642,8 +632,8 @@ function renderDash(){
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
   `<div class="dash-filters">` +
-    (isAdm()?`<div class="df-row"><span class="flbl">销售：</span>${salesPills}</div>`:'') +
-    `<div class="df-row"><span class="flbl">日期：</span>${datePills}</div>` +
+    (isAdm()?`<div class="df-row" style="align-items:flex-start"><span class="flbl" style="margin-top:6px">销售：</span><div style="display:flex;flex-wrap:wrap;gap:6px;flex:1">${salesPills}</div></div>`:'') +
+    `<div class="df-row" style="align-items:flex-start;margin-top:12px;padding-top:12px;border-top:1px solid var(--border-l)"><span class="flbl" style="margin-top:6px">日期：</span><div style="display:flex;flex-wrap:wrap;gap:6px;flex:1">${datePills}</div></div>` +
   `</div>` +
   `<div class="sg3">` +
     `<div class="sc" onclick="openDashDrill('all')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>` +
@@ -917,6 +907,35 @@ function renderSea(){
     <td class="col-hide" style="max-width:200px">${lastLog?`<div style="font-size:11px;color:var(--tt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lastLog.notes)}</div><div style="font-size:10px;color:var(--tt);margin-top:1px">${fmt(lastLog.log_date||lastLog.created_at)}</div>`:'<span style="color:var(--border);font-size:12px">—</span>'}</td>
     <td><div class="acts"><button class="ab ac" onclick="openDetail('${c.id}')">详情</button><button class="ab ag" onclick="claimSea('${c.id}')">认领</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></td></tr>`;
   }).join('');
+  
+  const mobileCards=paged.map(c=>{
+    const lastLog=LOGS.filter(l=>l.customer_id===c.id).sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1)[0];
+    const wa=waLink(c.phone),ml=mailLink(c.email);
+    return `<div class="mobile-card">
+      <div class="mc-header">${ratingBadge(c.rating)}<span class="mc-name" onclick="openDetail('${c.id}')">${esc(c.name)}</span></div>
+      <div class="mc-company">${esc(c.company)||'（未填写公司）'}</div>
+      <div style="margin-top:10px;display:flex;gap:8px;font-size:12px;color:var(--ts)">
+        ${ml?`<a href="${ml}" target="_blank" style="color:var(--brand);text-decoration:none">✉ 邮件</a>`:''}
+        ${wa?`<a href="${wa}" target="_blank" style="color:var(--success);text-decoration:none">💬 WhatsApp</a>`:''}
+      </div>
+      <div style="margin-top:10px;font-size:11px;color:var(--tt);display:grid;grid-template-columns:1fr 1fr;gap:4px">
+        <div>🌍 ${esc(c.country)||'—'}</div>
+        <div>👤 原负责: ${esc(c.sales)||'—'}</div>
+      </div>
+      <div class="mc-follow-up">
+        <div class="mc-fu-item" style="flex-direction:column;align-items:flex-start;gap:4px">
+          <span class="mc-label">📝 最后日志:</span>
+          <span style="color:var(--ts);line-height:1.4">${lastLog?esc(lastLog.notes):'—'}</span>
+          <span style="font-size:10px;color:var(--tt)">${lastLog?fmt(lastLog.log_date||lastLog.created_at):''}</span>
+        </div>
+      </div>
+      <div class="mc-acts">
+        <button class="ab ac" onclick="openDetail('${c.id}')">详情</button>
+        <button class="ab ag" onclick="claimSea('${c.id}')">认领</button>
+        <button class="ab ab2" onclick="openLog('${c.id}')">📝 写日志</button>
+      </div>
+    </div>`;
+  }).join('');
   return tbHtml('公海客户',`${total}条 · 超30天未跟进，任意销售可认领`,`<button class="btn bg col-hide" onclick="batchExport([...ALL.filter(isSea)])">📤 导出</button>`)+`
   <div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(seaS)}" oninput="seaS=this.value;seaPage=1;render()" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div>
   <div class="tc">
@@ -926,6 +945,10 @@ function renderSea(){
       <tbody>${rows}</tbody>
     </table></div>
     ${pageBar}
+  </div>
+  <div class="mobile-list">
+    ${mobileCards}
+    <div style="padding:10px 0;">${pageBar}</div>
   </div>
   </div>`;
 }
