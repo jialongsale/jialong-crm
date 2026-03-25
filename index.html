@@ -552,6 +552,14 @@ function setView(v){
   render();
 }
 function render(){
+  const activeEl = document.activeElement;
+  const isInput = activeEl && activeEl.tagName === 'INPUT' && activeEl.id;
+  let cursorStart = 0, cursorEnd = 0;
+  if (isInput) {
+    cursorStart = activeEl.selectionStart;
+    cursorEnd = activeEl.selectionEnd;
+  }
+  
   applyFilter();updateBadges();
   const el=document.getElementById('main');if(!el)return;
   if(VIEW==='dashboard')el.innerHTML=renderDash();
@@ -559,6 +567,15 @@ function render(){
   else if(VIEW==='tasks')el.innerHTML=renderTasks();
   else if(VIEW==='sea')el.innerHTML=renderSea();
   if(VIEW==='dashboard')setTimeout(renderDashChart,80);
+
+  if (isInput) {
+    const newEl = document.getElementById(activeEl.id);
+    if (newEl) {
+      newEl.replaceWith(activeEl);
+      activeEl.focus();
+      activeEl.setSelectionRange(cursorStart, cursorEnd);
+    }
+  }
 }
 function tbHtml(title,sub,rightHtml){
   return`<div class="topbar">
@@ -919,7 +936,7 @@ function renderSea(){
   const totalPages=Math.max(1,Math.ceil(total/seaPageSize));
   if(seaPage>totalPages)seaPage=totalPages;
   const paged=list.slice((seaPage-1)*seaPageSize,seaPage*seaPageSize);
-  if(!total)return tbHtml('公海客户','超30天未跟进，任意销售可认领','')+`<div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">没有公海客户</div></div></div>`;
+  if(!total)return tbHtml('公海客户','超30天未跟进，任意销售可认领','')+`<div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input id="sea-search" value="${esc(seaS)}" oninput="handleSearch(this.value, 'sea')" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div><div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">未找到客户</div></div></div>`;
   const pageNums=[];
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-seaPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="seaPageSize=+this.value;seaPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${seaPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="seaPage=Math.max(1,seaPage-1);render()" ${seaPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${seaPage===n?'on':''}" onclick="seaPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="seaPage=Math.min(${totalPages},seaPage+1);render()" ${seaPage===totalPages?'disabled':''}>›</button></div>`;
