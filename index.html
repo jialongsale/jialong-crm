@@ -667,14 +667,14 @@ function renderDash(){
   const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
-
-  `<div class="dash-filters" style="padding:20px 24px; margin-bottom:20px; background:var(--surface); border-radius:var(--r3); box-shadow:var(--sh); border:1px solid var(--border-l);">` +
+  
+  `<div class="dash-filters" style="padding:16px 20px; margin-bottom:20px; background:var(--surface); border-radius:var(--r3); box-shadow:var(--sh); border:1px solid var(--border-l);">` +
     (isAdm()?`<div style="display:flex; align-items:flex-start; gap:16px;">
-      <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tp); line-height:34px;">销售</div>
+      <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tt); line-height:34px;">销售</div>
       <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px;">${salesPills}</div>
     </div>`:'') +
-    `<div style="display:flex; align-items:flex-start; gap:16px; margin-top:${isAdm()?'16px':'0'}; padding-top:${isAdm()?'16px':'0'}; border-top:${isAdm()?'1px dashed var(--border-l)':'none'};">
-      <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tp); line-height:34px;">日期</div>
+    `<div style="display:flex; align-items:flex-start; gap:16px; margin-top:${isAdm()?'12px':'0'}; padding-top:${isAdm()?'12px':'0'}; border-top:${isAdm()?'1px dashed var(--border-l)':'none'};">
+      <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tt); line-height:34px;">日期</div>
       <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px;">${datePills}</div>
     </div>` +
   `</div>` +
