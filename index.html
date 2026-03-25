@@ -1048,6 +1048,60 @@ function renderSea(){
 }
 
 // ===== ACTIONS =====
+function openTransferModal(id = null){
+  const isBatch = !id;
+  const count = isBatch ? selIds.size : 1;
+  if(isBatch && count === 0) return;
+
+  document.getElementById('transfer-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'transfer-ov';
+  el.innerHTML = `
+    <div class="modal msm">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">👤 ${isBatch?'批量':''}转移客户 ${isBatch?`<span style="font-weight:400;color:var(--tt);font-size:13px">(${count}条)</span>`:''}</div>
+          <button class="modal-close" onclick="document.getElementById('transfer-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body">
+        <div class="fg">
+          <label class="fl" style="margin-bottom:10px;">点击选择目标销售</label>
+          <div class="prod-tags" id="ts-tags">
+            ${SALES.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#ts-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="document.getElementById('transfer-ov').remove()">取消</button>
+        <button class="btn bp" onclick="confirmTransfer('${id || ''}')">确认转移</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+async function confirmTransfer(idStr){
+  const sel=document.querySelector('#ts-tags .on');
+  if(!sel){toast('⚠️ 请先点击选择一个销售');return;}
+  const tgt=sel.textContent;
+  const id = idStr || null;
+
+  if (id) {
+    await db.from('customers').update({sales:tgt}).eq('id',id);
+    toast(`✅ 已转移给 ${tgt}`);
+  } else {
+    const{error}=await db.from('customers').update({sales:tgt}).in('id',[...selIds]);
+    if(error){toast('失败:'+error.message);return;}
+    toast(`✅ 已将 ${selIds.size} 条转移给 ${tgt}`);
+    selIds.clear();
+  }
+  document.getElementById('transfer-ov')?.remove();
+  await load();
+}
+
+function transfer(id) { openTransferModal(id); }
+function batchTransfer() { openTransferModal(null); }
 async function followUp(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
   const t=T(),ns=Math.min((c.follow_stage||0)+1,5);
@@ -1065,12 +1119,6 @@ async function claimSea(id){
   const t=T();
   await db.from('customers').update({sales:CU,last_follow_date:t,follow_stage:1,first_follow_date:t,next_follow_date:addD(t,3)}).eq('id',id);
   toast('✅ 已认领，开始跟进');await load();
-}
-async function transfer(id){
-  const tgt=prompt('转移给谁？\n'+SALES.join(' / '));
-  if(!tgt||!SALES.includes(tgt)){toast('销售人员不存在');return;}
-  await db.from('customers').update({sales:tgt}).eq('id',id);
-  toast(`✅ 已转移给 ${tgt}`);await load();
 }
 async function delCus(id){
   if(!confirm('确定删除？'))return;
@@ -1094,13 +1142,6 @@ async function batchStatus(){
   const{error}=await db.from('customers').update({status:s}).in('id',[...selIds]);
   if(error){toast('失败:'+error.message);return;}
   toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);selIds.clear();await load();
-}
-async function batchTransfer(){
-  const tgt=prompt(`批量转移（选中 ${selIds.size} 条）\n请输入销售姓名：\n${SALES.join(' / ')}`);
-  if(!tgt||!SALES.includes(tgt)){toast('销售人员不存在');return;}
-  const{error}=await db.from('customers').update({sales:tgt}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${selIds.size} 条转移给 ${tgt}`);selIds.clear();await load();
 }
 async function batchProducts(){
   const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
@@ -1392,8 +1433,36 @@ async function doImp(){
 
 // ===== AUTH =====
 function login(n){
-  const pwd=prompt(`请输入 ${n} 的登录密码：`);if(pwd===null)return;
+  document.getElementById('login-pwd-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'login-pwd-ov';
+  el.innerHTML = `
+    <div class="modal msm" style="max-width:320px; box-shadow:0 20px 60px rgba(0,0,0,0.4);">
+      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
+        <div class="modal-top" style="margin-bottom:0">
+          <div class="modal-title">🔐 身份验证</div>
+          <button class="modal-close" onclick="document.getElementById('login-pwd-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="padding:20px 24px;">
+        <div style="font-size:13px;color:var(--ts);margin-bottom:12px;text-align:center;">请输入 <b>${n}</b> 的密码以登录</div>
+        <input type="password" id="login-pwd-input" class="fi" placeholder="••••••••" onkeydown="if(event.key==='Enter') confirmLogin('${n}')" style="text-align:center; font-size:20px; letter-spacing:4px; padding:12px; border-radius:12px;" autofocus/>
+      </div>
+      <div class="modal-footer" style="border-top:none; padding-top:0; justify-content:center; gap:12px;">
+        <button class="btn bg" onclick="document.getElementById('login-pwd-ov').remove()" style="flex:1; justify-content:center;">取消</button>
+        <button class="btn bp" onclick="confirmLogin('${n}')" style="flex:1; justify-content:center;">登录</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+  setTimeout(() => document.getElementById('login-pwd-input')?.focus(), 100);
+}
+
+function confirmLogin(n) {
+  const pwd = document.getElementById('login-pwd-input').value;
   if(pwd!==PASSWORDS[n]){toast('❌ 密码错误');return;}
+  document.getElementById('login-pwd-ov').remove();
   CU=n;localStorage.setItem('crm_u',n);
   document.getElementById('login-screen').style.display='none';
   document.getElementById('app').style.display='flex';
