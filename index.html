@@ -633,7 +633,44 @@ function renderDash(){
     (isAdm()?`<div class="df-row" style="align-items:center"><span class="flbl">销售：</span><div style="display:flex;flex-wrap:wrap;gap:6px;flex:1">${salesPills}</div></div>`:'') +
     `<div class="df-row" style="align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--border-l)"><span class="flbl">日期：</span><div style="display:flex;flex-wrap:wrap;gap:6px;flex:1">${datePills}</div></div>` +
   `</div>` +
-  `<div class="sg3">` +
+  `function renderDash(){
+  let baseSrc=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
+  const src=filterByDate(baseSrc,dashDateRange,'','');
+  const bs=s=>src.filter(c=>c.status===s).length;
+  const taskN=src.filter(c=>isTask(c)).length;
+  const seaN=src.filter(isSea).length;
+
+  const salesPills=(isAdm()?['全部',...SALES]:[CU]).map(s=>{
+    const isOn = dashSales === s;
+    return `<div onclick="dashSales='${s}';applyFilter();render()" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:${isOn?'600':'500'}; background:${isOn?'var(--surface)':'transparent'}; color:${isOn?'var(--tp)':'var(--ts)'}; box-shadow:${isOn?'0 2px 8px rgba(0,0,0,.08)':'none'}; cursor:pointer; transition:all .2s; white-space:nowrap;">${s}</div>`;
+  }).join('');
+
+  const datePills=[['近7天','7'],['近14天','14'],['近30天','30'],['本月','month'],['上月','lastmonth'],['全部','all']].map(([l,v])=>{
+    const isOn = dashDateRange === v;
+    return `<div onclick="dashDateRange='${v}';render()" style="padding:6px 16px; border-radius:8px; font-size:12px; font-weight:${isOn?'600':'500'}; background:${isOn?'var(--surface)':'transparent'}; color:${isOn?'var(--tp)':'var(--ts)'}; box-shadow:${isOn?'0 2px 8px rgba(0,0,0,.08)':'none'}; cursor:pointer; transition:all .2s; white-space:nowrap;">${l}</div>`;
+  }).join('');
+
+  const ratingData=RATINGS.map(r=>[r,src.filter(c=>c.rating===r).length]).filter(([,n])=>n>0);
+  const maxR=Math.max(...ratingData.map(d=>d[1]),1);
+  const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
+  const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
+  const todList=src.filter(c=>isTask(c)).slice(0,6);
+  const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
+  
+  return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
+
+  `<div class="dash-filters" style="padding:20px 24px; margin-bottom:20px; background:var(--surface); border-radius:var(--r3); box-shadow:var(--sh); border:1px solid var(--border-l);">` +
+    (isAdm()?`<div style="display:flex; align-items:flex-start; gap:16px;">
+      <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tp); line-height:34px;">销售</div>
+      <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px;">${salesPills}</div>
+    </div>`:'') +
+    `<div style="display:flex; align-items:flex-start; gap:16px; margin-top:${isAdm()?'16px':'0'}; padding-top:${isAdm()?'16px':'0'}; border-top:${isAdm()?'1px dashed var(--border-l)':'none'};">
+      <div style="width:36px; flex-shrink:0; font-size:13px; font-weight:700; color:var(--tp); line-height:34px;">日期</div>
+      <div style="display:inline-flex; flex-wrap:wrap; background:var(--surface2); padding:4px; border-radius:10px; border:1px solid var(--border-l); gap:4px;">${datePills}</div>
+    </div>` +
+  `</div>` +
+
+  `<div class="sg3">` +` +
     `<div class="sc" onclick="openDashDrill('all')"><div class="sc-lbl">总客户</div><div class="sc-val" style="color:var(--brand)">${src.length}</div></div>` +
     `<div class="sc" onclick="openDashDrill('task')"><div class="sc-lbl">今日待办</div><div class="sc-val" style="color:var(--danger)">${taskN}</div></div>` +
     `<div class="sc" onclick="openDashDrill('sea')"><div class="sc-lbl">公海客户</div><div class="sc-val" style="color:var(--warn)">${seaN}</div></div>` +
