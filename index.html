@@ -551,7 +551,7 @@ async function fetchAll(table,orderCol){
 async function load(){
   if (typeof showLoading === 'function') showLoading(true);
   ALL = await fetchAll('customers', 'custom_date');
-  LOGS = []; // 彻底切断历史日志全量同步，释放常驻内存
+  LOGS = []; 
   applyFilter();
   render();
   if (typeof showLoading === 'function') showLoading(false);
@@ -717,7 +717,7 @@ function renderDash(){
   const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
   const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
   const todList=baseSrc.filter(c=>isTask(c)).slice(0,6);
-  // 【LAZY LOAD核心】：读取 c.last_log_note
+  
   const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
@@ -994,7 +994,6 @@ function renderTasks(){
     ${list.map(c=>{
       const n=nfi(c);
       const wa=waLink(c.phone),ml=mailLink(c.email);
-      // 【LAZY LOAD核心】：直接读取冗余字段 c.last_log_note
       return`<div class="task-row">${ratingBadge(c.rating)}<div class="tinfo"><div class="tname"><span style="cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</span><span class="badge s-${c.status||''}">${c.status||'未设置'}</span>${isNoResp(c)?'<span style="font-size:10px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:1px 6px;border-radius:4px">●超15天未回</span>':''}</div><div class="tmeta">${esc(c.country||'—')} · ${esc(c.source||'—')} · ${esc(c.sales)}</div>${c.last_log_note?`<div class="tprev">${esc(c.last_log_note)}</div>`:''}</div><div class="tr-right"><div class="${n.cls}" style="white-space:nowrap">${n.t}</div>${wa?`<button class="wa-btn" onclick="window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''} ${ml?`<button class="mail-btn" onclick="window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}<button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></div>`;
     }).join('')}
   </div>
@@ -1124,7 +1123,7 @@ async function confirmTransfer(idStr){
 function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
 
-// ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK + LAZY LOAD) =====
+// ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK + OPTIMISTIC LAZY LOAD) =====
 function getNextDateByStep(logDate, stageNum) {
   if(!logDate) return null;
   if(stageNum === 1) return addD(logDate, 3);
@@ -1156,13 +1155,21 @@ async function openLog(id){
   const ns = Math.min((c?.follow_stage||0)+1, 5); 
   LFD={stage_label: SLABELS[ns] || '其他', notes:'', status_update:'', log_date:T(), quality:'', next_date: getNextDateByStep(T(), ns) || ''};
 
-  if (typeof showLoading === 'function') showLoading(true);
-  const { data } = await db.from('follow_logs').select('*').eq('customer_id', id).order('created_at', {ascending: false});
-  if (typeof showLoading === 'function') showLoading(false);
-
-  if (data) LOGS = LOGS.filter(l => l.customer_id !== id).concat(data);
-
   renderLogDrawer();
+
+  const { data } = await db.from('follow_logs').select('*').eq('customer_id', id).order('created_at', {ascending: false});
+  
+  if (data) {
+    LOGS = LOGS.filter(l => l.customer_id !== id).concat(data);
+    if (LID === id && document.getElementById('log-drawer')) {
+       const listEl = document.getElementById('drawer-hist-list');
+       const cntEl = document.getElementById('drawer-hist-cnt');
+       if (listEl && cntEl) {
+          cntEl.textContent = data.length;
+          listEl.innerHTML = data.length ? data.map(l=>`<div class="hist-item"><div class="hist-date">${(l.log_date||l.created_at?.split('T')[0]||'').slice(5)}</div><div class="hist-content"><div class="hist-stage">${esc(l.stage_label||'—')}${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="font-size:10px;font-weight:600;color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px;margin-left:4px">${esc(l.quality)}</span>`:''}</div><div class="hist-text">${esc(l.notes)}</div></div><div class="hist-acts"><button class="ha" onclick="editLog('${l.id}')">编辑</button><button class="ha del" onclick="deleteLog('${l.id}')">删</button></div></div>`).join('') : '<div style="color:var(--tt);font-size:12px;padding:8px 0">暂无历史记录</div>';
+       }
+    }
+  }
 }
 
 function recalcNextDate() {
@@ -1186,6 +1193,7 @@ function renderLogDrawer(){
   document.getElementById('log-drawer')?.remove();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
   const cl=LOGS.filter(l=>l.customer_id===LID);
+  const hasCache = LOGS.some(l => l.customer_id === LID);
   const wa=waLink(c.phone),ml=mailLink(c.email);
   const el=document.createElement('div');el.className='drawer-overlay';el.id='log-drawer';
   
@@ -1218,8 +1226,10 @@ function renderLogDrawer(){
         <label for="advance-stage" style="font-size:13px;cursor:pointer;color:var(--ts)">推进跟进阶段 <span style="color:var(--tt);font-size:11px">（补录历史时不推荐勾选）</span></label>
       </div>
       <div style="margin-top:4px">
-        <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">历史记录 (${cl.length}条)</div>
-        ${cl.length?cl.map(l=>`<div class="hist-item"><div class="hist-date">${(l.log_date||l.created_at?.split('T')[0]||'').slice(5)}</div><div class="hist-content"><div class="hist-stage">${esc(l.stage_label||'—')}${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="font-size:10px;font-weight:600;color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px;margin-left:4px">${esc(l.quality)}</span>`:''} · ${esc(l.sales)}</div><div class="hist-text">${esc(l.notes)}</div></div><div class="hist-acts"><button class="ha" onclick="editLog('${l.id}')">编辑</button><button class="ha del" onclick="deleteLog('${l.id}')">删</button></div></div>`).join(''):'<div style="color:var(--tt);font-size:12px;padding:8px 0">暂无历史记录</div>'}
+        <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">历史记录 (<span id="drawer-hist-cnt">${cl.length}</span>条)</div>
+        <div id="drawer-hist-list">
+          ${cl.length?cl.map(l=>`<div class="hist-item"><div class="hist-date">${(l.log_date||l.created_at?.split('T')[0]||'').slice(5)}</div><div class="hist-content"><div class="hist-stage">${esc(l.stage_label||'—')}${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="font-size:10px;font-weight:600;color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px;margin-left:4px">${esc(l.quality)}</span>`:''}</div><div class="hist-text">${esc(l.notes)}</div></div><div class="hist-acts"><button class="ha" onclick="editLog('${l.id}')">编辑</button><button class="ha del" onclick="deleteLog('${l.id}')">删</button></div></div>`).join('') : (hasCache ? '<div style="color:var(--tt);font-size:12px;padding:8px 0">暂无历史记录</div>' : '<div style="color:var(--brand);font-size:12px;font-weight:600;padding:8px 0">🔄 正在拉取云端记录...</div>')}
+        </div>
       </div>
     </div>
     <div class="drawer-footer"><button class="btn bg" onclick="document.getElementById('log-drawer').remove()">关闭</button><button class="btn bp" onclick="saveLog()">保存日志</button></div>
@@ -1249,7 +1259,6 @@ async function saveLog(){
     }
   }
 
-  // 同步写入冗余字段
   const finalNotes = LFD.notes?.trim() || '标记已跟进';
   const upd={last_follow_date:logDate, follow_stage:ns, last_log_note: finalNotes};
   if(ns===1 && !c.first_follow_date) upd.first_follow_date = logDate;
@@ -1264,7 +1273,7 @@ async function saveLog(){
 
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:'',next_date:''};
   await load();
-  openLog(LID);
+  openLog(LID); 
 }
 
 async function editLog(logId){
@@ -1276,7 +1285,7 @@ async function editLog(logId){
   
   if (typeof showLoading === 'function') showLoading(true);
   await db.from('follow_logs').update({notes:newNotes.trim(),log_date:fd}).eq('id',logId);
-
+  
   const {data: latest} = await db.from('follow_logs').select('notes').eq('customer_id', LID).order('log_date', {ascending: false}).order('created_at', {ascending: false}).limit(1);
   if(latest && latest.length > 0) {
     await db.from('customers').update({last_log_note: latest[0].notes}).eq('id', LID);
@@ -1328,21 +1337,24 @@ async function deleteLog(logId){
   openLog(LID);
 }
 
-// ===== DETAIL =====
+// ===== DETAIL (LAZY LOAD) =====
 async function openDetail(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
   const n=nfi(c);const dup=isDup(c,c.id);
 
-  if (typeof showLoading === 'function') showLoading(true);
-  const { data } = await db.from('follow_logs').select('*').eq('customer_id', id).order('created_at', {ascending: false});
-  if (typeof showLoading === 'function') showLoading(false);
-
-  if (data) LOGS = LOGS.filter(l => l.customer_id !== id).concat(data);
-  const cl = data || [];
+  let cl=LOGS.filter(l=>l.customer_id===id);
+  const hasCache = LOGS.some(l => l.customer_id === id);
 
   const wa=waLink(c.phone),ml=mailLink(c.email);
   const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],['真空需求',c.vacuum_need],['自动化',c.automation_need],['包装物料',c.packaging_material],['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],['创建时间',fmtF(cusDate(c))]].filter(([,v])=>v);
+  
+  document.getElementById('detail-ov')?.remove();
   const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
+  
+  const genHistHtml = (logs) => logs.length 
+    ? logs.map(l=>`<div style="padding:8px 10px;background:var(--surface2);border-radius:var(--r);margin-bottom:4px"><div style="font-size:11px;color:var(--brand);font-weight:600;margin-bottom:3px">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px">${esc(l.quality)}</span>`:''} · ${esc(l.sales)}</div><div style="font-size:12px;color:var(--ts)">${esc(l.notes)}</div></div>`).join('') 
+    : '<div style="color:var(--tt);font-size:12px">暂无记录</div>';
+
   el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ratingBadge(c.rating)} 👤 ${esc(c.name)}${c.company?`<span style="font-size:13px;color:var(--tt);font-weight:400">· ${esc(c.company)}</span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div><button class="modal-close" onclick="document.getElementById('detail-ov').remove()">×</button></div></div>
   <div class="simple-body">
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
@@ -1357,11 +1369,28 @@ async function openDetail(id){
     ${c.products?.length?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:5px">产品兴趣</div><div>${c.products.map(p=>`<span class="badge" style="background:var(--brand-l);color:var(--brand);margin:2px">${p}</span>`).join('')}</div></div>`:''}
     ${c.project_details?`<div style="margin-top:12px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:var(--surface2);padding:10px;border-radius:var(--r);line-height:1.6">${esc(c.project_details)}</div></div>`:''}
     ${c.notes?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:var(--ts)">${esc(c.notes)}</div></div>`:''}
-    <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">跟进记录 (${cl.length}条)</div>${cl.length?cl.map(l=>`<div style="padding:8px 10px;background:var(--surface2);border-radius:var(--r);margin-bottom:4px"><div style="font-size:11px;color:var(--brand);font-weight:600;margin-bottom:3px">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px">${esc(l.quality)}</span>`:''} · ${esc(l.sales)}</div><div style="font-size:12px;color:var(--ts)">${esc(l.notes)}</div></div>`).join(''):'<div style="color:var(--tt);font-size:12px">暂无记录</div>'}</div>
+    <div style="margin-top:14px">
+      <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">跟进记录 (<span id="det-hist-cnt">${cl.length}</span>条)</div>
+      <div id="det-hist-list">
+        ${cl.length ? genHistHtml(cl) : (hasCache ? '<div style="color:var(--tt);font-size:12px">暂无记录</div>' : '<div style="color:var(--brand);font-size:12px;font-weight:600">🔄 正在拉取云端记录...</div>')}
+      </div>
+    </div>
   </div>
   <div class="modal-footer"><button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button><button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button><button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button></div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+
+  const { data } = await db.from('follow_logs').select('*').eq('customer_id', id).order('created_at', {ascending: false});
+  
+  if (data) {
+    LOGS = LOGS.filter(l => l.customer_id !== id).concat(data);
+    const listEl = document.getElementById('det-hist-list');
+    const cntEl = document.getElementById('det-hist-cnt');
+    if (listEl && cntEl && document.getElementById('detail-ov')) {
+       listEl.innerHTML = genHistHtml(data);
+       cntEl.textContent = data.length;
+    }
+  }
 }
 
 // ===== EDIT/ADD MODAL (TABS) =====
@@ -1435,7 +1464,7 @@ function addTagEdit(e){
   if(e.key==='Enter'){
     e.preventDefault();const val=e.target.value.trim();
     if(!val||FD.tags.includes(val))return;
-    if(FD.tags.length >= 10) { toast('⚠️ 数据规范拦截：每位客户最多保留 10 个核心标签'); return; }
+    if(FD.tags.length >= 5) { toast('⚠️ 数据规范拦截：每位客户最多保留 5 个核心标签'); return; }
     FD.tags.push(val);e.target.value='';
     const wrap=document.getElementById('tags-wrap-edit');
     const chip=document.createElement('span');
