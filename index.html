@@ -1121,215 +1121,63 @@ async function confirmTransfer(idStr){
 
 function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
+// ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK) =====
+function getNextDateByStep(logDate, stageNum) {
+  if(!logDate) return null;
+  if(stageNum === 1) return addD(logDate, 3);
+  if(stageNum === 2) return addD(logDate, 4);
+  if(stageNum === 3) return addD(logDate, 8);
+  if(stageNum === 4) return addD(logDate, 15);
+  return null;
+}
+
 async function followUp(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
   const t=T(),ns=Math.min((c.follow_stage||0)+1,5);
-  const upd={last_follow_date:t,follow_stage:ns};
-  if(ns===1){upd.first_follow_date=t;upd.next_follow_date=addD(t,3);}
-  else if(ns===2)upd.next_follow_date=addD(c.first_follow_date,7);
-  else if(ns===3)upd.next_follow_date=addD(c.first_follow_date,15);
-  else if(ns===4)upd.next_follow_date=addD(c.first_follow_date,30);
-  else upd.next_follow_date=null;
+  const nd=getNextDateByStep(t, ns);
+
+  const upd={last_follow_date:t, follow_stage:ns, next_follow_date:nd};
+  if(ns===1 && !c.first_follow_date) upd.first_follow_date=t;
+
+  if (typeof showLoading === 'function') showLoading(true);
   await db.from('customers').update(upd).eq('id',id);
-  await db.from('follow_logs').insert([{customer_id:id,sales:CU,stage_label:SLABELS[ns]||'已完成',notes:'标记已跟进',status_update:'',log_date:t}]);
+  await db.from('follow_logs').insert([{customer_id:id,sales:CU,stage_label:SLABELS[ns]||'其他',notes:'标记已跟进',status_update:'',log_date:t}]);
+  if (typeof showLoading === 'function') showLoading(false);
+  
   toast(`✅ ${SLABELS[ns]||'跟进完成'}`);await load();
 }
-async function claimSea(id){
-  const t=T();
-  await db.from('customers').update({sales:CU,last_follow_date:t,follow_stage:1,first_follow_date:t,next_follow_date:addD(t,3)}).eq('id',id);
-  toast('✅ 已认领，开始跟进');await load();
+
+function openLog(id){
+  LID=id;
+  const c=ALL.find(x=>x.id===id);
+  const ns = Math.min((c?.follow_stage||0)+1, 5); 
+  LFD={stage_label: SLABELS[ns] || '其他', notes:'', status_update:'', log_date:T(), quality:'', next_date: getNextDateByStep(T(), ns) || ''};
+  renderLogDrawer();
 }
-function toggleSel(id,checked){if(checked)selIds.add(id);else selIds.delete(id);render();}
-function toggleAll(cb){document.querySelectorAll('.row-sel').forEach(b=>{if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);});render();}
-
-function batchStatus(){
-  if (selIds.size === 0) return;
-  const opts = STATUSES.filter(s => s);
+function recalcNextDate() {
+  const c = ALL.find(x => x.id === LID);
+  const advance = document.getElementById('advance-stage')?.checked !== false;
+  let sNum = SLABELS.indexOf(LFD.stage_label);
   
-  document.getElementById('status-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'status-ov';
-  el.innerHTML = `
-    <div class="modal msm">
-      <div class="modal-header">
-        <div class="modal-top">
-          <div class="modal-title">📊 批量改状态 <span style="font-weight:400;color:var(--tt);font-size:13px">(${selIds.size}条)</span></div>
-          <button class="modal-close" onclick="document.getElementById('status-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body">
-        <div class="fg">
-          <label class="fl" style="margin-bottom:10px;">点击选择目标状态</label>
-          <div class="prod-tags" id="status-tags">
-            ${opts.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#status-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn bg" onclick="document.getElementById('status-ov').remove()">取消</button>
-        <button class="btn bp" onclick="confirmBatchStatus()">确认修改</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-async function confirmBatchStatus(){
-  const sel = document.querySelector('#status-tags .on');
-  if (!sel) { toast('⚠️ 请先点击选择一个状态'); return; }
-  const s = sel.textContent;
-  
-  const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
-  if (error) { toast('失败:'+error.message); return; }
-  
-  toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
-  document.getElementById('status-ov')?.remove();
-  selIds.clear();
-  await load();
-}
-
-function openDeleteConfirmModal(id = null){
-  const isBatch = !id;
-  const count = isBatch ? selIds.size : 1;
-  if (isBatch && count === 0) return;
-
-  document.getElementById('del-confirm-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'del-confirm-ov';
-  el.innerHTML = `
-    <div class="modal msm" style="max-width:320px;">
-      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
-        <div class="modal-top" style="margin-bottom:0">
-          <div class="modal-title" style="color:var(--danger);">⚠️ 确认删除</div>
-          <button class="modal-close" onclick="document.getElementById('del-confirm-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body" style="padding:16px 24px 20px; text-align:center;">
-        <div style="font-size:14px;color:var(--tp);font-weight:600;margin-bottom:8px;">确定要删除这 ${count} 条客户记录吗？</div>
-        <div style="font-size:12px;color:var(--ts);">关联的历史日志将被连同销毁，此操作不可逆。</div>
-      </div>
-      <div class="modal-footer" style="border-top:none; justify-content:center; gap:12px;">
-        <button class="btn bg" onclick="document.getElementById('del-confirm-ov').remove()" style="flex:1; justify-content:center;">取消</button>
-        <button class="btn bp" onclick="executeDelete('${id || ''}')" style="flex:1; justify-content:center; background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,.2); border:none;">永久删除</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-async function executeDelete(idStr) {
-  const id = idStr || null;
-  document.getElementById('del-confirm-ov')?.remove();
-  
-  if (id) {
-    await db.from('follow_logs').delete().eq('customer_id',id);
-    await db.from('customers').delete().eq('id',id);
-    selIds.delete(id);
-    toast('✅ 已删除');
+  if (!advance) {
+     LFD.next_date = c?.next_follow_date || '';
+  } else if (sNum > 0) {
+     LFD.next_date = getNextDateByStep(LFD.log_date, sNum) || '';
   } else {
-    const ids = [...selIds];
-    await db.from('follow_logs').delete().in('customer_id',ids);
-    await db.from('customers').delete().in('id',ids);
-    selIds.clear();
-    toast(`✅ 已删除 ${ids.length} 条`);
+     LFD.next_date = '';
   }
-  await load();
+  
+  const el = document.getElementById('drawer-next-date');
+  if(el) el.value = LFD.next_date;
 }
 
-function delCus(id) { openDeleteConfirmModal(id); }
-function batchDel() { openDeleteConfirmModal(null); }
-
-async function batchProducts(){
-  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
-  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-async function confirmBatchProducts(){
-  const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
-  if(!selected.length){toast('请至少选一个');return;}
-  const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
-}
-async function batchCtype(){
-  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
-  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">🏢 批量改客户类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bct-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择客户类型</label><div class="prod-tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="ptag" onclick="document.querySelectorAll('#bct-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${p}</button>`).join('')}</div></div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bct-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchCtype()">确认</button></div></div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-async function confirmBatchCtype(){
-  const sel=document.querySelector('#bct-tags .on');
-  if(!sel){toast('请选择一个');return;}
-  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
-}
-function batchExport(filtered){
-  const ids=[...selIds];
-  const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
-  if(!list.length){toast('没有可导出的数据');return;}
-  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
-  const fields=['name','company','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
-  const csvQ=v=>{const s=Array.isArray(v)?v.join(';'):String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
-  const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
-  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`佳龙客户_${T()}.csv`;a.click();
-  toast(`✅ 已导出 ${list.length} 条`);
-}
-
-// ===== FILTER HELPERS =====
-function setCusDR(v){
-  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
-  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
-  fDateRange=v;cusPage=1;render();
-}
-function toggleAdvFilters(){
-  advFiltersOpen=!advFiltersOpen;
-  const f=document.getElementById('adv-filters'),a=document.getElementById('adv-arrow');
-  if(f)f.classList.toggle('open',advFiltersOpen);
-  if(a)a.textContent=advFiltersOpen?'▴':'▾';
-}
-function toggleDD(btn){
-  document.querySelectorAll('.dd').forEach(d=>{if(d!==btn.querySelector('.dd'))d.classList.remove('open')});
-  btn.querySelector('.dd')?.classList.toggle('open');
-}
-
-// ===== DETAIL =====
-function openDetail(id){
-  const c=ALL.find(x=>x.id===id);if(!c)return;
-  const n=nfi(c);const dup=isDup(c,c.id);
-  const cl=LOGS.filter(l=>l.customer_id===id);
-  const wa=waLink(c.phone),ml=mailLink(c.email);
-  const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],['真空需求',c.vacuum_need],['自动化',c.automation_need],['包装物料',c.packaging_material],['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],['创建时间',fmtF(cusDate(c))]].filter(([,v])=>v);
-  const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
-  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ratingBadge(c.rating)} 👤 ${esc(c.name)}${c.company?`<span style="font-size:13px;color:var(--tt);font-weight:400">· ${esc(c.company)}</span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div><button class="modal-close" onclick="document.getElementById('detail-ov').remove()">×</button></div></div>
-  <div class="simple-body">
-    <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
-      <span class="badge s-${c.status||''}">${c.status||'未设置'}</span><span class="${n.cls}">${n.t}</span>
-      ${isSea(c)?'<span class="sea-badge">公海</span>':''}
-      ${isNoResp(c)?'<span style="font-size:11px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:2px 8px;border-radius:4px">超15天未回</span>':''}
-      <span style="font-size:12px;color:var(--tt)">负责：${esc(c.sales)}</span>
-      <div style="margin-left:auto;display:flex;gap:6px">${ml?`<a href="${ml}" target="_blank" class="btn bg" style="padding:5px 11px;font-size:12px;text-decoration:none">✉ 发邮件</a>`:''}${wa?`<a href="${wa}" target="_blank" class="btn bg" style="padding:5px 11px;font-size:12px;text-decoration:none;color:var(--success);border-color:rgba(52,199,89,.3)">💬 WhatsApp</a>`:''}</div>
-    </div>
-    ${c.tags?.length?`<div style="margin-bottom:12px">${tagChips(c.tags)}</div>`:''}
-    <div class="det-grid">${fields.map(([k,v])=>`<div class="di"><div class="dk">${k}</div><div class="dv">${esc(v)}</div></div>`).join('')}</div>
-    ${c.products?.length?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:5px">产品兴趣</div><div>${c.products.map(p=>`<span class="badge" style="background:var(--brand-l);color:var(--brand);margin:2px">${p}</span>`).join('')}</div></div>`:''}
-    ${c.project_details?`<div style="margin-top:12px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:var(--surface2);padding:10px;border-radius:var(--r);line-height:1.6">${esc(c.project_details)}</div></div>`:''}
-    ${c.notes?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:var(--ts)">${esc(c.notes)}</div></div>`:''}
-    <div style="margin-top:14px"><div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">跟进记录 (${cl.length}条)</div>${cl.length?cl.map(l=>`<div style="padding:8px 10px;background:var(--surface2);border-radius:var(--r);margin-bottom:4px"><div style="font-size:11px;color:var(--brand);font-weight:600;margin-bottom:3px">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px">${esc(l.quality)}</span>`:''} · ${esc(l.sales)}</div><div style="font-size:12px;color:var(--ts)">${esc(l.notes)}</div></div>`).join(''):'<div style="color:var(--tt);font-size:12px">暂无记录</div>'}</div>
-  </div>
-  <div class="modal-footer"><button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button><button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button><button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button></div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-
-// ===== LOG DRAWER =====
-function openLog(id){LID=id;LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:''};renderLogDrawer();}
 function renderLogDrawer(){
   document.getElementById('log-drawer')?.remove();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
   const cl=LOGS.filter(l=>l.customer_id===LID);
   const wa=waLink(c.phone),ml=mailLink(c.email);
   const el=document.createElement('div');el.className='drawer-overlay';el.id='log-drawer';
+  
   el.innerHTML=`<div class="drawer">
     <div class="drawer-header">
       <button class="drawer-close" onclick="document.getElementById('log-drawer').remove()">×</button>
@@ -1337,8 +1185,13 @@ function renderLogDrawer(){
       <div class="cus-meta"><span>${esc(c.country||'—')}</span><span>·</span><span>${esc(c.source||'—')}</span><span>·</span><span>${esc(c.sales)} 负责</span>${wa?`<a href="${wa}" target="_blank" class="wa-btn" style="margin-left:4px;text-decoration:none">💬</a>`:''}${ml?`<a href="${ml}" target="_blank" class="mail-btn" style="text-decoration:none">✉</a>`:''}</div>
     </div>
     <div class="drawer-body">
-      <div class="dfg"><label class="dfl">跟进阶段</label><div class="stage-pills">${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<span class="stage-pill ${LFD.stage_label===s?'on':''}" onclick="LFD.stage_label='${s}';this.closest('.stage-pills').querySelectorAll('.stage-pill').forEach(p=>p.classList.remove('on'));this.classList.add('on')">${s}</span>`).join('')}</div></div>
-      <div class="dfg"><label class="dfl">跟进日期</label><input class="dfi" type="date" value="${LFD.log_date}" onchange="LFD.log_date=this.value"/></div>
+      <div class="dfg"><label class="dfl">跟进阶段</label><div class="stage-pills">${['首次跟进','3天回访','7天回访','15天回访','30天回访','其他'].map(s=>`<span class="stage-pill ${LFD.stage_label===s?'on':''}" onclick="LFD.stage_label='${s}';this.closest('.stage-pills').querySelectorAll('.stage-pill').forEach(p=>p.classList.remove('on'));this.classList.add('on');recalcNextDate()">${s}</span>`).join('')}</div></div>
+      
+      <div class="g2">
+        <div class="dfg"><label class="dfl">本次跟进日期</label><input class="dfi" type="date" value="${LFD.log_date}" onchange="LFD.log_date=this.value;recalcNextDate()"/></div>
+        <div class="dfg"><label class="dfl">下次计划跟进 <span style="font-weight:400;color:var(--tt);font-size:10px">(系统已推算，可手动修改)</span></label><input class="dfi" type="date" id="drawer-next-date" value="${LFD.next_date}" onchange="LFD.next_date=this.value" style="color:var(--brand);font-weight:600;background:var(--brand-l);border-color:rgba(0,102,204,0.2)"/></div>
+      </div>
+      
       <div class="dfg"><label class="dfl">沟通详情</label><textarea class="dfi" oninput="LFD.notes=this.value" placeholder="留空则自动记录「标记已跟进」">${esc(LFD.notes)}</textarea></div>
       <div class="dfg"><label class="dfl">本次沟通质量</label><div class="quality-pills">
         <span class="qp qp-good" onclick="setQuality(this,'😊 客户主动回复','good')">😊 主动回复</span>
@@ -1350,8 +1203,8 @@ function renderLogDrawer(){
       </div></div>
       <div class="dfg"><label class="dfl">更新客户状态（可选）</label><select class="dfi" onchange="LFD.status_update=this.value">${STATUSES.map(s=>`<option value="${s}">${s||'（不修改）'}</option>`).join('')}</select></div>
       <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:var(--surface2);border-radius:var(--r);border:1px solid var(--border-l);margin-bottom:16px">
-        <input type="checkbox" id="advance-stage" checked style="width:15px;height:15px;cursor:pointer;accent-color:var(--brand)"/>
-        <label for="advance-stage" style="font-size:13px;cursor:pointer;color:var(--ts)">推进跟进阶段 <span style="color:var(--tt);font-size:11px">（补录历史时取消勾选）</span></label>
+        <input type="checkbox" id="advance-stage" checked style="width:15px;height:15px;cursor:pointer;accent-color:var(--brand)" onchange="recalcNextDate()"/>
+        <label for="advance-stage" style="font-size:13px;cursor:pointer;color:var(--ts)">推进跟进阶段 <span style="color:var(--tt);font-size:11px">（补录历史时不推荐勾选）</span></label>
       </div>
       <div style="margin-top:4px">
         <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">历史记录 (${cl.length}条)</div>
@@ -1362,52 +1215,92 @@ function renderLogDrawer(){
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
+
 function setQuality(el,val,type){
   const was=el.classList.contains('on');
   el.closest('.quality-pills').querySelectorAll('.qp').forEach(p=>p.classList.remove('on'));
   if(!was){el.classList.add('on');LFD.quality=val;}else{LFD.quality='';}
 }
+
 async function saveLog(){
   const logDate=LFD.log_date||T();
   const c=ALL.find(x=>x.id===LID);if(!c)return;
   const advance=document.getElementById('advance-stage')?.checked!==false;
-  const currentLogs=LOGS.filter(l=>l.customer_id===LID);
-  const ns=advance?Math.min(currentLogs.length+1,5):(c.follow_stage||0);
-  const upd={last_follow_date:logDate,follow_stage:ns};
-  if(ns===1){upd.first_follow_date=logDate;upd.next_follow_date=addD(logDate,3);}
-  else if(ns===2)upd.next_follow_date=addD(c.first_follow_date||logDate,7);
-  else if(ns===3)upd.next_follow_date=addD(c.first_follow_date||logDate,15);
-  else if(ns===4)upd.next_follow_date=addD(c.first_follow_date||logDate,30);
-  else upd.next_follow_date=null;
-  if(LFD.status_update)upd.status=LFD.status_update;
   
-  showLoading(true);
+  let ns = c.follow_stage || 0;
+  if (advance) {
+    const selectedStage = SLABELS.indexOf(LFD.stage_label);
+    if (selectedStage > 0) {
+      ns = Math.max(ns, selectedStage); 
+    } else {
+      const currentLogs = LOGS.filter(l=>l.customer_id===LID);
+      ns = Math.min(currentLogs.length+1, 5); 
+    }
+  }
+
+  const upd={last_follow_date:logDate, follow_stage:ns};
+  if(ns===1 && !c.first_follow_date) upd.first_follow_date = logDate;
+
+  upd.next_follow_date = LFD.next_date || null;
+  if(LFD.status_update) upd.status=LFD.status_update;
+
+  if (typeof showLoading === 'function') showLoading(true);
   await db.from('customers').update(upd).eq('id',LID);
   await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate,quality:LFD.quality||''}]);
-  showLoading(false);
-  
-  toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:''};
+  if (typeof showLoading === 'function') showLoading(false);
+
+  toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:'',next_date:''};
   await load();renderLogDrawer();
 }
+
 async function editLog(logId){
   const log=LOGS.find(l=>l.id===logId);if(!log)return;
   const newNotes=prompt('修改沟通详情：',log.notes);if(newNotes===null)return;
   const curDate=log.log_date||log.created_at?.split('T')[0];
   const newDate=prompt('修改跟进日期（格式 2024-03-15）：',curDate);if(newDate===null)return;
   const fd=fixDate(newDate)||curDate;
+  
+  if (typeof showLoading === 'function') showLoading(true);
   await db.from('follow_logs').update({notes:newNotes.trim(),log_date:fd}).eq('id',logId);
+  if (typeof showLoading === 'function') showLoading(false);
+  
   toast('✅ 日志已更新');await load();renderLogDrawer();
 }
 async function deleteLog(logId){
-  if(!confirm('确定删除这条跟进记录？'))return;
+  if(!confirm('⚠️ 确定删除这条跟进记录？（系统将触发历史状态回滚重算）'))return;
+  
+  if (typeof showLoading === 'function') showLoading(true);
   await db.from('follow_logs').delete().eq('id',logId);
+  
   const remaining=LOGS.filter(l=>l.customer_id===LID&&l.id!==logId);
   const c=ALL.find(x=>x.id===LID);
+  
   if(c){
-    if(remaining.length===0){await db.from('customers').update({follow_stage:0,first_follow_date:null,last_follow_date:null,next_follow_date:null}).eq('id',LID);}
-    else{const sorted=remaining.sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1);const first=sorted[sorted.length-1];const firstDate=first.log_date||first.created_at?.split('T')[0];const ns=Math.min(remaining.length,5);const nextMap={1:addD(firstDate,3),2:addD(firstDate,7),3:addD(firstDate,15),4:addD(firstDate,30),5:null};await db.from('customers').update({follow_stage:ns,first_follow_date:firstDate,last_follow_date:sorted[0].log_date||sorted[0].created_at?.split('T')[0],next_follow_date:nextMap[ns]||null}).eq('id',LID);}
+    if(remaining.length===0){
+       await db.from('customers').update({follow_stage:0, first_follow_date:null, last_follow_date:null, next_follow_date:null}).eq('id',LID);
+    } else {
+       const sorted = remaining.sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1);
+       const latestLog = sorted[0];
+       const latestDate = latestLog.log_date || latestLog.created_at?.split('T')[0];
+       const oldestLog = sorted[sorted.length-1];
+       const firstDate = oldestLog.log_date || oldestLog.created_at?.split('T')[0];
+       
+       let rollbackStage = SLABELS.indexOf(latestLog.stage_label);
+       if (rollbackStage < 1) rollbackStage = Math.min(remaining.length, 5);
+       
+       const rolledBackNextDate = getNextDateByStep(latestDate, rollbackStage);
+       
+       await db.from('customers').update({
+         follow_stage: rollbackStage,
+         first_follow_date: firstDate,
+         last_follow_date: latestDate,
+         next_follow_date: rolledBackNextDate
+       }).eq('id',LID);
+    }
   }
-  toast('已删除');await load();renderLogDrawer();
+  if (typeof showLoading === 'function') showLoading(false);
+  toast('✅ 记录已删除，状态已重置回滚');
+  await load();renderLogDrawer();
 }
 
 // ===== EDIT/ADD MODAL (TABS) =====
