@@ -471,7 +471,7 @@ function handleSearch(val, type) {
   clearTimeout(searchTimer);
   searchTimer = setTimeout(() => {
     render();
-  }, 300);
+  }, 500);
 }
 
 // ===== UTILS =====
@@ -1555,7 +1555,17 @@ function toggleProd(p){
   document.getElementById('ptags').innerHTML=PRODUCTS.map(pp=>`<button type="button" class="ptag ${FD.products.includes(pp)?'on':''}" onclick="toggleProd('${pp}')">${pp}</button>`).join('');
 }
 function addTagEdit(e){
-  if(e.key==='Enter'){e.preventDefault();const val=e.target.value.trim();if(!val||FD.tags.includes(val))return;FD.tags.push(val);e.target.value='';const wrap=document.getElementById('tags-wrap-edit');const chip=document.createElement('span');chip.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)';chip.innerHTML=`${esc(val)}<span onclick="removeTagEdit('${esc(val)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span>`;wrap.insertBefore(chip,e.target);}
+  if(e.key==='Enter'){
+    e.preventDefault();const val=e.target.value.trim();
+    if(!val||FD.tags.includes(val))return;
+    if(FD.tags.length >= 10) { toast('⚠️ 数据规范拦截：每位客户最多保留 10 个核心标签'); return; }
+    FD.tags.push(val);e.target.value='';
+    const wrap=document.getElementById('tags-wrap-edit');
+    const chip=document.createElement('span');
+    chip.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)';
+    chip.innerHTML=`${esc(val)}<span onclick="removeTagEdit('${esc(val)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span>`;
+    wrap.insertBefore(chip,e.target);
+  }
 }
 function removeTagEdit(tag){FD.tags=FD.tags.filter(t=>t!==tag);showFormModal(EID?`编辑客户 — ${FD.name}`:'新建客户',3);}
 
@@ -1598,7 +1608,20 @@ function parseCSV(raw){
   if(cur||fields.length){fields.push(cur.trim());if(fields.some(f=>f!==''))rows.push(fields);}
   return rows;
 }
-function fixDate(s){if(!s)return null;const m=s.match(/^(\d{4})[\/\-](\d{1,2})[\/\-](\d{1,2})$/);if(!m)return null;return`${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;}
+function fixDate(s){
+  if(!s) return null;
+  const s2 = s.replace(/\//g, '-').trim();
+  let m = s2.match(/^(\d{4})-(\d{1,2})-(\d{1,2})$/);
+  if(m) return `${m[1]}-${m[2].padStart(2,'0')}-${m[3].padStart(2,'0')}`;
+  m = s2.match(/^(\d{1,2})-(\d{1,2})-(\d{4})$/);
+  if(m) {
+    const p1 = parseInt(m[1]), p2 = parseInt(m[2]);
+    const mo = p1 > 12 ? p2 : p1;
+    const da = p1 > 12 ? p1 : p2;
+    return `${m[3]}-${String(mo).padStart(2,'0')}-${String(da).padStart(2,'0')}`;
+  }
+  return null;
+}
 async function doImp(){
   const raw=document.getElementById('imp-txt')?.value;if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
   const rows=parseCSV(raw);if(rows.length<2){toast('至少需要表头+一行数据');return;}
