@@ -549,9 +549,14 @@ async function fetchAll(table,orderCol){
   return all;
 }
 async function load(){
-  const[cr,lr]=await Promise.all([fetchAll('customers','custom_date'),fetchAll('follow_logs','created_at')]);
-  ALL=cr;LOGS=lr;applyFilter();render();
+  if (typeof showLoading === 'function') showLoading(true);
+  ALL = await fetchAll('customers', 'custom_date');
+  LOGS = []; // 彻底切断历史日志全量同步，释放常驻内存
+  applyFilter();
+  render();
+  if (typeof showLoading === 'function') showLoading(false);
 }
+
 function applyFilter(){
   if(isAdm())CUS=dashSales==='全部'?[...ALL]:ALL.filter(c=>c.sales===dashSales);
   else CUS=ALL.filter(c=>c.sales===CU);
@@ -660,7 +665,6 @@ function openDashDrill(type, param='') {
   el.className = 'overlay';
   el.id = 'dash-drill-ov';
   
-  // 👇 恢复了左右横向排列，把评级和标签加到了名字旁边 👇
   const rowsHtml = list.length ? list.map(c => `
     <div class="drill-row" style="padding:12px 20px;border-bottom:1px solid var(--border-l);display:flex;align-items:center;gap:12px;flex-wrap:wrap;transition:background .15s" onmouseover="this.style.background='var(--surface2)'" onmouseout="this.style.background='transparent'">
       <div style="flex:1;min-width:220px;display:flex;align-items:center;gap:8px;">
@@ -713,6 +717,7 @@ function renderDash(){
   const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
   const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
   const todList=baseSrc.filter(c=>isTask(c)).slice(0,6);
+  // 【LAZY LOAD核心】：读取 c.last_log_note
   const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
@@ -828,7 +833,6 @@ function renderCus(){
   const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
   const allSel=paged.length>0&&paged.every(c=>selIds.has(c.id));
 
-  // PC 端表格 HTML
   const rows=paged.length===0?`<tr><td colspan="13"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div></td></tr>`:paged.map(c=>{
     const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
     const wa=waLink(c.phone),ml=mailLink(c.email);
@@ -870,7 +874,6 @@ function renderCus(){
       </div></td>
     </tr>`;}).join('');
 
-  // 手机端专属卡片 HTML
   const mobileCards=paged.length===0?`<div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div>`:paged.map(c=>{
     const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
     const wa=waLink(c.phone),ml=mailLink(c.email);
@@ -989,9 +992,10 @@ function renderTasks(){
   return tbHtml('今日待办',`${T()} · ${list.length}条需跟进`,`<button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
   <div style="display:flex;flex-direction:column;gap:3px">
     ${list.map(c=>{
-      const n=nfi(c);const cl=LOGS.filter(l=>l.customer_id===c.id).slice(0,1);
+      const n=nfi(c);
       const wa=waLink(c.phone),ml=mailLink(c.email);
-      return`<div class="task-row">${ratingBadge(c.rating)}<div class="tinfo"><div class="tname"><span style="cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</span><span class="badge s-${c.status||''}">${c.status||'未设置'}</span>${isNoResp(c)?'<span style="font-size:10px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:1px 6px;border-radius:4px">●超15天未回</span>':''}</div><div class="tmeta">${esc(c.country||'—')} · ${esc(c.source||'—')} · ${esc(c.sales)}</div>${cl.length?`<div class="tprev">${esc(cl[0].notes)}</div>`:''}</div><div class="tr-right"><div class="${n.cls}" style="white-space:nowrap">${n.t}</div>${wa?`<button class="wa-btn" onclick="window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''} ${ml?`<button class="mail-btn" onclick="window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}<button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></div>`;
+      // 【LAZY LOAD核心】：直接读取冗余字段 c.last_log_note
+      return`<div class="task-row">${ratingBadge(c.rating)}<div class="tinfo"><div class="tname"><span style="cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</span><span class="badge s-${c.status||''}">${c.status||'未设置'}</span>${isNoResp(c)?'<span style="font-size:10px;font-weight:600;color:var(--danger);background:var(--danger-l);padding:1px 6px;border-radius:4px">●超15天未回</span>':''}</div><div class="tmeta">${esc(c.country||'—')} · ${esc(c.source||'—')} · ${esc(c.sales)}</div>${c.last_log_note?`<div class="tprev">${esc(c.last_log_note)}</div>`:''}</div><div class="tr-right"><div class="${n.cls}" style="white-space:nowrap">${n.t}</div>${wa?`<button class="wa-btn" onclick="window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''} ${ml?`<button class="mail-btn" onclick="window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}<button class="ab ag" onclick="followUp('${c.id}')">✓跟进</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></div>`;
     }).join('')}
   </div>
   </div>`;
@@ -1011,18 +1015,16 @@ function renderSea(){
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="seaPageSize=+this.value;seaPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${seaPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="seaPage=Math.max(1,seaPage-1);render()" ${seaPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${seaPage===n?'on':''}" onclick="seaPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="seaPage=Math.min(${totalPages},seaPage+1);render()" ${seaPage===totalPages?'disabled':''}>›</button></div>`;
   const rows=paged.map(c=>{
     const wa=waLink(c.phone),ml=mailLink(c.email);
-    const lastLog=LOGS.filter(l=>l.customer_id===c.id).sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1)[0];
     return`<tr><td style="padding-left:20px"><div style="font-size:13px;font-weight:600;cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt);margin-top:1px">${esc(c.company)}</div></td>
     <td class="col-hide" style="font-size:12px">${ml?`<div style="color:var(--brand);display:flex;align-items:center;gap:4px">✉ ${esc(c.email)}<button class="mail-btn" onclick="window.open('${ml}','_blank')">✉</button></div>`:''}${wa?`<div style="color:var(--ts);display:flex;align-items:center;gap:4px;margin-top:2px">📞 ${esc(c.phone)}<button class="wa-btn" onclick="window.open('${wa}','_blank')">💬</button></div>`:''}${!c.email&&!c.phone?'<span style="color:var(--border)">—</span>':''}</td>
     <td class="col-hide" style="font-size:12px;color:var(--ts)">${esc(c.country)||'—'}</td>
     <td class="col-hide" style="font-size:12px;font-weight:500">${esc(c.sales)||'—'}</td>
     <td class="col-hide">${ratingBadge(c.rating)}</td>
-    <td class="col-hide" style="max-width:200px">${lastLog?`<div style="font-size:11px;color:var(--tt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(lastLog.notes)}</div><div style="font-size:10px;color:var(--tt);margin-top:1px">${fmt(lastLog.log_date||lastLog.created_at)}</div>`:'<span style="color:var(--border);font-size:12px">—</span>'}</td>
+    <td class="col-hide" style="max-width:200px">${c.last_log_note?`<div style="font-size:11px;color:var(--tt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.last_log_note)}</div><div style="font-size:10px;color:var(--tt);margin-top:1px">${fmt(c.last_follow_date)}</div>`:'<span style="color:var(--border);font-size:12px">—</span>'}</td>
     <td><div class="acts"><button class="ab ac" onclick="openDetail('${c.id}')">详情</button><button class="ab ag" onclick="claimSea('${c.id}')">认领</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></td></tr>`;
   }).join('');
   
   const mobileCards=paged.map(c=>{
-    const lastLog=LOGS.filter(l=>l.customer_id===c.id).sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1)[0];
     const wa=waLink(c.phone),ml=mailLink(c.email);
     return `<div class="mobile-card">
       <div class="mc-header">${ratingBadge(c.rating)}<span class="mc-name" onclick="openDetail('${c.id}')">${esc(c.name)}</span></div>
@@ -1038,8 +1040,8 @@ function renderSea(){
       <div class="mc-follow-up">
         <div class="mc-fu-item" style="flex-direction:column;align-items:flex-start;gap:4px">
           <span class="mc-label">📝 最后日志:</span>
-          <span style="color:var(--ts);line-height:1.4">${lastLog?esc(lastLog.notes):'—'}</span>
-          <span style="font-size:10px;color:var(--tt)">${lastLog?fmt(lastLog.log_date||lastLog.created_at):''}</span>
+          <span style="color:var(--ts);line-height:1.4">${c.last_log_note?esc(c.last_log_note):'—'}</span>
+          <span style="font-size:10px;color:var(--tt)">${c.last_follow_date?fmt(c.last_follow_date):''}</span>
         </div>
       </div>
       <div class="mc-acts">
@@ -1121,7 +1123,8 @@ async function confirmTransfer(idStr){
 
 function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
-// ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK) =====
+
+// ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK + LAZY LOAD) =====
 function getNextDateByStep(logDate, stageNum) {
   if(!logDate) return null;
   if(stageNum === 1) return addD(logDate, 3);
@@ -1136,7 +1139,7 @@ async function followUp(id){
   const t=T(),ns=Math.min((c.follow_stage||0)+1,5);
   const nd=getNextDateByStep(t, ns);
 
-  const upd={last_follow_date:t, follow_stage:ns, next_follow_date:nd};
+  const upd={last_follow_date:t, follow_stage:ns, next_follow_date:nd, last_log_note: '标记已跟进'};
   if(ns===1 && !c.first_follow_date) upd.first_follow_date=t;
 
   if (typeof showLoading === 'function') showLoading(true);
@@ -1147,13 +1150,21 @@ async function followUp(id){
   toast(`✅ ${SLABELS[ns]||'跟进完成'}`);await load();
 }
 
-function openLog(id){
+async function openLog(id){
   LID=id;
   const c=ALL.find(x=>x.id===id);
   const ns = Math.min((c?.follow_stage||0)+1, 5); 
   LFD={stage_label: SLABELS[ns] || '其他', notes:'', status_update:'', log_date:T(), quality:'', next_date: getNextDateByStep(T(), ns) || ''};
+
+  if (typeof showLoading === 'function') showLoading(true);
+  const { data } = await db.from('follow_logs').select('*').eq('customer_id', id).order('created_at', {ascending: false});
+  if (typeof showLoading === 'function') showLoading(false);
+
+  if (data) LOGS = LOGS.filter(l => l.customer_id !== id).concat(data);
+
   renderLogDrawer();
 }
+
 function recalcNextDate() {
   const c = ALL.find(x => x.id === LID);
   const advance = document.getElementById('advance-stage')?.checked !== false;
@@ -1208,7 +1219,7 @@ function renderLogDrawer(){
       </div>
       <div style="margin-top:4px">
         <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">历史记录 (${cl.length}条)</div>
-        ${cl.length?cl.map(l=>`<div class="hist-item"><div class="hist-date">${(l.log_date||l.created_at?.split('T')[0]||'').slice(5)}</div><div class="hist-content"><div class="hist-stage">${esc(l.stage_label||'—')}${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="font-size:10px;font-weight:600;color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px;margin-left:4px">${esc(l.quality)}</span>`:''}</div><div class="hist-text">${esc(l.notes)}</div></div><div class="hist-acts"><button class="ha" onclick="editLog('${l.id}')">编辑</button><button class="ha del" onclick="deleteLog('${l.id}')">删</button></div></div>`).join(''):'<div style="color:var(--tt);font-size:12px;padding:8px 0">暂无历史记录</div>'}
+        ${cl.length?cl.map(l=>`<div class="hist-item"><div class="hist-date">${(l.log_date||l.created_at?.split('T')[0]||'').slice(5)}</div><div class="hist-content"><div class="hist-stage">${esc(l.stage_label||'—')}${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="font-size:10px;font-weight:600;color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px;margin-left:4px">${esc(l.quality)}</span>`:''} · ${esc(l.sales)}</div><div class="hist-text">${esc(l.notes)}</div></div><div class="hist-acts"><button class="ha" onclick="editLog('${l.id}')">编辑</button><button class="ha del" onclick="deleteLog('${l.id}')">删</button></div></div>`).join(''):'<div style="color:var(--tt);font-size:12px;padding:8px 0">暂无历史记录</div>'}
       </div>
     </div>
     <div class="drawer-footer"><button class="btn bg" onclick="document.getElementById('log-drawer').remove()">关闭</button><button class="btn bp" onclick="saveLog()">保存日志</button></div>
@@ -1238,7 +1249,9 @@ async function saveLog(){
     }
   }
 
-  const upd={last_follow_date:logDate, follow_stage:ns};
+  // 同步写入冗余字段
+  const finalNotes = LFD.notes?.trim() || '标记已跟进';
+  const upd={last_follow_date:logDate, follow_stage:ns, last_log_note: finalNotes};
   if(ns===1 && !c.first_follow_date) upd.first_follow_date = logDate;
 
   upd.next_follow_date = LFD.next_date || null;
@@ -1246,11 +1259,12 @@ async function saveLog(){
 
   if (typeof showLoading === 'function') showLoading(true);
   await db.from('customers').update(upd).eq('id',LID);
-  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:LFD.notes?.trim()||'标记已跟进',status_update:LFD.status_update||'',log_date:logDate,quality:LFD.quality||''}]);
+  await db.from('follow_logs').insert([{customer_id:LID,sales:CU,stage_label:LFD.stage_label||SLABELS[ns]||'',notes:finalNotes,status_update:LFD.status_update||'',log_date:logDate,quality:LFD.quality||''}]);
   if (typeof showLoading === 'function') showLoading(false);
 
   toast('📝 日志已保存');LFD={stage_label:'',notes:'',status_update:'',log_date:T(),quality:'',next_date:''};
-  await load();renderLogDrawer();
+  await load();
+  openLog(LID);
 }
 
 async function editLog(logId){
@@ -1262,10 +1276,19 @@ async function editLog(logId){
   
   if (typeof showLoading === 'function') showLoading(true);
   await db.from('follow_logs').update({notes:newNotes.trim(),log_date:fd}).eq('id',logId);
+
+  const {data: latest} = await db.from('follow_logs').select('notes').eq('customer_id', LID).order('log_date', {ascending: false}).order('created_at', {ascending: false}).limit(1);
+  if(latest && latest.length > 0) {
+    await db.from('customers').update({last_log_note: latest[0].notes}).eq('id', LID);
+  }
+
   if (typeof showLoading === 'function') showLoading(false);
   
-  toast('✅ 日志已更新');await load();renderLogDrawer();
+  toast('✅ 日志已更新');
+  await load();
+  openLog(LID);
 }
+
 async function deleteLog(logId){
   if(!confirm('⚠️ 确定删除这条跟进记录？（系统将触发历史状态回滚重算）'))return;
   
@@ -1277,7 +1300,7 @@ async function deleteLog(logId){
   
   if(c){
     if(remaining.length===0){
-       await db.from('customers').update({follow_stage:0, first_follow_date:null, last_follow_date:null, next_follow_date:null}).eq('id',LID);
+       await db.from('customers').update({follow_stage:0, first_follow_date:null, last_follow_date:null, next_follow_date:null, last_log_note: null}).eq('id',LID);
     } else {
        const sorted = remaining.sort((a,b)=>(b.log_date||b.created_at)>(a.log_date||a.created_at)?1:-1);
        const latestLog = sorted[0];
@@ -1294,176 +1317,29 @@ async function deleteLog(logId){
          follow_stage: rollbackStage,
          first_follow_date: firstDate,
          last_follow_date: latestDate,
-         next_follow_date: rolledBackNextDate
+         next_follow_date: rolledBackNextDate,
+         last_log_note: latestLog.notes
        }).eq('id',LID);
     }
   }
   if (typeof showLoading === 'function') showLoading(false);
   toast('✅ 记录已删除，状态已重置回滚');
-  await load();renderLogDrawer();
-}
-
-async function claimSea(id){
-  const t=T();
-  await db.from('customers').update({sales:CU,last_follow_date:t,follow_stage:1,first_follow_date:t,next_follow_date:addD(t,3)}).eq('id',id);
-  toast('✅ 已认领，开始跟进');await load();
-}
-function toggleSel(id,checked){if(checked)selIds.add(id);else selIds.delete(id);render();}
-function toggleAll(cb){document.querySelectorAll('.row-sel').forEach(b=>{if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);});render();}
-
-function batchStatus(){
-  if (selIds.size === 0) return;
-  const opts = STATUSES.filter(s => s);
-  document.getElementById('status-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'status-ov';
-  el.innerHTML = `
-    <div class="modal msm">
-      <div class="modal-header">
-        <div class="modal-top">
-          <div class="modal-title">📊 批量改状态 <span style="font-weight:400;color:var(--tt);font-size:13px">(${selIds.size}条)</span></div>
-          <button class="modal-close" onclick="document.getElementById('status-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body">
-        <div class="fg">
-          <label class="fl" style="margin-bottom:10px;">点击选择目标状态</label>
-          <div class="prod-tags" id="status-tags">
-            ${opts.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#status-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn bg" onclick="document.getElementById('status-ov').remove()">取消</button>
-        <button class="btn bp" onclick="confirmBatchStatus()">确认修改</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-async function confirmBatchStatus(){
-  const sel = document.querySelector('#status-tags .on');
-  if (!sel) { toast('⚠️ 请先点击选择一个状态'); return; }
-  const s = sel.textContent;
-  const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
-  if (error) { toast('失败:'+error.message); return; }
-  toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
-  document.getElementById('status-ov')?.remove();
-  selIds.clear();
   await load();
-}
-
-function openDeleteConfirmModal(id = null){
-  const isBatch = !id;
-  const count = isBatch ? selIds.size : 1;
-  if (isBatch && count === 0) return;
-  document.getElementById('del-confirm-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'del-confirm-ov';
-  el.innerHTML = `
-    <div class="modal msm" style="max-width:320px;">
-      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
-        <div class="modal-top" style="margin-bottom:0">
-          <div class="modal-title" style="color:var(--danger);">⚠️ 确认删除</div>
-          <button class="modal-close" onclick="document.getElementById('del-confirm-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body" style="padding:16px 24px 20px; text-align:center;">
-        <div style="font-size:14px;color:var(--tp);font-weight:600;margin-bottom:8px;">确定要删除这 ${count} 条客户记录吗？</div>
-        <div style="font-size:12px;color:var(--ts);">关联的历史日志将被连同销毁，此操作不可逆。</div>
-      </div>
-      <div class="modal-footer" style="border-top:none; justify-content:center; gap:12px;">
-        <button class="btn bg" onclick="document.getElementById('del-confirm-ov').remove()" style="flex:1; justify-content:center;">取消</button>
-        <button class="btn bp" onclick="executeDelete('${id || ''}')" style="flex:1; justify-content:center; background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,.2); border:none;">永久删除</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-async function executeDelete(idStr) {
-  const id = idStr || null;
-  if (typeof showLoading === 'function') showLoading(true);
-  document.getElementById('del-confirm-ov')?.remove();
-  if (id) {
-    await db.from('follow_logs').delete().eq('customer_id',id);
-    await db.from('customers').delete().eq('id',id);
-    selIds.delete(id);
-    toast('✅ 已删除');
-  } else {
-    const ids = [...selIds];
-    await db.from('follow_logs').delete().in('customer_id',ids);
-    await db.from('customers').delete().in('id',ids);
-    selIds.clear();
-    toast(`✅ 已删除 ${ids.length} 条`);
-  }
-  if (typeof showLoading === 'function') showLoading(false);
-  await load();
-}
-
-function delCus(id) { openDeleteConfirmModal(id); }
-function batchDel() { openDeleteConfirmModal(null); }
-
-async function batchProducts(){
-  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
-  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-async function confirmBatchProducts(){
-  const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
-  if(!selected.length){toast('请至少选一个');return;}
-  const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
-}
-async function batchCtype(){
-  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
-  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">🏢 批量改客户类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bct-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择客户类型</label><div class="prod-tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="ptag" onclick="document.querySelectorAll('#bct-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${p}</button>`).join('')}</div></div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bct-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchCtype()">确认</button></div></div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-async function confirmBatchCtype(){
-  const sel=document.querySelector('#bct-tags .on');
-  if(!sel){toast('请选择一个');return;}
-  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
-}
-function batchExport(filtered){
-  const ids=[...selIds];
-  const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
-  if(!list.length){toast('没有可导出的数据');return;}
-  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
-  const fields=['name','company','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
-  const csvQ=v=>{const s=Array.isArray(v)?v.join(';'):String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
-  const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
-  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`佳龙客户_${T()}.csv`;a.click();
-  toast(`✅ 已导出 ${list.length} 条`);
-}
-
-// ===== FILTER HELPERS =====
-function setCusDR(v){
-  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
-  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
-  fDateRange=v;cusPage=1;render();
-}
-function toggleAdvFilters(){
-  advFiltersOpen=!advFiltersOpen;
-  const f=document.getElementById('adv-filters'),a=document.getElementById('adv-arrow');
-  if(f)f.classList.toggle('open',advFiltersOpen);
-  if(a)a.textContent=advFiltersOpen?'▴':'▾';
-}
-function toggleDD(btn){
-  document.querySelectorAll('.dd').forEach(d=>{if(d!==btn.querySelector('.dd'))d.classList.remove('open')});
-  btn.querySelector('.dd')?.classList.toggle('open');
+  openLog(LID);
 }
 
 // ===== DETAIL =====
-function openDetail(id){
+async function openDetail(id){
   const c=ALL.find(x=>x.id===id);if(!c)return;
   const n=nfi(c);const dup=isDup(c,c.id);
-  const cl=LOGS.filter(l=>l.customer_id===id);
+
+  if (typeof showLoading === 'function') showLoading(true);
+  const { data } = await db.from('follow_logs').select('*').eq('customer_id', id).order('created_at', {ascending: false});
+  if (typeof showLoading === 'function') showLoading(false);
+
+  if (data) LOGS = LOGS.filter(l => l.customer_id !== id).concat(data);
+  const cl = data || [];
+
   const wa=waLink(c.phone),ml=mailLink(c.email);
   const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],['真空需求',c.vacuum_need],['自动化',c.automation_need],['包装物料',c.packaging_material],['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],['创建时间',fmtF(cusDate(c))]].filter(([,v])=>v);
   const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
@@ -1487,6 +1363,7 @@ function openDetail(id){
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
+
 // ===== EDIT/ADD MODAL (TABS) =====
 function openAdd(){
   EID=null;
@@ -1533,7 +1410,7 @@ function showFormModal(title,activeTab){
         <div class="tags-wrap" id="tags-wrap-edit" onclick="document.getElementById('tag-input-edit').focus()">
           ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
           <input id="tag-input-edit" type="text" placeholder="输入标签回车或点右侧添加…" style="border:none;outline:none;font-size:12px;color:var(--tp);background:transparent;font-family:inherit;min-width:100px;flex:1" onkeydown="addTagEdit(event)"/>
-          <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){FD.tags.push(v);e.value='';showFormModal(EID ? '编辑客户 — ' + FD.name : '新建客户', 3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
+          <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){if(FD.tags.length >= 5) { toast('⚠️ 数据规范拦截：每位客户最多保留 5 个核心标签'); return; } FD.tags.push(v);e.value='';showFormModal(EID ? '编辑客户 — ' + FD.name : '新建客户', 3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
         </div>
       </div>
     </div>
@@ -1622,6 +1499,7 @@ function fixDate(s){
   }
   return null;
 }
+
 async function doImp(){
   const raw=document.getElementById('imp-txt')?.value;if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
   const rows=parseCSV(raw);if(rows.length<2){toast('至少需要表头+一行数据');return;}
