@@ -648,8 +648,8 @@ function openDashDrill(type, param='') {
   const rangeLabel = rangeMap[dashDateRange] || '筛选区间';
 
   if (type === 'all') { list = src; title = `${rangeLabel} - 总客户`; }
-  else if (type === 'task') { list = src.filter(c => isTask(c)); title = `${rangeLabel} - 今日待办`; }
-  else if (type === 'sea') { list = src.filter(isSea); title = `${rangeLabel} - 公海客户`; }
+  else if (type === 'task') { list = baseSrc.filter(c => isTask(c)); title = `今日待办 (全量数据)`; }
+  else if (type === 'sea') { list = baseSrc.filter(isSea); title = `公海客户 (全量数据)`; }
   else if (type === 'status') { list = src.filter(c => c.status === param); title = `${rangeLabel} - ${param}客户`; }
   else if (type === 'date') { list = src.filter(c => cusDate(c) === param); title = `${param} 新增客户`; }
 
@@ -694,8 +694,8 @@ function renderDash(){
   let baseSrc=isAdm()&&dashSales==='全部'?ALL:(isAdm()?ALL.filter(c=>c.sales===dashSales):CUS);
   const src=filterByDate(baseSrc,dashDateRange, dashDateStart, dashDateEnd);
   const bs=s=>src.filter(c=>c.status===s).length;
-  const taskN=src.filter(c=>isTask(c)).length;
-  const seaN=src.filter(isSea).length;
+  const taskN=baseSrc.filter(c=>isTask(c)).length;
+  const seaN=baseSrc.filter(isSea).length;
 
   const salesPills=(isAdm()?['全部',...SALES]:[CU]).map(s=>{
     const isOn = dashSales === s;
@@ -712,7 +712,7 @@ function renderDash(){
   const maxR=Math.max(...ratingData.map(d=>d[1]),1);
   const ratingBars=ratingData.map(([r,n])=>`<div class="bar-row"><div class="bar-lbl">${ratingBadge(r)} ${r}级</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(n/maxR*100)}%;background:${RCOLORS[r]}"></div></div><div class="bar-val">${n}</div></div>`).join('')||'<div style="color:var(--tt);font-size:12px">暂无评级数据，请在编辑客户中设置</div>';
   const perfRows=SALES.map(s=>{const own=src.filter(c=>c.sales===s);const won=own.filter(c=>c.status==='成交').length;const tot=own.length;const p=tot?Math.round(won/tot*100):0;return tot>0?`<div class="perf-row"><div class="pav">${s.slice(0,2)}</div><div class="pname">${s}</div><div class="ptrack"><div class="pfill" style="width:${p}%"></div></div><div class="pstat">${tot}客·${won}成·${p}%</div></div>`:''}).join('');
-  const todList=src.filter(c=>isTask(c)).slice(0,6);
+  const todList=baseSrc.filter(c=>isTask(c)).slice(0,6);
   const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
   
   return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
