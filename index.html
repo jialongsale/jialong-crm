@@ -505,7 +505,15 @@ function isNoResp(c){
   return addD(c.last_follow_date,15)<T();
 }
 function isDup(c,skip=null){
-  return ALL.some(x=>x.id!==skip&&((c.name&&x.name===c.name)||(c.phone&&c.phone.length>5&&x.phone===c.phone)));
+  const cleanPhone = p => p ? p.replace(/\D/g, '') : '';
+  const p1 = cleanPhone(c.phone);
+  return ALL.some(x=>{
+    if(x.id === skip) return false;
+    const p2 = cleanPhone(x.phone);
+    const nameMatch = c.name && x.name === c.name;
+    const phoneMatch = p1.length > 5 && p1 === p2;
+    return nameMatch || phoneMatch;
+  });
 }
 function nfi(c){
   const s=c.follow_stage||0;
@@ -1437,7 +1445,7 @@ function showFormModal(title,activeTab){
       </div>
       <div class="fg"><label class="fl">自定义标签 <span style="color:var(--tt);font-weight:400;font-size:11px">（输入后回车添加）</span></label>
         <div class="tags-wrap" id="tags-wrap-edit" onclick="document.getElementById('tag-input-edit').focus()">
-          ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
+          ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}', this)" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
           <input id="tag-input-edit" type="text" placeholder="输入标签回车或点右侧添加…" style="border:none;outline:none;font-size:12px;color:var(--tp);background:transparent;font-family:inherit;min-width:100px;flex:1" onkeydown="addTagEdit(event)"/>
           <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){if(FD.tags.length >= 5) { toast('⚠️ 数据规范拦截：每位客户最多保留 5 个核心标签'); return; } FD.tags.push(v);e.value='';showFormModal(EID ? '编辑客户 — ' + FD.name : '新建客户', 3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
         </div>
@@ -1469,11 +1477,14 @@ function addTagEdit(e){
     const wrap=document.getElementById('tags-wrap-edit');
     const chip=document.createElement('span');
     chip.style.cssText='display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)';
-    chip.innerHTML=`${esc(val)}<span onclick="removeTagEdit('${esc(val)}')" style="cursor:pointer;opacity:.6;font-size:12px">×</span>`;
+    chip.innerHTML=`${esc(val)}<span onclick="removeTagEdit('${esc(val)}', this)" style="cursor:pointer;opacity:.6;font-size:12px">×</span>`;
     wrap.insertBefore(chip,e.target);
   }
 }
-function removeTagEdit(tag){FD.tags=FD.tags.filter(t=>t!==tag);showFormModal(EID?`编辑客户 — ${FD.name}`:'新建客户',3);}
+function removeTagEdit(tag, el){
+  FD.tags = FD.tags.filter(t => t !== tag);
+  if (el && el.parentElement) el.parentElement.remove();
+}
 
 async function saveCus(){
   if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
