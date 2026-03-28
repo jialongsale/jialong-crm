@@ -455,6 +455,38 @@ let dashDateRange='14', dashDateStart='', dashDateEnd='';
 let fAdsRange='30', fAdsCountry='全部', fAdsCamp='全部';
 let fAdsTab='agg', fAdsSort='spend', fAdsSortDesc=true;
 let fAdsDateStart='', fAdsDateEnd='';
+let fbSelIds = new Set();
+
+const FB_COUNTRIES = {
+  'US':'美国','GB':'英国','CA':'加拿大','AU':'澳大利亚','NZ':'新西兰',
+  'SG':'新加坡','MY':'马来西亚','TH':'泰国','ID':'印尼','VN':'越南','PH':'菲律宾',
+  'SA':'沙特','AE':'阿联酋','CZ':'捷克','RO':'罗马尼亚','PL':'波兰','HU':'匈牙利',
+  'RU':'俄罗斯','DE':'德国','FR':'法国','IT':'意大利','ES':'西班牙','NL':'荷兰',
+  'BR':'巴西','MX':'墨西哥','IN':'印度','ZA':'南非','TR':'土耳其','EG':'埃及',
+  'PK':'巴基斯坦','BD':'孟加拉国','NG':'尼日利亚','KE':'肯尼亚','CO':'哥伦比亚'
+};
+const getCoName = (c) => FB_COUNTRIES[c?.trim()?.toUpperCase()] || c;
+
+function toggleFbSel(id, checked) { if(checked) fbSelIds.add(id); else fbSelIds.delete(id); render(); }
+function toggleFbAll(cb) { document.querySelectorAll('.fb-row-sel').forEach(b => { if(cb.checked) fbSelIds.add(b.value); else fbSelIds.delete(b.value); }); render(); }
+
+async function deleteFbAds(idStr = null) {
+  const count = idStr ? 1 : fbSelIds.size;
+  if(count === 0) return;
+  if(!confirm(`⚠️ 确定要从底层数据库中永久删除这 ${count} 条流水记录吗？此操作不可逆。`)) return;
+
+  showLoading(true);
+  if (idStr) {
+    await db.from('fb_ads_metrics').delete().eq('id', idStr);
+    fbSelIds.delete(idStr);
+  } else {
+    await db.from('fb_ads_metrics').delete().in('id', [...fbSelIds]);
+    fbSelIds.clear();
+  }
+  showLoading(false);
+  toast(`✅ 成功清理 ${count} 条冗余数据`);
+  await load();
+}
 
 function setAdsDR(v){
   if(v==='custom'){fAdsRange='custom';fAdsDateStart='';fAdsDateEnd='';render();return;}
@@ -1934,8 +1966,8 @@ function renderFbAds(){
   const allCamps = [...new Set(src.map(d=>d.campaign_name))].sort();
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   
-  const allCountries = [...new Set(src.map(d=>d.country))].sort();
-  if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
+  const allCountries = [...new Set(src.map(d=>getCoName(d.country)))].sort();
+  if(fAdsCountry !== '全部') src = src.filter(d => getCoName(d.country) === fAdsCountry);
 
   const tSpend = src.reduce((a,b)=>a+(b.spend||0),0);
   const tImp = src.reduce((a,b)=>a+(b.impressions||0),0);
@@ -1951,8 +1983,9 @@ function renderFbAds(){
 
   const aggMap = {};
   src.forEach(d => {
-    const key = d.ad_name + '|' + d.country;
-    if(!aggMap[key]) aggMap[key] = { ad_name: d.ad_name, campaign_name: d.campaign_name, country: d.country, spend:0, impressions:0, link_clicks:0, leads:0 };
+    const mappedCo = getCoName(d.country);
+    const key = d.ad_name + '|' + mappedCo;
+    if(!aggMap[key]) aggMap[key] = { ad_name: d.ad_name, campaign_name: d.campaign_name, country: mappedCo, spend:0, impressions:0, link_clicks:0, leads:0 };
     aggMap[key].spend += Number(d.spend||0);
     aggMap[key].impressions += Number(d.impressions||0);
     aggMap[key].link_clicks += Number(d.link_clicks||0);
@@ -1976,7 +2009,12 @@ function renderFbAds(){
   });
 
   const coMap = {};
-  src.forEach(d => { if(!coMap[d.country]) coMap[d.country] = { spend:0, leads:0 }; coMap[d.country].spend += d.spend; coMap[d.country].leads += d.leads; });
+  src.forEach(d => { 
+    const mappedCo = getCoName(d.country);
+    if(!coMap[mappedCo]) coMap[mappedCo] = { spend:0, leads:0 }; 
+    coMap[mappedCo].spend += d.spend; 
+    coMap[mappedCo].leads += d.leads; 
+  });
   const coStats = Object.entries(coMap).map(([c,v])=>({ c, cpl: v.leads>0?v.spend/v.leads:v.spend*999, leads:v.leads, spend:v.spend })).filter(x=>x.spend>0).sort((a,b)=>a.cpl-b.cpl);
   const bestCo = coStats.filter(x=>x.leads>0)[0];
   const worstCo = [...coStats].sort((a,b)=>b.cpl-a.cpl)[0];
@@ -2006,15 +2044,20 @@ function renderFbAds(){
     <td style="text-align:right;font-weight:700;color:${d.leads===0?'var(--danger)':'var(--brand)'}">${d.leads>0 ? '$'+d.cpl.toFixed(2) : '⚠️ 无效消耗'}</td>
   </tr>`).join('');
 
+  const allFbSel = src.length > 0 && src.every(d => fbSelIds.has(d.id));
   const rawRows = src.sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,100).map(d => `<tr>
+    <td style="width:40px;text-align:center"><input type="checkbox" class="fb-row-sel" value="${d.id}" ${fbSelIds.has(d.id)?'checked':''} onchange="toggleFbSel('${d.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer"/></td>
     <td style="font-size:11px;color:var(--ts)">${d.record_date}</td>
     <td><div style="font-size:12px;color:var(--tp);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.ad_name)}</div></td>
-    <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(d.country)}</span></td>
+    <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(getCoName(d.country))}</span></td>
     <td style="text-align:right;color:var(--danger)">$${Number(d.spend).toFixed(2)}</td>
     <td style="text-align:right;color:var(--ts)">${d.impressions}</td>
     <td style="text-align:right;color:var(--tp)">${d.link_clicks}</td>
     <td style="text-align:right;color:var(--success);font-weight:600">${d.leads}</td>
+    <td style="text-align:right"><button class="ab ar" onclick="deleteFbAds('${d.id}')">删除</button></td>
   </tr>`).join('');
+
+  const batchFbBar = fAdsTab === 'raw' && fbSelIds.size > 0 ? `<div style="display:flex;gap:6px;margin-bottom:12px;padding:8px 12px;background:var(--danger-l);border-radius:var(--r2);border:1px solid rgba(255,59,48,.2);align-items:center"><span style="font-size:12px;font-weight:600;color:var(--danger)">已选中 ${fbSelIds.size} 条记录</span><button onclick="deleteFbAds()" style="padding:4px 10px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:11px;font-weight:600;cursor:pointer;">🗑 批量永久删除</button><button onclick="fbSelIds.clear();render()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:11px;cursor:pointer;">✕ 取消</button></div>` : '';
 
   return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportCoreData()">📋 复制高维报表</button><button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + `
   
@@ -2028,8 +2071,8 @@ function renderFbAds(){
     <div class="sc sm"><div class="sc-lbl">总花费 (USD)</div><div class="sc-val" style="color:var(--danger)">$${tSpend.toFixed(2)}</div></div>
     <div class="sc sm"><div class="sc-lbl">总展示</div><div class="sc-val" style="color:var(--ts)">${tImp}</div></div>
     <div class="sc sm"><div class="sc-lbl">链接点击</div><div class="sc-val" style="color:var(--tp)">${tClick}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">平均 CTR: ${ctr}</div></div>
-    <div class="sc sm"><div class="sc-lbl">有效转化数</div><div class="sc-val" style="color:var(--success)">${tLead}</div></div>
-    <div class="sc sm"><div class="sc-lbl">单条转化成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
+    <div class="sc sm"><div class="sc-lbl">表单转化数</div><div class="sc-val" style="color:var(--success)">${tLead}</div></div>
+    <div class="sc sm"><div class="sc-lbl">单条表单成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
     <div class="sc sm"><div class="sc-lbl">单次点击成本 (CPC)</div><div class="sc-val" style="color:var(--purple)">$${avgCPC}</div></div>
   </div>
 
@@ -2037,15 +2080,16 @@ function renderFbAds(){
 
   <div class="cg2">
     <div class="cc"><div class="cc-title">📅 每日消耗与线索走势</div><div class="chart-wrap" style="height:250px"><canvas id="fbLineChart"></canvas></div></div>
-    <div class="cc"><div class="cc-title">🎯 矩阵诊断</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
+    <div class="cc"><div class="cc-title">🎯 矩阵诊断 (高频吞金兽预警)</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
   </div>
 
   <div class="tc" style="margin-top:16px">
-    <div class="tc-head" style="padding:0;border-bottom:none">
-      <div class="tabs" style="width:100%">
+    <div class="tc-head" style="padding:0;border-bottom:none;flex-direction:column;align-items:stretch">
+      <div class="tabs" style="width:100%;border-bottom:1px solid var(--border-l)">
         <div class="tab ${fAdsTab==='agg'?'on':''}" onclick="fAdsTab='agg';render()" style="padding:14px 20px">📊 转化成本诊断表 (聚合)</div>
-        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (前100条)</div>
+        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (可删补)</div>
       </div>
+      <div style="padding:10px 20px 0;">${batchFbBar}</div>
     </div>
     <div class="tscroll">
       ${fAdsTab === 'agg' ? `
@@ -2065,11 +2109,12 @@ function renderFbAds(){
       </table>` : `
       <table style="min-width:800px">
         <thead><tr style="background:var(--surface2)">
+          <th style="width:40px;text-align:center"><input type="checkbox" ${allFbSel?'checked':''} onchange="toggleFbAll(this)" style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer"/></th>
           <th style="width:100px">记录日期</th><th>广告名称</th><th style="width:80px">国家</th>
           <th style="text-align:right;width:100px">花费(USD)</th><th style="text-align:right;width:90px">展示</th>
-          <th style="text-align:right;width:90px">点击</th><th style="text-align:right;width:90px">转化数</th>
+          <th style="text-align:right;width:90px">点击</th><th style="text-align:right;width:90px">表单转化</th><th style="width:80px"></th>
         </tr></thead>
-        <tbody>${rawRows || `<tr><td colspan="7"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
+        <tbody>${rawRows || `<tr><td colspan="9"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
       </table>
       `}
     </div>
@@ -2082,7 +2127,7 @@ function renderFbAdsChart(){
   const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
-  if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
+  if(fAdsCountry !== '全部') src = src.filter(d => getCoName(d.country) === fAdsCountry);
 
   ['fbLineChart', 'fbScatterChart'].forEach(id => { if(CI[id]) { CI[id].destroy(); delete CI[id]; } });
 
@@ -2115,8 +2160,8 @@ function renderFbAdsChart(){
 
   const adMap = {};
   src.forEach(d => {
-    const key = d.country;
-    if(!adMap[key]) adMap[key] = { spend:0, leads:0, country:d.country };
+    const key = getCoName(d.country);
+    if(!adMap[key]) adMap[key] = { spend:0, leads:0, country:key };
     adMap[key].spend += d.spend;
     adMap[key].leads += d.leads;
   });
@@ -2137,9 +2182,9 @@ function renderFbAdsChart(){
           backgroundColor: ctx => {
             const v = ctx.raw;
             if(!v) return 'var(--brand)';
-            if(v.y > 30 || v.leads === 0) return 'rgba(255,59,48,0.8)'; // 红灯：高成本/无转化
-            if(v.y < 10 && v.leads > 0) return 'rgba(52,199,89,0.8)'; // 绿灯：优质转化
-            return 'rgba(0,102,204,0.6)'; // 蓝灯：正常
+            if(v.y > 30 || v.leads === 0) return 'rgba(255,59,48,0.8)'; 
+            if(v.y < 10 && v.leads > 0) return 'rgba(52,199,89,0.8)'; 
+            return 'rgba(0,102,204,0.6)'; 
           },
           pointRadius: 6,
           pointHoverRadius: 8
@@ -2205,7 +2250,7 @@ async function doFbImp(){
     const r = rows[i];
     if(!r[iDate] || r[iDate].includes('总计')) continue; 
     
-    const leadsCount = (iLead1 !== -1 ? (parseFloat(r[iLead1])||0) : 0) + (iLead2 !== -1 ? (parseFloat(r[iLead2])||0) : 0);
+    const leadsCount = iLead1 !== -1 ? (parseFloat(r[iLead1])||0) : 0;
     
     data.push({
       record_date: fixDate(r[iDate]),
