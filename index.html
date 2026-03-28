@@ -1017,23 +1017,30 @@ function renderSea(){
   if(seaPage>totalPages)seaPage=totalPages;
   const paged=list.slice((seaPage-1)*seaPageSize,seaPage*seaPageSize);
   if(!total)return tbHtml('公海客户','超30天未跟进，任意销售可认领','')+`<div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input id="sea-search" value="${esc(seaS)}" oninput="handleSearch(this.value, 'sea')" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div><div class="empty"><div class="empty-icon">👍</div><div class="empty-ttl">未找到客户</div></div></div>`;
+  
   const pageNums=[];
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-seaPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="seaPageSize=+this.value;seaPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${seaPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="seaPage=Math.max(1,seaPage-1);render()" ${seaPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${seaPage===n?'on':''}" onclick="seaPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="seaPage=Math.min(${totalPages},seaPage+1);render()" ${seaPage===totalPages?'disabled':''}>›</button></div>`;
+  
+  const allSel=paged.length>0&&paged.every(c=>selIds.has(c.id));
+
   const rows=paged.map(c=>{
     const wa=waLink(c.phone),ml=mailLink(c.email);
-    return`<tr><td style="padding-left:20px"><div style="font-size:13px;font-weight:600;cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt);margin-top:1px">${esc(c.company)}</div></td>
+    return`<tr>
+    <td style="width:40px;text-align:center"><input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></td>
+    <td><div style="font-size:13px;font-weight:600;cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt);margin-top:1px">${esc(c.company)}</div></td>
     <td class="col-hide" style="font-size:12px">${ml?`<div style="color:var(--brand);display:flex;align-items:center;gap:4px">✉ ${esc(c.email)}<button class="mail-btn" onclick="window.open('${ml}','_blank')">✉</button></div>`:''}${wa?`<div style="color:var(--ts);display:flex;align-items:center;gap:4px;margin-top:2px">📞 ${esc(c.phone)}<button class="wa-btn" onclick="window.open('${wa}','_blank')">💬</button></div>`:''}${!c.email&&!c.phone?'<span style="color:var(--border)">—</span>':''}</td>
     <td class="col-hide" style="font-size:12px;color:var(--ts)">${esc(c.country)||'—'}</td>
     <td class="col-hide" style="font-size:12px;font-weight:500">${esc(c.sales)||'—'}</td>
     <td class="col-hide">${ratingBadge(c.rating)}</td>
     <td class="col-hide" style="max-width:200px">${c.last_log_note?`<div style="font-size:11px;color:var(--tt);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.last_log_note)}</div><div style="font-size:10px;color:var(--tt);margin-top:1px">${fmt(c.last_follow_date)}</div>`:'<span style="color:var(--border);font-size:12px">—</span>'}</td>
-    <td><div class="acts"><button class="ab ac" onclick="openDetail('${c.id}')">详情</button><button class="ab ag" onclick="claimSea('${c.id}')">认领</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></td></tr>`;
+    <td><div class="acts"><button class="ab ac" onclick="openDetail('${c.id}')">详情</button><button class="ab ag" onclick="openClaimModal('${c.id}')">${isAdm()?'分配':'认领'}</button><button class="ab ab2" onclick="openLog('${c.id}')">📝</button></div></td></tr>`;
   }).join('');
   
   const mobileCards=paged.map(c=>{
     const wa=waLink(c.phone),ml=mailLink(c.email);
     return `<div class="mobile-card">
+      <input type="checkbox" class="row-sel" value="${c.id}" ${selIds.has(c.id)?'checked':''} onchange="toggleSel('${c.id}',this.checked)" style="position:absolute;top:16px;right:16px;width:18px;height:18px;accent-color:var(--brand)"/>
       <div class="mc-header">${ratingBadge(c.rating)}<span class="mc-name" onclick="openDetail('${c.id}')">${esc(c.name)}</span></div>
       <div class="mc-company">${esc(c.company)||'（未填写公司）'}</div>
       <div style="margin-top:10px;display:flex;gap:8px;font-size:12px;color:var(--ts)">
@@ -1053,17 +1060,28 @@ function renderSea(){
       </div>
       <div class="mc-acts">
         <button class="ab ac" onclick="openDetail('${c.id}')">详情</button>
-        <button class="ab ag" onclick="claimSea('${c.id}')">认领</button>
+        <button class="ab ag" onclick="openClaimModal('${c.id}')">${isAdm()?'分配':'认领'}</button>
         <button class="ab ab2" onclick="openLog('${c.id}')">📝 写日志</button>
       </div>
     </div>`;
   }).join('');
+
+  const batchBar = selIds.size>0 ? `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px;padding:10px 12px;background:var(--teal-l);border-radius:var(--r2);border:1px solid rgba(8,145,178,.2);align-items:center">
+    <span style="font-size:12px;font-weight:600;color:var(--teal)">选 ${selIds.size} 条</span>
+    <button onclick="openClaimModal(null)" style="padding:4px 8px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">${isAdm()?'批量分配':'批量认领'}</button>
+    <button onclick="selIds.clear();render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:11px;cursor:pointer;font-family:inherit">✕取消</button>
+  </div>` : '';
+
   return tbHtml('公海客户',`${total}条 · 超30天未跟进，任意销售可认领`,`<button class="btn bg col-hide" onclick="batchExport([...ALL.filter(isSea)])">📤 导出</button>`)+`
   <div class="fsec"><div class="frow"><div class="sbox"><span style="color:var(--tt)">🔍</span><input id="sea-search" value="${esc(seaS)}" oninput="handleSearch(this.value, 'sea')" placeholder="搜索姓名、公司、国家、原负责人…"/></div></div></div>
+  ${batchBar}
   <div class="tc">
     <div class="tc-head"><span class="tc-title">公海客户 <span style="font-size:12px;color:var(--tt);font-weight:400">${total}条</span></span></div>
     <div class="tscroll"><table>
-      <thead><tr><th style="padding-left:20px;min-width:160px">客户</th><th class="col-hide" style="min-width:200px">邮箱/电话</th><th class="col-hide">国家</th><th class="col-hide">原负责人</th><th class="col-hide">评级</th><th class="col-hide" style="min-width:180px">最后日志</th><th>操作</th></tr></thead>
+      <thead><tr>
+        <th style="width:40px;text-align:center"><input type="checkbox" ${allSel?'checked':''} onchange="toggleAll(this)" style="width:14px;height:14px;cursor:pointer;accent-color:var(--brand)"/></th>
+        <th style="min-width:160px">客户</th><th class="col-hide" style="min-width:200px">邮箱/电话</th><th class="col-hide">国家</th><th class="col-hide">原负责人</th><th class="col-hide">评级</th><th class="col-hide" style="min-width:180px">最后日志</th><th>操作</th>
+      </tr></thead>
       <tbody>${rows}</tbody>
     </table></div>
     ${pageBar}
@@ -1343,6 +1361,219 @@ async function deleteLog(logId){
   toast('✅ 记录已删除，状态已重置回滚');
   await load();
   openLog(LID);
+}
+
+// ===== ASSIGN / CLAIM (新版分配与认领系统) =====
+function openClaimModal(id = null) {
+  const isBatch = !id;
+  const count = isBatch ? selIds.size : 1;
+  if(isBatch && count === 0) return;
+
+  // 销售本人直接静默认领，无需弹窗
+  if (!isAdm()) {
+    if (confirm(`确定要认领这 ${count} 个客户到你的名下吗？`)) {
+       executeClaim(id, CU);
+    }
+    return;
+  }
+
+  // 管理员调出分配模态框
+  document.getElementById('claim-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'claim-ov';
+  el.innerHTML = `
+    <div class="modal msm">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">🌊 分配公海客户 <span style="font-weight:400;color:var(--tt);font-size:13px">(${count}条)</span></div>
+          <button class="modal-close" onclick="document.getElementById('claim-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body">
+        <div class="fg">
+          <label class="fl" style="margin-bottom:10px;">请选择将线索分配给哪位销售</label>
+          <div class="prod-tags" id="claim-tags">
+            ${SALES.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#claim-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="document.getElementById('claim-ov').remove()">取消</button>
+        <button class="btn bp" onclick="confirmClaimModal('${id || ''}')">确认分配</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+function confirmClaimModal(idStr) {
+  const sel = document.querySelector('#claim-tags .on');
+  if(!sel){toast('⚠️ 请先点击选择一个销售');return;}
+  const tgt = sel.textContent;
+  document.getElementById('claim-ov')?.remove();
+  executeClaim(idStr || null, tgt);
+}
+
+async function executeClaim(id, targetSales) {
+  const t = T();
+  // 核心数据重置：变更归属并重置跟进周期
+  const upd = {
+     sales: targetSales,
+     last_follow_date: t,
+     follow_stage: 1,
+     first_follow_date: t,
+     next_follow_date: addD(t, 3)
+  };
+
+  if (typeof showLoading === 'function') showLoading(true);
+  if (id) {
+    await db.from('customers').update(upd).eq('id', id);
+    toast(`✅ 已认领/分配给 ${targetSales}`);
+    if (selIds.has(id)) selIds.delete(id);
+  } else {
+    await db.from('customers').update(upd).in('id', [...selIds]);
+    toast(`✅ 已将 ${selIds.size} 条线索分配给 ${targetSales}`);
+    selIds.clear();
+  }
+  if (typeof showLoading === 'function') showLoading(false);
+  await load();
+}
+
+// ===== SELECTION & BATCH ACTIONS (恢复丢失的批量操作与删除核心) =====
+function toggleSel(id,checked){if(checked)selIds.add(id);else selIds.delete(id);render();}
+function toggleAll(cb){document.querySelectorAll('.row-sel').forEach(b=>{if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);});render();}
+
+function batchStatus(){
+  if (selIds.size === 0) return;
+  const opts = STATUSES.filter(s => s);
+  document.getElementById('status-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'status-ov';
+  el.innerHTML = `
+    <div class="modal msm">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">📊 批量改状态 <span style="font-weight:400;color:var(--tt);font-size:13px">(${selIds.size}条)</span></div>
+          <button class="modal-close" onclick="document.getElementById('status-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body">
+        <div class="fg">
+          <label class="fl" style="margin-bottom:10px;">点击选择目标状态</label>
+          <div class="prod-tags" id="status-tags">
+            ${opts.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#status-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="document.getElementById('status-ov').remove()">取消</button>
+        <button class="btn bp" onclick="confirmBatchStatus()">确认修改</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+async function confirmBatchStatus(){
+  const sel = document.querySelector('#status-tags .on');
+  if (!sel) { toast('⚠️ 请先点击选择一个状态'); return; }
+  const s = sel.textContent;
+  const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
+  if (error) { toast('失败:'+error.message); return; }
+  toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
+  document.getElementById('status-ov')?.remove();
+  selIds.clear();
+  await load();
+}
+
+function openDeleteConfirmModal(id = null){
+  const isBatch = !id;
+  const count = isBatch ? selIds.size : 1;
+  if (isBatch && count === 0) return;
+  document.getElementById('del-confirm-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'del-confirm-ov';
+  el.innerHTML = `
+    <div class="modal msm" style="max-width:320px;">
+      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
+        <div class="modal-top" style="margin-bottom:0">
+          <div class="modal-title" style="color:var(--danger);">⚠️ 确认删除</div>
+          <button class="modal-close" onclick="document.getElementById('del-confirm-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="padding:16px 24px 20px; text-align:center;">
+        <div style="font-size:14px;color:var(--tp);font-weight:600;margin-bottom:8px;">确定要删除这 ${count} 条客户记录吗？</div>
+        <div style="font-size:12px;color:var(--ts);">关联的历史日志将被连同销毁，此操作不可逆。</div>
+      </div>
+      <div class="modal-footer" style="border-top:none; justify-content:center; gap:12px;">
+        <button class="btn bg" onclick="document.getElementById('del-confirm-ov').remove()" style="flex:1; justify-content:center;">取消</button>
+        <button class="btn bp" onclick="executeDelete('${id || ''}')" style="flex:1; justify-content:center; background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,.2); border:none;">永久删除</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+async function executeDelete(idStr) {
+  const id = idStr || null;
+  if (typeof showLoading === 'function') showLoading(true);
+  document.getElementById('del-confirm-ov')?.remove();
+  if (id) {
+    await db.from('follow_logs').delete().eq('customer_id',id);
+    await db.from('customers').delete().eq('id',id);
+    selIds.delete(id);
+    toast('✅ 已删除');
+  } else {
+    const ids = [...selIds];
+    await db.from('follow_logs').delete().in('customer_id',ids);
+    await db.from('customers').delete().in('id',ids);
+    selIds.clear();
+    toast(`✅ 已删除 ${ids.length} 条`);
+  }
+  if (typeof showLoading === 'function') showLoading(false);
+  await load();
+}
+
+function delCus(id) { openDeleteConfirmModal(id); }
+function batchDel() { openDeleteConfirmModal(null); }
+
+async function batchProducts(){
+  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
+  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+async function confirmBatchProducts(){
+  const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
+  if(!selected.length){toast('请至少选一个');return;}
+  const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
+}
+
+async function batchCtype(){
+  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
+  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">🏢 批量改客户类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bct-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择客户类型</label><div class="prod-tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="ptag" onclick="document.querySelectorAll('#bct-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${p}</button>`).join('')}</div></div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bct-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchCtype()">确认</button></div></div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+async function confirmBatchCtype(){
+  const sel=document.querySelector('#bct-tags .on');
+  if(!sel){toast('请选择一个');return;}
+  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
+  if(error){toast('失败:'+error.message);return;}
+  toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
+}
+
+function batchExport(filtered){
+  const ids=[...selIds];
+  const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
+  if(!list.length){toast('没有可导出的数据');return;}
+  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
+  const fields=['name','company','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
+  const csvQ=v=>{const s=Array.isArray(v)?v.join(';'):String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
+  const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
+  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`佳龙客户_${T()}.csv`;a.click();
+  toast(`✅ 已导出 ${list.length} 条`);
 }
 
 // ===== DETAIL (LAZY LOAD) =====
