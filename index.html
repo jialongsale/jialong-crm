@@ -2051,21 +2051,32 @@ function renderFbAds(){
   </tr>`).join('');
 
   const allFbSel = src.length > 0 && src.every(d => fbSelIds.has(d.id));
-  const rawRows = src.sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,100).map(d => `<tr>
+  
+  // 原生流水表：新增了覆盖人数、频次和自动预警列
+  const rawRows = src.sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,100).map(d => {
+    let warning = '';
+    let wColor = 'var(--ts)';
+    if(d.frequency >= 3.5) { warning = '⚠️疲劳极高(换素材)'; wColor = 'var(--danger)'; }
+    else if(d.frequency >= 2.5) { warning = '注意频次'; wColor = 'var(--warn)'; }
+    else if(d.leads === 0 && d.spend > 5) { warning = '⚠️光烧钱不转化'; wColor = 'var(--danger)'; }
+    
+    return `<tr>
     <td style="width:40px;text-align:center"><input type="checkbox" class="fb-row-sel" value="${d.id}" ${fbSelIds.has(d.id)?'checked':''} onchange="toggleFbSel('${d.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer"/></td>
     <td style="font-size:11px;color:var(--ts)">${d.record_date}</td>
     <td><div style="font-size:12px;color:var(--tp);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.ad_name)}</div></td>
     <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(getCoName(d.country))}</span></td>
     <td style="text-align:right;color:var(--danger)">$${Number(d.spend).toFixed(2)}</td>
-    <td style="text-align:right;color:var(--ts)">${d.impressions}</td>
-    <td style="text-align:right;color:var(--tp)">${d.link_clicks}</td>
+    <td style="text-align:right;color:var(--ts)">${d.impressions} <span style="font-size:10px;color:var(--tt)">(${d.reach||0}人)</span></td>
+    <td style="text-align:right;color:${d.frequency>=3?'var(--danger)':'var(--tp)'};font-weight:${d.frequency>=3?'600':'400'}">${(d.frequency||0).toFixed(2)}</td>
     <td style="text-align:right;color:var(--success);font-weight:600">${d.leads}</td>
+    <td style="font-size:11px;font-weight:600;color:${wColor}">${warning}</td>
     <td style="text-align:right"><button class="ab ar" onclick="deleteFbAds('${d.id}')">删除</button></td>
-  </tr>`).join('');
+  </tr>`}).join('');
 
   const batchFbBar = fAdsTab === 'raw' && fbSelIds.size > 0 ? `<div style="display:flex;gap:6px;margin-bottom:12px;padding:8px 12px;background:var(--danger-l);border-radius:var(--r2);border:1px solid rgba(255,59,48,.2);align-items:center"><span style="font-size:12px;font-weight:600;color:var(--danger)">已选中 ${fbSelIds.size} 条记录</span><button onclick="deleteFbAds()" style="padding:4px 10px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:11px;font-weight:600;cursor:pointer;">🗑 批量永久删除</button><button onclick="fbSelIds.clear();render()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:11px;cursor:pointer;">✕ 取消</button></div>` : '';
 
   return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportCoreData()">📋 复制高维报表</button><button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + `
+  
   <div class="fsec"><div class="frow" style="align-items:center;">
     <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px; flex-wrap:wrap; align-items:center;">${datePills}${customDateHtml}</div>
     <select class="fsel" onchange="fAdsCamp=this.value;render()"><option value="全部">全部广告系列</option>${allCamps.map(c=>`<option ${fAdsCamp===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
@@ -2077,7 +2088,7 @@ function renderFbAds(){
     <div class="sc sm"><div class="sc-lbl">总展示</div><div class="sc-val" style="color:var(--ts)">${tImp}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">平均 CPM: $${avgCPM}</div></div>
     <div class="sc sm"><div class="sc-lbl">链接点击</div><div class="sc-val" style="color:var(--tp)">${tClick}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">平均 CTR: ${ctr}</div></div>
     <div class="sc sm"><div class="sc-lbl">表单转化数</div><div class="sc-val" style="color:var(--success)">${tLead}</div></div>
-    <div class="sc sm"><div class="sc-lbl">单条转化成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
+    <div class="sc sm"><div class="sc-lbl">单条表单成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
     <div class="sc sm"><div class="sc-lbl">单次点击成本 (CPC)</div><div class="sc-val" style="color:var(--purple)">$${avgCPC}</div></div>
   </div>
 
@@ -2113,14 +2124,15 @@ function renderFbAds(){
         </tr></thead>
         <tbody>${aggRows || `<tr><td colspan="10"><div class="empty"><div class="empty-ttl">暂无聚合数据</div></div></td></tr>`}</tbody>
       </table>` : `
-      <table style="min-width:800px">
+      <table style="min-width:960px">
         <thead><tr style="background:var(--surface2)">
           <th style="width:40px;text-align:center"><input type="checkbox" ${allFbSel?'checked':''} onchange="toggleFbAll(this)" style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer"/></th>
-          <th style="width:100px">记录日期</th><th>广告名称</th><th style="width:80px">国家</th>
-          <th style="text-align:right;width:100px">花费(USD)</th><th style="text-align:right;width:90px">展示</th>
-          <th style="text-align:right;width:90px">点击</th><th style="text-align:right;width:90px">表单转化</th><th style="width:80px"></th>
+          <th style="width:90px">记录日期</th><th>广告名称</th><th style="width:80px">国家</th>
+          <th style="text-align:right;width:90px">花费(USD)</th><th style="text-align:right;width:110px">展示(覆盖)</th>
+          <th style="text-align:right;width:70px">频次</th><th style="text-align:right;width:80px">表单转化</th>
+          <th style="width:110px;padding-left:16px">系统诊断</th><th style="width:60px"></th>
         </tr></thead>
-        <tbody>${rawRows || `<tr><td colspan="9"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
+        <tbody>${rawRows || `<tr><td colspan="10"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
       </table>
       `}
     </div>
@@ -2211,82 +2223,6 @@ function renderFbAdsChart(){
   }
 }
 
-// ===== FB IMPORT ETL PARSER =====
-function openFbImport(){
-  document.getElementById('fb-imp-ov')?.remove();
-  const el=document.createElement('div');el.className='overlay';el.id='fb-imp-ov';
-  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">📥 导入底层流水数据</div><button class="modal-close" onclick="document.getElementById('fb-imp-ov').remove()">×</button></div></div>
-  <div class="simple-body">
-    <p style="font-size:13px;color:var(--ts);margin-bottom:12px">请直接将包含【国家/地区】细分维度的原生流水报表内容粘贴至下方。系统将自动执行清洗容错、合并指标计算，并以增量覆盖方式安全写入底层金库。</p>
-    <div class="fg"><textarea class="fi" id="fb-imp-txt" rows="10" placeholder="在此粘贴 CSV 数据内容..."></textarea></div>
-    <div style="display:flex;gap:10px;align-items:center"><label style="padding:7px 13px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;cursor:pointer;background:var(--surface2);color:var(--ts)">📁 选择 CSV 文件 <input type="file" accept=".csv" style="display:none" onchange="loadFbFile(this)"/></label><span id="fb-fn" style="font-size:12px;color:var(--tt)"></span></div>
-  </div>
-  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('fb-imp-ov').remove()">取消</button><button class="btn bp" onclick="doFbImp()">🚀 执行清洗并入库</button></div>
-  </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-
-function loadFbFile(inp){
-  const f=inp.files[0];if(!f)return;document.getElementById('fb-fn').textContent=f.name;
-  const tryRead=(enc)=>{const r=new FileReader();r.onload=e=>{const txt=e.target.result;if(enc==='UTF-8'&&txt.includes('\uFFFD')){tryRead('GBK');}else{document.getElementById('fb-imp-txt').value=txt;}};r.readAsText(f,enc);};tryRead('UTF-8');
-}
-
-async function doFbImp(){
-  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('未检测到数据流');return;}
-  const rows = parseCSV(raw); if(rows.length < 2){toast('无有效数据行');return;}
-  
-  const headers = rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
-  const getIdx = (name) => headers.findIndex(h => h.includes(name));
-  
-  const iDate = getIdx('报告开始日期');
-  const iCamp = getIdx('广告系列名称');
-  const iAdset = getIdx('广告组名称');
-  const iAd = getIdx('广告名称');
-  const iCountry = getIdx('国家/地区');
-  const iSpend = getIdx('已花费金额');
-  const iImp = getIdx('展示次数');
-  const iClick = getIdx('链接点击量');
-  const iLead1 = getIdx('潜在客户');
-  const iLead2 = getIdx('消息对话');
-
-  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 数据流异常：表头缺失关键物理列 (日期/国家/花费)'); return; }
-
-  const data = [];
-  for(let i=1; i<rows.length; i++){
-    const r = rows[i];
-    if(!r[iDate] || r[iDate].includes('总计')) continue; 
-    
-    const leadsCount = iLead1 !== -1 ? (parseFloat(r[iLead1])||0) : 0;
-    
-    data.push({
-      record_date: fixDate(r[iDate]),
-      campaign_name: r[iCamp] ? r[iCamp].trim() : '-',
-      adset_name: r[iAdset] ? r[iAdset].trim() : '-',
-      ad_name: r[iAd] ? r[iAd].trim() : '-',
-      country: r[iCountry] ? r[iCountry].trim() : 'Unknown',
-      spend: parseFloat(r[iSpend]) || 0,
-      impressions: parseInt(r[iImp]) || 0,
-      link_clicks: parseInt(r[iClick]) || 0,
-      leads: leadsCount
-    });
-  }
-
-  if(!data.length){toast('无有效载荷');return;}
-  
-  showLoading(true);
-  let total = 0;
-  for(let i=0; i<data.length; i+=100){
-    const batch = data.slice(i, i+100);
-    const {error} = await db.from('fb_ads_metrics').upsert(batch, {onConflict: 'record_date,campaign_name,adset_name,ad_name,country'});
-    if(error){ toast(`管道中断: ${error.message}`); showLoading(false); return; }
-    total += batch.length;
-  }
-  showLoading(false);
-  toast(`✅ 底层数据更新完毕！共写入 ${total} 条`);
-  document.getElementById('fb-imp-ov')?.remove();
-  await load();
-}
-
 function exportCoreData() {
   const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
@@ -2295,13 +2231,17 @@ function exportCoreData() {
   
   if(!src.length) { toast('当前视图区无数据'); return; }
 
-  const headers = ['日期', '国家', '广告系列', '花费(USD)', '展示', '点击', '转化数', 'CPL', 'CPC', 'CPM'];
+  const headers = ['日期', '国家', '广告系列', '花费(USD)', '展示', '覆盖人数', '频次', '点击', 'CTR(%)', '转化数', '表单转化率(%)', 'CPL', 'CPC', 'CPM', '健康度预警'];
   const lines = [headers.join(',')];
   src.forEach(d => {
     const cpl = d.leads > 0 ? (d.spend/d.leads).toFixed(2) : 0;
     const cpc = d.link_clicks > 0 ? (d.spend/d.link_clicks).toFixed(2) : 0;
     const cpm = d.impressions > 0 ? ((d.spend/d.impressions)*1000).toFixed(2) : 0;
-    lines.push(`${d.record_date},${getCoName(d.country)},"${d.campaign_name}",${d.spend},${d.impressions},${d.link_clicks},${d.leads},${cpl},${cpc},${cpm}`);
+    const ctr = d.impressions > 0 ? ((d.link_clicks/d.impressions)*100).toFixed(2) : 0;
+    const leadRate = d.link_clicks > 0 ? ((d.leads/d.link_clicks)*100).toFixed(1) : 0;
+    const warning = d.frequency >= 3.5 ? '⚠️频率过高-换素材' : (d.frequency >= 2.5 ? '注意频率' : (d.leads === 0 && d.spend > 5 ? '⚠️零转化-纯消耗' : '正常'));
+    
+    lines.push(`${d.record_date},${getCoName(d.country)},"${d.campaign_name}",${d.spend},${d.impressions},${d.reach||0},${d.frequency||0},${d.link_clicks},${ctr},${d.leads},${leadRate},${cpl},${cpc},${cpm},${warning}`);
   });
   
   navigator.clipboard.writeText(lines.join('\n')).then(()=>{
