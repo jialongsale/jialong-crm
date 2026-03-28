@@ -2367,21 +2367,29 @@ function exportCoreData() {
   
   if(!src.length) { toast('当前视图区无数据'); return; }
 
+  const contextHeader = "背景：佳龙包装 Facebook广告数据 | B2B工业机器 | 目标：降低CPL、找到高质量受众、排查受众疲劳(频次)\n\n";
   const headers = ['日期', '国家', '广告系列', '花费(USD)', '展示', '覆盖人数', '频次', '点击', 'CTR(%)', '转化数', '表单转化率(%)', 'CPL', 'CPC', 'CPM', '健康度预警'];
   const lines = [headers.join(',')];
+  
   src.forEach(d => {
     const cpl = d.leads > 0 ? (d.spend/d.leads).toFixed(2) : 0;
     const cpc = d.link_clicks > 0 ? (d.spend/d.link_clicks).toFixed(2) : 0;
     const cpm = d.impressions > 0 ? ((d.spend/d.impressions)*1000).toFixed(2) : 0;
-    const ctr = d.impressions > 0 ? ((d.link_clicks/d.impressions)*100).toFixed(2) : 0;
+    const ctr = d.ctr || 0; 
     const leadRate = d.link_clicks > 0 ? ((d.leads/d.link_clicks)*100).toFixed(1) : 0;
     const warning = d.frequency >= 3.5 ? '⚠️频率过高-换素材' : (d.frequency >= 2.5 ? '注意频率' : (d.leads === 0 && d.spend > 5 ? '⚠️零转化-纯消耗' : '正常'));
     
     lines.push(`${d.record_date},${getCoName(d.country)},"${d.campaign_name}",${d.spend},${d.impressions},${d.reach||0},${d.frequency||0},${d.link_clicks},${ctr},${d.leads},${leadRate},${cpl},${cpc},${cpm},${warning}`);
   });
   
-  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+  const finalStr = contextHeader + lines.join('\n');
+  navigator.clipboard.writeText(finalStr).then(()=>{
     toast('✅ 高维聚合数据已提取并放入剪贴板');
+  }).catch(() => {
+    // 降级保护：如果剪贴板存满了或被浏览器拦截，自动触发文件下载
+    const blob=new Blob(['\uFEFF'+finalStr],{type:'text/csv;charset=utf-8'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`FB_分析数据提取_${T()}.csv`;a.click();
+    toast('✅ 剪贴板受限，已自动下载为 CSV 文件');
   });
 }
 </script>
