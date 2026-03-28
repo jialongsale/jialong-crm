@@ -2223,6 +2223,85 @@ function renderFbAdsChart(){
   }
 }
 
+// ===== FB IMPORT ETL PARSER =====
+function openFbImport(){
+  document.getElementById('fb-imp-ov')?.remove();
+  const el=document.createElement('div');el.className='overlay';el.id='fb-imp-ov';
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">📥 导入底层流水数据</div><button class="modal-close" onclick="document.getElementById('fb-imp-ov').remove()">×</button></div></div>
+  <div class="simple-body">
+    <p style="font-size:13px;color:var(--ts);margin-bottom:12px">请直接将包含【国家/地区】细分维度的原生流水报表内容粘贴至下方。系统将自动执行清洗容错、合并指标计算，并以增量覆盖方式安全写入底层金库。</p>
+    <div class="fg"><textarea class="fi" id="fb-imp-txt" rows="10" placeholder="在此粘贴 CSV 数据内容..."></textarea></div>
+    <div style="display:flex;gap:10px;align-items:center"><label style="padding:7px 13px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;cursor:pointer;background:var(--surface2);color:var(--ts)">📁 选择 CSV 文件 <input type="file" accept=".csv" style="display:none" onchange="loadFbFile(this)"/></label><span id="fb-fn" style="font-size:12px;color:var(--tt)"></span></div>
+  </div>
+  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('fb-imp-ov').remove()">取消</button><button class="btn bp" onclick="doFbImp()">🚀 执行清洗并入库</button></div>
+  </div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+
+function loadFbFile(inp){
+  const f=inp.files[0];if(!f)return;document.getElementById('fb-fn').textContent=f.name;
+  const tryRead=(enc)=>{const r=new FileReader();r.onload=e=>{const txt=e.target.result;if(enc==='UTF-8'&&txt.includes('\uFFFD')){tryRead('GBK');}else{document.getElementById('fb-imp-txt').value=txt;}};r.readAsText(f,enc);};tryRead('UTF-8');
+}
+
+async function doFbImp(){
+  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('未检测到数据流');return;}
+  const rows = parseCSV(raw); if(rows.length < 2){toast('无有效数据行');return;}
+  
+  const headers = rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
+  const getIdx = (name) => headers.findIndex(h => h.includes(name));
+  
+  const iDate = getIdx('报告开始日期');
+  const iCamp = getIdx('广告系列名称');
+  const iAdset = getIdx('广告组名称');
+  const iAd = getIdx('广告名称');
+  const iCountry = getIdx('国家/地区');
+  const iSpend = getIdx('已花费金额');
+  const iImp = getIdx('展示次数');
+  const iClick = getIdx('链接点击量');
+  const iLead1 = getIdx('潜在客户');
+  const iReach = getIdx('覆盖人数');
+  const iFreq = getIdx('频次');
+
+  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 数据流异常：表头缺失关键物理列 (日期/国家/花费)'); return; }
+
+  const data = [];
+  for(let i=1; i<rows.length; i++){
+    const r = rows[i];
+    if(!r[iDate] || r[iDate].includes('总计')) continue; 
+    
+    const leadsCount = iLead1 !== -1 ? (parseFloat(r[iLead1])||0) : 0;
+    
+    data.push({
+      record_date: fixDate(r[iDate]),
+      campaign_name: r[iCamp] ? r[iCamp].trim() : '-',
+      adset_name: r[iAdset] ? r[iAdset].trim() : '-',
+      ad_name: r[iAd] ? r[iAd].trim() : '-',
+      country: r[iCountry] ? r[iCountry].trim() : 'Unknown',
+      spend: parseFloat(r[iSpend]) || 0,
+      impressions: parseInt(r[iImp]) || 0,
+      link_clicks: parseInt(r[iClick]) || 0,
+      leads: leadsCount,
+      reach: iReach !== -1 ? (parseInt(r[iReach]) || 0) : 0,
+      frequency: iFreq !== -1 ? (parseFloat(r[iFreq]) || 0) : 0
+    });
+  }
+
+  if(!data.length){toast('无有效载荷');return;}
+  
+  showLoading(true);
+  let total = 0;
+  for(let i=0; i<data.length; i+=100){
+    const batch = data.slice(i, i+100);
+    const {error} = await db.from('fb_ads_metrics').upsert(batch, {onConflict: 'record_date,campaign_name,adset_name,ad_name,country'});
+    if(error){ toast(`管道中断: ${error.message}`); showLoading(false); return; }
+    total += batch.length;
+  }
+  showLoading(false);
+  toast(`✅ 底层数据更新完毕！共写入 ${total} 条`);
+  document.getElementById('fb-imp-ov')?.remove();
+  await load();
+}
+
 function exportCoreData() {
   const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
