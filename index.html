@@ -1575,6 +1575,24 @@ function batchExport(filtered){
   const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`佳龙客户_${T()}.csv`;a.click();
   toast(`✅ 已导出 ${list.length} 条`);
 }
+// ===== FILTER HELPERS =====
+function setCusDR(v){
+  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
+  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
+  fDateRange=v;cusPage=1;render();
+}
+
+function toggleAdvFilters(){
+  advFiltersOpen=!advFiltersOpen;
+  const f=document.getElementById('adv-filters'),a=document.getElementById('adv-arrow');
+  if(f)f.classList.toggle('open',advFiltersOpen);
+  if(a)a.textContent=advFiltersOpen?'▴':'▾';
+}
+
+function toggleDD(btn){
+  document.querySelectorAll('.dd').forEach(d=>{if(d!==btn.querySelector('.dd'))d.classList.remove('open')});
+  btn.querySelector('.dd')?.classList.toggle('open');
+}
 
 // ===== DETAIL (LAZY LOAD) =====
 async function openDetail(id){
