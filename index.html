@@ -454,6 +454,13 @@ let fTag='';
 let dashDateRange='14', dashDateStart='', dashDateEnd='';
 let fAdsRange='30', fAdsCountry='全部', fAdsCamp='全部';
 let fAdsTab='agg', fAdsSort='spend', fAdsSortDesc=true;
+let fAdsDateStart='', fAdsDateEnd='';
+
+function setAdsDR(v){
+  if(v==='custom'){fAdsRange='custom';fAdsDateStart='';fAdsDateEnd='';render();return;}
+  if(v==='custom2'){fAdsRange='custom';fAdsDateStart=document.getElementById('ads-ds')?.value||'';fAdsDateEnd=document.getElementById('ads-de')?.value||'';render();return;}
+  fAdsRange=v;render();
+}
 
 function setDashDR(v){
   if(v==='custom'){dashDateRange='custom'; dashDateStart=''; dashDateEnd=''; render(); return;}
@@ -1921,7 +1928,7 @@ function openTagManager() {
 function renderFbAds(){
   if(!isAdm()) return tbHtml('营销大盘','仅管理员可用','') + `<div class="empty"><div class="empty-ttl">权限不足</div></div></div>`;
 
-  const rDate = getDateRange(fAdsRange, '', '');
+  const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   
   const allCamps = [...new Set(src.map(d=>d.campaign_name))].sort();
@@ -1939,9 +1946,9 @@ function renderFbAds(){
   const avgCPC = tClick > 0 ? (tSpend / tClick).toFixed(2) : '0.00';
   const ctr = tImp > 0 ? ((tClick / tImp)*100).toFixed(2) + '%' : '0.00%';
 
-  const datePills = [['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['全部','all']].map(([l,v])=>`<div onclick="fAdsRange='${v}';render()" style="padding:5px 12px; border-radius:6px; font-size:12px; font-weight:${fAdsRange===v?'600':'500'}; background:${fAdsRange===v?'var(--brand)':'transparent'}; color:${fAdsRange===v?'#fff':'var(--ts)'}; cursor:pointer; transition:all .2s;">${l}</div>`).join('');
+  const datePills = [['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['全部','all'],['自定义','custom']].map(([l,v])=>`<div onclick="setAdsDR('${v}')" style="padding:5px 12px; border-radius:6px; font-size:12px; font-weight:${fAdsRange===v?'600':'500'}; background:${fAdsRange===v?'var(--brand)':'transparent'}; color:${fAdsRange===v?'#fff':'var(--ts)'}; cursor:pointer; transition:all .2s;">${l}</div>`).join('');
+  const customDateHtml = fAdsRange === 'custom' ? `<div style="display:flex; align-items:center; gap:8px; margin-left:8px; flex-wrap:wrap;"><input type="date" id="ads-ds" value="${fAdsDateStart}" style="flex:1; min-width:110px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><span style="color:var(--ts);font-size:12px;">至</span><input type="date" id="ads-de" value="${fAdsDateEnd}" style="flex:1; min-width:110px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><button class="btn bp" style="padding:4px 10px; font-size:12px; border-radius:6px;" onclick="setAdsDR('custom2')">查询</button></div>` : '';
 
-  // 1. 生成聚合列表数据
   const aggMap = {};
   src.forEach(d => {
     const key = d.ad_name + '|' + d.country;
@@ -2012,7 +2019,7 @@ function renderFbAds(){
   return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportCoreData()">📋 复制高维报表</button><button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + `
   
   <div class="fsec"><div class="frow" style="align-items:center;">
-    <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px;">${datePills}</div>
+    <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px; flex-wrap:wrap; align-items:center;">${datePills}${customDateHtml}</div>
     <select class="fsel" onchange="fAdsCamp=this.value;render()"><option value="全部">全部广告系列</option>${allCamps.map(c=>`<option ${fAdsCamp===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
     <select class="fsel" onchange="fAdsCountry=this.value;render()"><option value="全部">全部国家/地区</option>${allCountries.map(c=>`<option ${fAdsCountry===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
   </div></div>
@@ -2072,7 +2079,7 @@ function renderFbAds(){
 
 function renderFbAdsChart(){
   if(!document.getElementById('fbLineChart')) return;
-  const rDate = getDateRange(fAdsRange, '', '');
+  const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
@@ -2230,7 +2237,7 @@ async function doFbImp(){
 }
 
 function exportCoreData() {
-  const rDate = getDateRange(fAdsRange, '', '');
+  const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
@@ -2249,7 +2256,6 @@ function exportCoreData() {
     toast('✅ 高维聚合数据已提取并放入剪贴板');
   });
 }
-</script>
 </script>
 </body>
 </html>
