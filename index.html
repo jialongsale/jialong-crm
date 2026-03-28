@@ -453,6 +453,7 @@ let fDateRange='all',fDateStart='',fDateEnd='';
 let fTag='';
 let dashDateRange='14', dashDateStart='', dashDateEnd='';
 let fAdsRange='30', fAdsCountry='全部', fAdsCamp='全部';
+let fAdsTab='agg', fAdsSort='spend', fAdsSortDesc=true;
 
 function setDashDR(v){
   if(v==='custom'){dashDateRange='custom'; dashDateStart=''; dashDateEnd=''; render(); return;}
@@ -1940,7 +1941,75 @@ function renderFbAds(){
 
   const datePills = [['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['全部','all']].map(([l,v])=>`<div onclick="fAdsRange='${v}';render()" style="padding:5px 12px; border-radius:6px; font-size:12px; font-weight:${fAdsRange===v?'600':'500'}; background:${fAdsRange===v?'var(--brand)':'transparent'}; color:${fAdsRange===v?'#fff':'var(--ts)'}; cursor:pointer; transition:all .2s;">${l}</div>`).join('');
 
-  return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportFbAI()">导出 FB 数据</button><button class="btn bp" onclick="openFbImport()">📥 导入 FB 报表</button>`) + `
+  // 1. 生成聚合列表数据
+  const aggMap = {};
+  src.forEach(d => {
+    const key = d.ad_name + '|' + d.country;
+    if(!aggMap[key]) aggMap[key] = { ad_name: d.ad_name, campaign_name: d.campaign_name, country: d.country, spend:0, impressions:0, link_clicks:0, leads:0 };
+    aggMap[key].spend += Number(d.spend||0);
+    aggMap[key].impressions += Number(d.impressions||0);
+    aggMap[key].link_clicks += Number(d.link_clicks||0);
+    aggMap[key].leads += Number(d.leads||0);
+  });
+  
+  let aggList = Object.values(aggMap).map(d => {
+    d.cpl = d.leads > 0 ? d.spend / d.leads : 0;
+    d.sortCpl = d.leads > 0 ? d.cpl : (d.spend > 0 ? 99999 + d.spend : 0);
+    d.cpc = d.link_clicks > 0 ? d.spend / d.link_clicks : 0;
+    d.ctr = d.impressions > 0 ? (d.link_clicks / d.impressions) * 100 : 0;
+    return d;
+  });
+
+  aggList.sort((a, b) => {
+    let valA = a[fAdsSort] || 0, valB = b[fAdsSort] || 0;
+    if(fAdsSort === 'cpl') { valA = a.sortCpl; valB = b.sortCpl; }
+    if(fAdsSort === 'ad_name') { valA = a.ad_name; valB = b.ad_name; }
+    if(typeof valA === 'string') return fAdsSortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
+    return fAdsSortDesc ? valB - valA : valA - valB;
+  });
+
+  const coMap = {};
+  src.forEach(d => { if(!coMap[d.country]) coMap[d.country] = { spend:0, leads:0 }; coMap[d.country].spend += d.spend; coMap[d.country].leads += d.leads; });
+  const coStats = Object.entries(coMap).map(([c,v])=>({ c, cpl: v.leads>0?v.spend/v.leads:v.spend*999, leads:v.leads, spend:v.spend })).filter(x=>x.spend>0).sort((a,b)=>a.cpl-b.cpl);
+  const bestCo = coStats.filter(x=>x.leads>0)[0];
+  const worstCo = [...coStats].sort((a,b)=>b.cpl-a.cpl)[0];
+  
+  const insightsHtml = `<div style="display:flex;gap:12px;margin-bottom:16px;">
+    <div style="flex:1;background:var(--success-l);border:1px solid rgba(52,199,89,.3);padding:12px 16px;border-radius:var(--r2);">
+      <div style="font-size:11px;color:var(--success);font-weight:700;margin-bottom:4px;">🔥 最佳获客区域</div>
+      <div style="font-size:14px;color:var(--tp);font-weight:600;">${bestCo ? `${bestCo.c} (CPL: $${(bestCo.spend/bestCo.leads).toFixed(2)})` : '数据不足'}</div>
+    </div>
+    <div style="flex:1;background:var(--danger-l);border:1px solid rgba(255,59,48,.3);padding:12px 16px;border-radius:var(--r2);">
+      <div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:4px;">🚨 高亏损预警区域</div>
+      <div style="font-size:14px;color:var(--tp);font-weight:600;">${worstCo ? `${worstCo.c} (${worstCo.leads>0 ? `CPL $${(worstCo.spend/worstCo.leads).toFixed(2)}` : `纯消耗 $${worstCo.spend.toFixed(2)}`})` : '数据不足'}</div>
+    </div>
+  </div>`;
+
+  const th = (lbl, col, w, align='left') => `<th style="width:${w};text-align:${align};cursor:pointer;user-select:none;transition:background .15s" onclick="fAdsSort='${col}';fAdsSortDesc=${fAdsSort===col?!fAdsSortDesc:true};render()" onmouseover="this.style.background='var(--border-l)'" onmouseout="this.style.background='transparent'">${lbl} ${fAdsSort===col?(fAdsSortDesc?'↓':'↑'):'<span style="color:transparent">↓</span>'}</th>`;
+
+  const aggRows = aggList.map(d => `<tr>
+    <td><div style="font-size:13px;font-weight:600;color:var(--tp);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.ad_name)}">${esc(d.ad_name)}</div><div style="font-size:10px;color:var(--tt);margin-top:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.campaign_name)}</div></td>
+    <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(d.country)}</span></td>
+    <td style="text-align:right;color:var(--danger);font-weight:600">$${d.spend.toFixed(2)}</td>
+    <td style="text-align:right;font-family:monospace;color:var(--ts)">${d.impressions}</td>
+    <td style="text-align:right;font-family:monospace;color:var(--tp)">${d.link_clicks}</td>
+    <td style="text-align:right;font-family:monospace;color:var(--ts)">${d.ctr.toFixed(2)}%</td>
+    <td style="text-align:right;font-family:monospace;color:var(--purple)">$${d.cpc.toFixed(2)}</td>
+    <td style="text-align:right;font-weight:700;color:var(--success)">${d.leads}</td>
+    <td style="text-align:right;font-weight:700;color:${d.leads===0?'var(--danger)':'var(--brand)'}">${d.leads>0 ? '$'+d.cpl.toFixed(2) : '⚠️ 无效消耗'}</td>
+  </tr>`).join('');
+
+  const rawRows = src.sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,100).map(d => `<tr>
+    <td style="font-size:11px;color:var(--ts)">${d.record_date}</td>
+    <td><div style="font-size:12px;color:var(--tp);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.ad_name)}</div></td>
+    <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(d.country)}</span></td>
+    <td style="text-align:right;color:var(--danger)">$${Number(d.spend).toFixed(2)}</td>
+    <td style="text-align:right;color:var(--ts)">${d.impressions}</td>
+    <td style="text-align:right;color:var(--tp)">${d.link_clicks}</td>
+    <td style="text-align:right;color:var(--success);font-weight:600">${d.leads}</td>
+  </tr>`).join('');
+
+  return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportCoreData()">📋 复制高维报表</button><button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + `
   
   <div class="fsec"><div class="frow" style="align-items:center;">
     <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px;">${datePills}</div>
@@ -1951,15 +2020,52 @@ function renderFbAds(){
   <div class="sg6">
     <div class="sc sm"><div class="sc-lbl">总花费 (USD)</div><div class="sc-val" style="color:var(--danger)">$${tSpend.toFixed(2)}</div></div>
     <div class="sc sm"><div class="sc-lbl">总展示</div><div class="sc-val" style="color:var(--ts)">${tImp}</div></div>
-    <div class="sc sm"><div class="sc-lbl">链接点击</div><div class="sc-val" style="color:var(--ts)">${tClick}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">CTR: ${ctr}</div></div>
-    <div class="sc sm"><div class="sc-lbl">询盘/消息数</div><div class="sc-val" style="color:var(--success)">${tLead}</div></div>
-    <div class="sc sm"><div class="sc-lbl">单条询盘成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
+    <div class="sc sm"><div class="sc-lbl">链接点击</div><div class="sc-val" style="color:var(--tp)">${tClick}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">平均 CTR: ${ctr}</div></div>
+    <div class="sc sm"><div class="sc-lbl">有效转化数</div><div class="sc-val" style="color:var(--success)">${tLead}</div></div>
+    <div class="sc sm"><div class="sc-lbl">单条转化成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
     <div class="sc sm"><div class="sc-lbl">单次点击成本 (CPC)</div><div class="sc-val" style="color:var(--purple)">$${avgCPC}</div></div>
   </div>
 
+  ${insightsHtml}
+
   <div class="cg2">
-    <div class="cc"><div class="cc-title">📅 每日消耗与询盘走势</div><div class="chart-wrap" style="height:250px"><canvas id="fbLineChart"></canvas></div></div>
-    <div class="cc"><div class="cc-title">🌍 国家获客成本 (CPL) 对比</div><div class="chart-wrap" style="height:250px"><canvas id="fbBarChart"></canvas></div></div>
+    <div class="cc"><div class="cc-title">📅 每日消耗与线索走势</div><div class="chart-wrap" style="height:250px"><canvas id="fbLineChart"></canvas></div></div>
+    <div class="cc"><div class="cc-title">🎯 矩阵诊断 (高频吞金兽预警)</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
+  </div>
+
+  <div class="tc" style="margin-top:16px">
+    <div class="tc-head" style="padding:0;border-bottom:none">
+      <div class="tabs" style="width:100%">
+        <div class="tab ${fAdsTab==='agg'?'on':''}" onclick="fAdsTab='agg';render()" style="padding:14px 20px">📊 转化成本诊断表 (聚合)</div>
+        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (前100条)</div>
+      </div>
+    </div>
+    <div class="tscroll">
+      ${fAdsTab === 'agg' ? `
+      <table style="min-width:900px">
+        <thead><tr style="background:var(--surface2)">
+          ${th('广告名称/系列', 'ad_name', '240px')}
+          ${th('国家', 'country', '80px')}
+          ${th('花费(USD)', 'spend', '100px', 'right')}
+          ${th('展示', 'impressions', '90px', 'right')}
+          ${th('点击', 'link_clicks', '90px', 'right')}
+          ${th('点击率', 'ctr', '80px', 'right')}
+          ${th('CPC(USD)', 'cpc', '90px', 'right')}
+          ${th('转化数', 'leads', '80px', 'right')}
+          ${th('单条成本(CPL) ▾', 'cpl', '120px', 'right')}
+        </tr></thead>
+        <tbody>${aggRows || `<tr><td colspan="9"><div class="empty"><div class="empty-ttl">暂无聚合数据</div></div></td></tr>`}</tbody>
+      </table>` : `
+      <table style="min-width:800px">
+        <thead><tr style="background:var(--surface2)">
+          <th style="width:100px">记录日期</th><th>广告名称</th><th style="width:80px">国家</th>
+          <th style="text-align:right;width:100px">花费(USD)</th><th style="text-align:right;width:90px">展示</th>
+          <th style="text-align:right;width:90px">点击</th><th style="text-align:right;width:90px">转化数</th>
+        </tr></thead>
+        <tbody>${rawRows || `<tr><td colspan="7"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
+      </table>
+      `}
+    </div>
   </div>
   </div>`;
 }
@@ -1971,7 +2077,7 @@ function renderFbAdsChart(){
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
 
-  ['fbLineChart', 'fbBarChart'].forEach(id => { if(CI[id]) { CI[id].destroy(); delete CI[id]; } });
+  ['fbLineChart', 'fbScatterChart'].forEach(id => { if(CI[id]) { CI[id].destroy(); delete CI[id]; } });
 
   const daysMap = {};
   src.forEach(d => {
@@ -1986,12 +2092,13 @@ function renderFbAdsChart(){
     data: {
       labels: days.map(fmt),
       datasets: [
-        { label: '花费 (USD)', data: days.map(d=>daysMap[d].spend), borderColor: '#FF3B30', backgroundColor: '#FF3B30', yAxisID: 'y' },
-        { label: '询盘数', data: days.map(d=>daysMap[d].leads), borderColor: '#34C759', backgroundColor: '#34C759', yAxisID: 'y1' }
+        { label: '花费 (USD)', data: days.map(d=>daysMap[d].spend), borderColor: '#FF3B30', backgroundColor: '#FF3B30', yAxisID: 'y', tension:0.3 },
+        { label: '转化数', data: days.map(d=>daysMap[d].leads), borderColor: '#34C759', backgroundColor: '#34C759', yAxisID: 'y1', tension:0.3 }
       ]
     },
     options: {
       responsive: true, maintainAspectRatio: false,
+      interaction: { mode: 'index', intersect: false },
       scales: {
         y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,.04)' } },
         y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
@@ -1999,23 +2106,49 @@ function renderFbAdsChart(){
     }
   });
 
-  const coMap = {};
+  const adMap = {};
   src.forEach(d => {
-    if(!coMap[d.country]) coMap[d.country] = { spend:0, leads:0 };
-    coMap[d.country].spend += Number(d.spend||0);
-    coMap[d.country].leads += Number(d.leads||0);
+    const key = d.country;
+    if(!adMap[key]) adMap[key] = { spend:0, leads:0, country:d.country };
+    adMap[key].spend += d.spend;
+    adMap[key].leads += d.leads;
   });
-  const coData = Object.entries(coMap).map(([c, v]) => ({ country: c, cpl: v.leads > 0 ? (v.spend/v.leads) : 0, leads: v.leads }))
-    .filter(x => x.cpl > 0 || x.leads > 0).sort((a,b) => b.cpl - a.cpl).slice(0, 15); 
+  const scatterData = Object.values(adMap).filter(d=>d.spend > 5).map(d => ({
+    x: d.spend, 
+    y: d.leads > 0 ? d.spend/d.leads : d.spend,
+    country: d.country,
+    leads: d.leads
+  }));
 
-  if (coData.length > 0 && window.Chart) {
-    CI['fbBarChart'] = new Chart(document.getElementById('fbBarChart'), {
-      type: 'bar',
+  if (scatterData.length > 0 && window.Chart) {
+    CI['fbScatterChart'] = new Chart(document.getElementById('fbScatterChart'), {
+      type: 'scatter',
       data: {
-        labels: coData.map(d => d.country),
-        datasets: [{ label: '单条询盘成本 (CPL)', data: coData.map(d => d.cpl.toFixed(2)), backgroundColor: 'rgba(0,102,204,.65)', borderRadius: 4 }]
+        datasets: [{
+          label: '区域表现节点',
+          data: scatterData,
+          backgroundColor: ctx => {
+            const v = ctx.raw;
+            if(!v) return 'var(--brand)';
+            if(v.y > 30 || v.leads === 0) return 'rgba(255,59,48,0.8)'; // 红灯：高成本/无转化
+            if(v.y < 10 && v.leads > 0) return 'rgba(52,199,89,0.8)'; // 绿灯：优质转化
+            return 'rgba(0,102,204,0.6)'; // 蓝灯：正常
+          },
+          pointRadius: 6,
+          pointHoverRadius: 8
+        }]
       },
-      options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(0,0,0,.04)' } } } }
+      options: { 
+        responsive: true, maintainAspectRatio: false, 
+        plugins: { 
+          tooltip: { callbacks: { label: (ctx) => `${ctx.raw.country}: 花费 $${ctx.raw.x.toFixed(2)}, CPL $${ctx.raw.y.toFixed(2)}` } },
+          legend: { display: false }
+        },
+        scales: { 
+          x: { title: {display:true, text:'总花费 (USD)', color:'var(--ts)', font:{size:10}}, grid: { color: 'rgba(0,0,0,.04)' } }, 
+          y: { title: {display:true, text:'单条转化成本 (USD)', color:'var(--ts)', font:{size:10}}, grid: { color: 'rgba(0,0,0,.04)' } } 
+        } 
+      }
     });
   }
 }
@@ -2024,13 +2157,13 @@ function renderFbAdsChart(){
 function openFbImport(){
   document.getElementById('fb-imp-ov')?.remove();
   const el=document.createElement('div');el.className='overlay';el.id='fb-imp-ov';
-  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">📥 极速导入 FB 报表</div><button class="modal-close" onclick="document.getElementById('fb-imp-ov').remove()">×</button></div></div>
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">📥 导入底层流水数据</div><button class="modal-close" onclick="document.getElementById('fb-imp-ov').remove()">×</button></div></div>
   <div class="simple-body">
-    <p style="font-size:13px;color:var(--ts);margin-bottom:12px">请直接将带有【国家/地区】细分维度的 Facebook 原生 CSV 报表内容粘贴至下方。系统将自动清洗脏数据、合并指标，并以增量方式更新（同日同国家同广告的数据将自动覆盖，绝不重复计算）。</p>
-    <div class="fg"><textarea class="fi" id="fb-imp-txt" rows="10" placeholder="在此粘贴 CSV 内容..."></textarea></div>
+    <p style="font-size:13px;color:var(--ts);margin-bottom:12px">请直接将包含【国家/地区】细分维度的原生流水报表内容粘贴至下方。系统将自动执行清洗容错、合并指标计算，并以增量覆盖方式安全写入底层金库。</p>
+    <div class="fg"><textarea class="fi" id="fb-imp-txt" rows="10" placeholder="在此粘贴 CSV 数据内容..."></textarea></div>
     <div style="display:flex;gap:10px;align-items:center"><label style="padding:7px 13px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;cursor:pointer;background:var(--surface2);color:var(--ts)">📁 选择 CSV 文件 <input type="file" accept=".csv" style="display:none" onchange="loadFbFile(this)"/></label><span id="fb-fn" style="font-size:12px;color:var(--tt)"></span></div>
   </div>
-  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('fb-imp-ov').remove()">取消</button><button class="btn bp" onclick="doFbImp()">🚀 开始洗表入库</button></div>
+  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('fb-imp-ov').remove()">取消</button><button class="btn bp" onclick="doFbImp()">🚀 执行清洗并入库</button></div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
@@ -2041,8 +2174,8 @@ function loadFbFile(inp){
 }
 
 async function doFbImp(){
-  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
-  const rows = parseCSV(raw); if(rows.length < 2){toast('无有效数据');return;}
+  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('未检测到数据流');return;}
+  const rows = parseCSV(raw); if(rows.length < 2){toast('无有效数据行');return;}
   
   const headers = rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
   const getIdx = (name) => headers.findIndex(h => h.includes(name));
@@ -2058,7 +2191,7 @@ async function doFbImp(){
   const iLead1 = getIdx('潜在客户');
   const iLead2 = getIdx('消息对话');
 
-  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 表头缺失关键列 (日期/国家/花费)，请检查导出格式'); return; }
+  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 数据流异常：表头缺失关键物理列 (日期/国家/花费)'); return; }
 
   const data = [];
   for(let i=1; i<rows.length; i++){
@@ -2080,31 +2213,31 @@ async function doFbImp(){
     });
   }
 
-  if(!data.length){toast('数据均被清洗，无有效载荷');return;}
+  if(!data.length){toast('无有效载荷');return;}
   
   showLoading(true);
   let total = 0;
   for(let i=0; i<data.length; i+=100){
     const batch = data.slice(i, i+100);
     const {error} = await db.from('fb_ads_metrics').upsert(batch, {onConflict: 'record_date,campaign_name,adset_name,ad_name,country'});
-    if(error){ toast(`入库中断: ${error.message}`); showLoading(false); return; }
+    if(error){ toast(`管道中断: ${error.message}`); showLoading(false); return; }
     total += batch.length;
   }
   showLoading(false);
-  toast(`✅ 洗表完毕！成功写入/更新 ${total} 条 FB 维度数据`);
+  toast(`✅ 底层数据更新完毕！共写入 ${total} 条`);
   document.getElementById('fb-imp-ov')?.remove();
   await load();
 }
 
-function exportFbAI() {
+function exportCoreData() {
   const rDate = getDateRange(fAdsRange, '', '');
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
   
-  if(!src.length) { toast('当前视图无数据可导'); return; }
+  if(!src.length) { toast('当前视图区无数据'); return; }
 
-  const headers = ['日期', '国家', '广告系列', '花费(USD)', '展示', '点击', '询盘数', 'CPL', 'CPC'];
+  const headers = ['日期', '国家', '广告系列', '花费(USD)', '展示', '点击', '转化数', 'CPL', 'CPC'];
   const lines = [headers.join(',')];
   src.forEach(d => {
     const cpl = d.leads > 0 ? (d.spend/d.leads).toFixed(2) : 0;
@@ -2113,9 +2246,10 @@ function exportFbAI() {
   });
   
   navigator.clipboard.writeText(lines.join('\n')).then(()=>{
-    toast(' 数据已转为对应格式并存入剪贴板，可直接粘贴！');
+    toast('✅ 高维聚合数据已提取并放入剪贴板');
   });
 }
+</script>
 </script>
 </body>
 </html>
