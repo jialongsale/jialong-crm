@@ -454,6 +454,7 @@ let fTag='';
 let dashDateRange='14', dashDateStart='', dashDateEnd='';
 let fAdsRange='30', fAdsCountry='全部', fAdsCamp='全部';
 let fAdsTab='agg', fAdsSort='spend', fAdsSortDesc=true;
+let fAdsRawSort='record_date', fAdsRawSortDesc=true; //
 let fAdsDateStart='', fAdsDateEnd='';
 let fbSelIds = new Set();
 
@@ -1989,11 +1990,12 @@ function renderFbAds(){
   src.forEach(d => {
     const mappedCo = getCoName(d.country);
     const key = d.ad_name + '|' + mappedCo;
-    if(!aggMap[key]) aggMap[key] = { ad_name: d.ad_name, campaign_name: d.campaign_name, country: mappedCo, spend:0, impressions:0, link_clicks:0, leads:0 };
+    if(!aggMap[key]) aggMap[key] = { ad_name: d.ad_name, campaign_name: d.campaign_name, country: mappedCo, spend:0, impressions:0, link_clicks:0, leads:0, reach:0 };
     aggMap[key].spend += Number(d.spend||0);
     aggMap[key].impressions += Number(d.impressions||0);
     aggMap[key].link_clicks += Number(d.link_clicks||0);
     aggMap[key].leads += Number(d.leads||0);
+    aggMap[key].reach += Number(d.reach||0);
   });
   
   let aggList = Object.values(aggMap).map(d => {
@@ -2002,6 +2004,7 @@ function renderFbAds(){
     d.cpc = d.link_clicks > 0 ? d.spend / d.link_clicks : 0;
     d.cpm = d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0;
     d.ctr = d.impressions > 0 ? (d.link_clicks / d.impressions) * 100 : 0;
+    d.frequency = d.reach > 0 ? (d.impressions / d.reach) : 0;
     return d;
   });
 
@@ -2013,6 +2016,28 @@ function renderFbAds(){
     return fAdsSortDesc ? valB - valA : valA - valB;
   });
 
+  let rawList = src.map(d => {
+    return {
+      ...d,
+      mappedCo: getCoName(d.country),
+      cpl: d.leads > 0 ? d.spend / d.leads : 0,
+      sortCpl: d.leads > 0 ? (d.spend / d.leads) : (d.spend > 0 ? 99999 + d.spend : 0),
+      cpc: d.link_clicks > 0 ? d.spend / d.link_clicks : 0,
+      cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
+      ctr: d.impressions > 0 ? (d.link_clicks / d.impressions) * 100 : 0
+    };
+  });
+
+  rawList.sort((a, b) => {
+    let valA = a[fAdsRawSort] || 0, valB = b[fAdsRawSort] || 0;
+    if(fAdsRawSort === 'cpl') { valA = a.sortCpl; valB = b.sortCpl; }
+    if(fAdsRawSort === 'ad_name') { valA = a.ad_name; valB = b.ad_name; }
+    if(fAdsRawSort === 'country') { valA = a.mappedCo; valB = b.mappedCo; }
+    if(typeof valA === 'string') return fAdsRawSortDesc ? valB.localeCompare(valA) : valA.localeCompare(valB);
+    return fAdsRawSortDesc ? valB - valA : valA - valB;
+  });
+
+  // Insights
   const coMap = {};
   src.forEach(d => { 
     const mappedCo = getCoName(d.country);
@@ -2036,12 +2061,14 @@ function renderFbAds(){
   </div>`;
 
   const th = (lbl, col, w, align='left') => `<th style="width:${w};text-align:${align};cursor:pointer;user-select:none;transition:background .15s" onclick="fAdsSort='${col}';fAdsSortDesc=${fAdsSort===col?!fAdsSortDesc:true};render()" onmouseover="this.style.background='var(--border-l)'" onmouseout="this.style.background='transparent'">${lbl} ${fAdsSort===col?(fAdsSortDesc?'↓':'↑'):'<span style="color:transparent">↓</span>'}</th>`;
+  const thRaw = (lbl, col, w, align='left') => `<th style="width:${w};text-align:${align};cursor:pointer;user-select:none;transition:background .15s" onclick="fAdsRawSort='${col}';fAdsRawSortDesc=${fAdsRawSort===col?!fAdsRawSortDesc:true};render()" onmouseover="this.style.background='var(--border-l)'" onmouseout="this.style.background='transparent'">${lbl} ${fAdsRawSort===col?(fAdsRawSortDesc?'↓':'↑'):'<span style="color:transparent">↓</span>'}</th>`;
 
   const aggRows = aggList.map(d => `<tr>
     <td><div style="font-size:13px;font-weight:600;color:var(--tp);max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.ad_name)}">${esc(d.ad_name)}</div><div style="font-size:10px;color:var(--tt);margin-top:2px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.campaign_name)}</div></td>
     <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(d.country)}</span></td>
     <td style="text-align:right;color:var(--danger);font-weight:600">$${d.spend.toFixed(2)}</td>
     <td style="text-align:right;font-family:monospace;color:var(--ts)">${d.impressions}</td>
+    <td style="text-align:right;color:${d.frequency>=3?'var(--danger)':'var(--tp)'};font-weight:${d.frequency>=3?'600':'400'};font-family:monospace">${d.frequency.toFixed(2)}</td>
     <td style="text-align:right;font-family:monospace;color:var(--tp)">${d.link_clicks}</td>
     <td style="text-align:right;font-family:monospace;color:var(--ts)">${d.ctr.toFixed(2)}%</td>
     <td style="text-align:right;font-family:monospace;color:var(--purple)">$${d.cpc.toFixed(2)}</td>
@@ -2051,24 +2078,26 @@ function renderFbAds(){
   </tr>`).join('');
 
   const allFbSel = src.length > 0 && src.every(d => fbSelIds.has(d.id));
-  
-  // 原生流水表：新增了覆盖人数、频次和自动预警列
-  const rawRows = src.sort((a,b)=>b.record_date.localeCompare(a.record_date)).slice(0,100).map(d => {
+  const rawRowsHtml = rawList.slice(0,100).map(d => {
     let warning = '';
     let wColor = 'var(--ts)';
-    if(d.frequency >= 3.5) { warning = '⚠️疲劳极高(换素材)'; wColor = 'var(--danger)'; }
+    if(d.frequency >= 3.5) { warning = '⚠️频次极高'; wColor = 'var(--danger)'; }
     else if(d.frequency >= 2.5) { warning = '注意频次'; wColor = 'var(--warn)'; }
-    else if(d.leads === 0 && d.spend > 5) { warning = '⚠️光烧钱不转化'; wColor = 'var(--danger)'; }
+    else if(d.leads === 0 && d.spend > 5) { warning = '⚠️纯消耗'; wColor = 'var(--danger)'; }
     
     return `<tr>
     <td style="width:40px;text-align:center"><input type="checkbox" class="fb-row-sel" value="${d.id}" ${fbSelIds.has(d.id)?'checked':''} onchange="toggleFbSel('${d.id}',this.checked)" style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer"/></td>
     <td style="font-size:11px;color:var(--ts)">${d.record_date}</td>
-    <td><div style="font-size:12px;color:var(--tp);max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(d.ad_name)}</div></td>
-    <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(getCoName(d.country))}</span></td>
+    <td><div style="font-size:12px;color:var(--tp);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.campaign_name)}">${esc(d.campaign_name)}</div><div style="font-size:11px;color:var(--brand);font-weight:600;margin-top:2px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(d.ad_name)}">${esc(d.ad_name)}</div></td>
+    <td><span style="background:var(--surface2);border:1px solid var(--border);padding:2px 6px;border-radius:4px;font-size:11px;font-weight:600;color:var(--ts)">${esc(d.mappedCo)}</span></td>
     <td style="text-align:right;color:var(--danger)">$${Number(d.spend).toFixed(2)}</td>
     <td style="text-align:right;color:var(--ts)">${d.impressions} <span style="font-size:10px;color:var(--tt)">(${d.reach||0}人)</span></td>
     <td style="text-align:right;color:${d.frequency>=3?'var(--danger)':'var(--tp)'};font-weight:${d.frequency>=3?'600':'400'}">${(d.frequency||0).toFixed(2)}</td>
+    <td style="text-align:right;color:var(--tp)">${d.link_clicks} <span style="font-size:10px;color:var(--tt)">(${d.ctr.toFixed(2)}%)</span></td>
+    <td style="text-align:right;color:var(--purple)">$${d.cpc.toFixed(2)}</td>
+    <td style="text-align:right;color:var(--rose)">$${d.cpm.toFixed(2)}</td>
     <td style="text-align:right;color:var(--success);font-weight:600">${d.leads}</td>
+    <td style="text-align:right;font-weight:700;color:${d.leads===0?'var(--danger)':'var(--brand)'}">${d.leads>0 ? '$'+d.cpl.toFixed(2) : '—'}</td>
     <td style="font-size:11px;font-weight:600;color:${wColor}">${warning}</td>
     <td style="text-align:right"><button class="ab ar" onclick="deleteFbAds('${d.id}')">删除</button></td>
   </tr>`}).join('');
@@ -2096,43 +2125,53 @@ function renderFbAds(){
 
   <div class="cg2">
     <div class="cc"><div class="cc-title">📅 每日消耗与线索走势</div><div class="chart-wrap" style="height:250px"><canvas id="fbLineChart"></canvas></div></div>
-    <div class="cc"><div class="cc-title">🎯 矩阵诊断 (高频吞金兽预警)</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
+    <div class="cc"><div class="cc-title">🎯 矩阵诊断</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
   </div>
 
   <div class="tc" style="margin-top:16px">
     <div class="tc-head" style="padding:0;border-bottom:none;flex-direction:column;align-items:stretch">
       <div class="tabs" style="width:100%;border-bottom:1px solid var(--border-l)">
         <div class="tab ${fAdsTab==='agg'?'on':''}" onclick="fAdsTab='agg';render()" style="padding:14px 20px">📊 转化成本诊断表 (聚合)</div>
-        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (可删补)</div>
+        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (前100条)</div>
       </div>
       <div style="padding:10px 20px 0;">${batchFbBar}</div>
     </div>
     <div class="tscroll">
       ${fAdsTab === 'agg' ? `
-      <table style="min-width:960px">
+      <table style="min-width:1060px">
         <thead><tr style="background:var(--surface2)">
           ${th('广告名称/系列', 'ad_name', '220px')}
           ${th('国家', 'country', '80px')}
           ${th('花费(USD)', 'spend', '90px', 'right')}
           ${th('展示', 'impressions', '80px', 'right')}
+          ${th('预估频次', 'frequency', '80px', 'right')}
           ${th('点击', 'link_clicks', '80px', 'right')}
-          ${th('点击率', 'ctr', '80px', 'right')}
-          ${th('CPC', 'cpc', '80px', 'right')}
+          ${th('点击率', 'ctr', '70px', 'right')}
+          ${th('CPC', 'cpc', '70px', 'right')}
           ${th('CPM', 'cpm', '80px', 'right')}
           ${th('转化数', 'leads', '70px', 'right')}
           ${th('单条成本(CPL) ▾', 'cpl', '120px', 'right')}
         </tr></thead>
-        <tbody>${aggRows || `<tr><td colspan="10"><div class="empty"><div class="empty-ttl">暂无聚合数据</div></div></td></tr>`}</tbody>
+        <tbody>${aggRows || `<tr><td colspan="11"><div class="empty"><div class="empty-ttl">暂无聚合数据</div></div></td></tr>`}</tbody>
       </table>` : `
-      <table style="min-width:960px">
+      <table style="min-width:1260px">
         <thead><tr style="background:var(--surface2)">
           <th style="width:40px;text-align:center"><input type="checkbox" ${allFbSel?'checked':''} onchange="toggleFbAll(this)" style="width:14px;height:14px;accent-color:var(--brand);cursor:pointer"/></th>
-          <th style="width:90px">记录日期</th><th>广告名称</th><th style="width:80px">国家</th>
-          <th style="text-align:right;width:90px">花费(USD)</th><th style="text-align:right;width:110px">展示(覆盖)</th>
-          <th style="text-align:right;width:70px">频次</th><th style="text-align:right;width:80px">表单转化</th>
-          <th style="width:110px;padding-left:16px">系统诊断</th><th style="width:60px"></th>
+          ${thRaw('记录日期', 'record_date', '90px')}
+          ${thRaw('广告名称/系列', 'ad_name', '180px')}
+          ${thRaw('国家', 'country', '80px')}
+          ${thRaw('花费(USD)', 'spend', '90px', 'right')}
+          ${thRaw('展示(覆盖)', 'impressions', '100px', 'right')}
+          ${thRaw('频次', 'frequency', '70px', 'right')}
+          ${thRaw('点击(CTR)', 'link_clicks', '100px', 'right')}
+          ${thRaw('CPC', 'cpc', '70px', 'right')}
+          ${thRaw('CPM', 'cpm', '80px', 'right')}
+          ${thRaw('转化数', 'leads', '70px', 'right')}
+          ${thRaw('CPL', 'cpl', '80px', 'right')}
+          <th style="width:90px;padding-left:16px">系统诊断</th>
+          <th style="width:60px"></th>
         </tr></thead>
-        <tbody>${rawRows || `<tr><td colspan="10"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
+        <tbody>${rawRowsHtml || `<tr><td colspan="14"><div class="empty"><div class="empty-ttl">暂无原始流水</div></div></td></tr>`}</tbody>
       </table>
       `}
     </div>
