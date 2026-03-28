@@ -404,6 +404,7 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
         <button class="ni" id="ni-customers" onclick="setView('customers')"><span class="nicon">👥</span><span>客户列表</span></button>
         <button class="ni" id="ni-tasks" onclick="setView('tasks')"><span class="nicon">⚡</span><span>今日待办</span><span class="nbadge" id="task-badge" style="display:none">0</span></button>
         <button class="ni" id="ni-sea" onclick="setView('sea')"><span class="nicon">🌊</span><span>公海客户</span><span class="nbadge warn" id="sea-badge" style="display:none">0</span></button>
+        <button class="ni" id="ni-fbads" onclick="setView('fbads')"><span class="nicon">📈</span><span>营销大盘</span></button>
       </div>
     </nav>
     <div class="sb-foot">
@@ -445,12 +446,14 @@ const PASSWORDS={Jacky:'jacky123',Jen:'jen123',Jimmy:'jimmy123',Chris:'chris123'
 const RCOLORS={A:'var(--warn)',B:'var(--brand)',C:'var(--teal)',D:'var(--rose)'};
 
 // ===== STATE =====
-let CU=null,ALL=[],CUS=[],LOGS=[];
+let CU=null,ALL=[],CUS=[],LOGS=[],FB_ADS=[];
 let VIEW='dashboard',dashSales='全部';
 let fS='',fSales='全部',fStat='全部',fCo='全部',fSrc='全部',fCtype='全部',fRating='全部',fDup=false;
 let fDateRange='all',fDateStart='',fDateEnd='';
 let fTag='';
 let dashDateRange='14', dashDateStart='', dashDateEnd='';
+let fAdsRange='30', fAdsCountry='全部', fAdsCamp='全部';
+
 function setDashDR(v){
   if(v==='custom'){dashDateRange='custom'; dashDateStart=''; dashDateEnd=''; render(); return;}
   if(v==='custom2'){dashDateRange='custom'; dashDateStart=document.getElementById('dash-ds')?.value||''; dashDateEnd=document.getElementById('dash-de')?.value||''; render(); return;}
@@ -463,15 +466,11 @@ let seaPage=1,seaPageSize=20,seaS='';
 let advFiltersOpen=false;
 
 let searchTimer = null;
-
 function handleSearch(val, type) {
   if (type === 'cus') fS = val, cusPage = 1;
   if (type === 'sea') seaS = val, seaPage = 1;
-
   clearTimeout(searchTimer);
-  searchTimer = setTimeout(() => {
-    render();
-  }, 500);
+  searchTimer = setTimeout(() => { render(); }, 500);
 }
 
 // ===== UTILS =====
@@ -544,6 +543,7 @@ function showLoading(show) {
     if (el) el.remove();
   }
 }
+
 // ===== DATA =====
 async function fetchAll(table,orderCol){
   let all=[],from=0;
@@ -556,9 +556,15 @@ async function fetchAll(table,orderCol){
   }
   return all;
 }
+
 async function load(){
   if (typeof showLoading === 'function') showLoading(true);
-  ALL = await fetchAll('customers', 'custom_date');
+  const [cr, fb] = await Promise.all([
+     fetchAll('customers', 'custom_date'),
+     fetchAll('fb_ads_metrics', 'record_date').catch(() => []) 
+  ]);
+  ALL = cr || [];
+  FB_ADS = fb || [];
   LOGS = []; 
   applyFilter();
   render();
@@ -605,10 +611,29 @@ function barChartHtml(data,color='var(--brand)'){
   return data.slice(0,15).map(([label,count])=>`<div class="bar-row"><div class="bar-lbl" title="${esc(label)}">${esc(label)}</div><div class="bar-track"><div class="bar-fill" style="width:${Math.round(count/max*100)}%;background:${color}"></div></div><div class="bar-val">${count}</div></div>`).join('');
 }
 
+// ===== FILTER HELPERS (修复筛选器与下拉菜单失效) =====
+function setCusDR(v){
+  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
+  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
+  fDateRange=v;cusPage=1;render();
+}
+
+function toggleAdvFilters(){
+  advFiltersOpen=!advFiltersOpen;
+  const f=document.getElementById('adv-filters'),a=document.getElementById('adv-arrow');
+  if(f)f.classList.toggle('open',advFiltersOpen);
+  if(a)a.textContent=advFiltersOpen?'▴':'▾';
+}
+
+function toggleDD(btn){
+  document.querySelectorAll('.dd').forEach(d=>{if(d!==btn.querySelector('.dd'))d.classList.remove('open')});
+  btn.querySelector('.dd')?.classList.toggle('open');
+}
+
 // ===== RENDER =====
 function setView(v){
   VIEW=v;
-  ['dashboard','customers','tasks','sea'].forEach(k=>document.getElementById('ni-'+k)?.classList.toggle('on',k===v));
+  ['dashboard','customers','tasks','sea','fbads'].forEach(k=>document.getElementById('ni-'+k)?.classList.toggle('on',k===v));
   document.getElementById('sidebar')?.classList.remove('show'); 
   render();
 }
@@ -623,11 +648,14 @@ function render(){
   
   applyFilter();updateBadges();
   const el=document.getElementById('main');if(!el)return;
-  if(VIEW==='dashboard')el.innerHTML=renderDash();
-  else if(VIEW==='customers')el.innerHTML=renderCus();
-  else if(VIEW==='tasks')el.innerHTML=renderTasks();
-  else if(VIEW==='sea')el.innerHTML=renderSea();
-  if(VIEW==='dashboard')setTimeout(renderDashChart,80);
+  if(VIEW==='dashboard') el.innerHTML=renderDash();
+  else if(VIEW==='customers') el.innerHTML=renderCus();
+  else if(VIEW==='tasks') el.innerHTML=renderTasks();
+  else if(VIEW==='sea') el.innerHTML=renderSea();
+  else if(VIEW==='fbads') el.innerHTML=renderFbAds();
+  
+  if(VIEW==='dashboard') setTimeout(renderDashChart,80);
+  if(VIEW==='fbads') setTimeout(renderFbAdsChart,80);
 
   if (isInput) {
     const newEl = document.getElementById(activeEl.id);
@@ -1149,7 +1177,7 @@ async function confirmTransfer(idStr){
 function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
 
-// ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK + OPTIMISTIC LAZY LOAD) =====
+// ===== LOG DRAWER & FOLLOW UP =====
 function getNextDateByStep(logDate, stageNum) {
   if(!logDate) return null;
   if(stageNum === 1) return addD(logDate, 3);
@@ -1361,237 +1389,6 @@ async function deleteLog(logId){
   toast('✅ 记录已删除，状态已重置回滚');
   await load();
   openLog(LID);
-}
-
-// ===== ASSIGN / CLAIM (新版分配与认领系统) =====
-function openClaimModal(id = null) {
-  const isBatch = !id;
-  const count = isBatch ? selIds.size : 1;
-  if(isBatch && count === 0) return;
-
-  // 销售本人直接静默认领，无需弹窗
-  if (!isAdm()) {
-    if (confirm(`确定要认领这 ${count} 个客户到你的名下吗？`)) {
-       executeClaim(id, CU);
-    }
-    return;
-  }
-
-  // 管理员调出分配模态框
-  document.getElementById('claim-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'claim-ov';
-  el.innerHTML = `
-    <div class="modal msm">
-      <div class="modal-header">
-        <div class="modal-top">
-          <div class="modal-title">🌊 分配公海客户 <span style="font-weight:400;color:var(--tt);font-size:13px">(${count}条)</span></div>
-          <button class="modal-close" onclick="document.getElementById('claim-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body">
-        <div class="fg">
-          <label class="fl" style="margin-bottom:10px;">请选择将线索分配给哪位销售</label>
-          <div class="prod-tags" id="claim-tags">
-            ${SALES.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#claim-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn bg" onclick="document.getElementById('claim-ov').remove()">取消</button>
-        <button class="btn bp" onclick="confirmClaimModal('${id || ''}')">确认分配</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-function confirmClaimModal(idStr) {
-  const sel = document.querySelector('#claim-tags .on');
-  if(!sel){toast('⚠️ 请先点击选择一个销售');return;}
-  const tgt = sel.textContent;
-  document.getElementById('claim-ov')?.remove();
-  executeClaim(idStr || null, tgt);
-}
-
-async function executeClaim(id, targetSales) {
-  const t = T();
-  const upd = {
-     sales: targetSales,
-     follow_stage: 0,
-     last_follow_date: null,
-     first_follow_date: t,
-     next_follow_date: t,
-     last_log_note: null
-  };
-
-  if (typeof showLoading === 'function') showLoading(true);
-  if (id) {
-    await db.from('customers').update(upd).eq('id', id);
-    toast(`✅ 已认领/分配给 ${targetSales}，请尽快首次跟进`);
-    if (selIds.has(id)) selIds.delete(id);
-  } else {
-    await db.from('customers').update(upd).in('id', [...selIds]);
-    toast(`✅ 已将 ${selIds.size} 条线索分配给 ${targetSales}，请提醒其跟进`);
-    selIds.clear();
-  }
-  if (typeof showLoading === 'function') showLoading(false);
-  await load();
-}
-
-// ===== SELECTION & BATCH ACTIONS (恢复丢失的批量操作与删除核心) =====
-function toggleSel(id,checked){if(checked)selIds.add(id);else selIds.delete(id);render();}
-function toggleAll(cb){document.querySelectorAll('.row-sel').forEach(b=>{if(cb.checked)selIds.add(b.value);else selIds.delete(b.value);});render();}
-
-function batchStatus(){
-  if (selIds.size === 0) return;
-  const opts = STATUSES.filter(s => s);
-  document.getElementById('status-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'status-ov';
-  el.innerHTML = `
-    <div class="modal msm">
-      <div class="modal-header">
-        <div class="modal-top">
-          <div class="modal-title">📊 批量改状态 <span style="font-weight:400;color:var(--tt);font-size:13px">(${selIds.size}条)</span></div>
-          <button class="modal-close" onclick="document.getElementById('status-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body">
-        <div class="fg">
-          <label class="fl" style="margin-bottom:10px;">点击选择目标状态</label>
-          <div class="prod-tags" id="status-tags">
-            ${opts.map(s => `<button type="button" class="ptag" onclick="document.querySelectorAll('#status-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')" style="font-size:13px; padding:8px 16px;">${s}</button>`).join('')}
-          </div>
-        </div>
-      </div>
-      <div class="modal-footer">
-        <button class="btn bg" onclick="document.getElementById('status-ov').remove()">取消</button>
-        <button class="btn bp" onclick="confirmBatchStatus()">确认修改</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-async function confirmBatchStatus(){
-  const sel = document.querySelector('#status-tags .on');
-  if (!sel) { toast('⚠️ 请先点击选择一个状态'); return; }
-  const s = sel.textContent;
-  const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
-  if (error) { toast('失败:'+error.message); return; }
-  toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
-  document.getElementById('status-ov')?.remove();
-  selIds.clear();
-  await load();
-}
-
-function openDeleteConfirmModal(id = null){
-  const isBatch = !id;
-  const count = isBatch ? selIds.size : 1;
-  if (isBatch && count === 0) return;
-  document.getElementById('del-confirm-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'del-confirm-ov';
-  el.innerHTML = `
-    <div class="modal msm" style="max-width:320px;">
-      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
-        <div class="modal-top" style="margin-bottom:0">
-          <div class="modal-title" style="color:var(--danger);">⚠️ 确认删除</div>
-          <button class="modal-close" onclick="document.getElementById('del-confirm-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body" style="padding:16px 24px 20px; text-align:center;">
-        <div style="font-size:14px;color:var(--tp);font-weight:600;margin-bottom:8px;">确定要删除这 ${count} 条客户记录吗？</div>
-        <div style="font-size:12px;color:var(--ts);">关联的历史日志将被连同销毁，此操作不可逆。</div>
-      </div>
-      <div class="modal-footer" style="border-top:none; justify-content:center; gap:12px;">
-        <button class="btn bg" onclick="document.getElementById('del-confirm-ov').remove()" style="flex:1; justify-content:center;">取消</button>
-        <button class="btn bp" onclick="executeDelete('${id || ''}')" style="flex:1; justify-content:center; background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,.2); border:none;">永久删除</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
-}
-
-async function executeDelete(idStr) {
-  const id = idStr || null;
-  if (typeof showLoading === 'function') showLoading(true);
-  document.getElementById('del-confirm-ov')?.remove();
-  if (id) {
-    await db.from('follow_logs').delete().eq('customer_id',id);
-    await db.from('customers').delete().eq('id',id);
-    selIds.delete(id);
-    toast('✅ 已删除');
-  } else {
-    const ids = [...selIds];
-    await db.from('follow_logs').delete().in('customer_id',ids);
-    await db.from('customers').delete().in('id',ids);
-    selIds.clear();
-    toast(`✅ 已删除 ${ids.length} 条`);
-  }
-  if (typeof showLoading === 'function') showLoading(false);
-  await load();
-}
-
-function delCus(id) { openDeleteConfirmModal(id); }
-function batchDel() { openDeleteConfirmModal(null); }
-
-async function batchProducts(){
-  const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
-  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-async function confirmBatchProducts(){
-  const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
-  if(!selected.length){toast('请至少选一个');return;}
-  const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
-}
-
-async function batchCtype(){
-  const el=document.createElement('div');el.className='overlay';el.id='bct-ov';
-  el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">🏢 批量改客户类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bct-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择客户类型</label><div class="prod-tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="ptag" onclick="document.querySelectorAll('#bct-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${p}</button>`).join('')}</div></div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bct-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchCtype()">确认</button></div></div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
-}
-async function confirmBatchCtype(){
-  const sel=document.querySelector('#bct-tags .on');
-  if(!sel){toast('请选择一个');return;}
-  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
-}
-
-function batchExport(filtered){
-  const ids=[...selIds];
-  const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
-  if(!list.length){toast('没有可导出的数据');return;}
-  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
-  const fields=['name','company','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
-  const csvQ=v=>{const s=Array.isArray(v)?v.join(';'):String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
-  const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
-  const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
-  const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`佳龙客户_${T()}.csv`;a.click();
-  toast(`✅ 已导出 ${list.length} 条`);
-}
-// ===== FILTER HELPERS =====
-function setCusDR(v){
-  if(v==='custom'){fDateRange='custom';fDateStart='';fDateEnd='';cusPage=1;render();return;}
-  if(v==='custom2'){fDateRange='custom';fDateStart=document.getElementById('cs1')?.value||'';fDateEnd=document.getElementById('cs2')?.value||'';cusPage=1;render();return;}
-  fDateRange=v;cusPage=1;render();
-}
-
-function toggleAdvFilters(){
-  advFiltersOpen=!advFiltersOpen;
-  const f=document.getElementById('adv-filters'),a=document.getElementById('adv-arrow');
-  if(f)f.classList.toggle('open',advFiltersOpen);
-  if(a)a.textContent=advFiltersOpen?'▴':'▾';
-}
-
-function toggleDD(btn){
-  document.querySelectorAll('.dd').forEach(d=>{if(d!==btn.querySelector('.dd'))d.classList.remove('open')});
-  btn.querySelector('.dd')?.classList.toggle('open');
 }
 
 // ===== DETAIL (LAZY LOAD) =====
@@ -1909,6 +1706,210 @@ function openTagManager() {
   
   document.body.appendChild(el);
   el.addEventListener('click', e => { if(e.target === el) el.remove() });
+}
+
+// ==========================================
+// ===== FB ADS MARKETING DASHBOARD =====
+// ==========================================
+
+function renderFbAds(){
+  if(!isAdm()) return tbHtml('营销大盘','仅管理员可用','') + `<div class="empty"><div class="empty-ttl">权限不足</div></div></div>`;
+
+  const rDate = getDateRange(fAdsRange, '', '');
+  let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
+  
+  const allCamps = [...new Set(src.map(d=>d.campaign_name))].sort();
+  if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
+  
+  const allCountries = [...new Set(src.map(d=>d.country))].sort();
+  if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
+
+  const tSpend = src.reduce((a,b)=>a+(b.spend||0),0);
+  const tImp = src.reduce((a,b)=>a+(b.impressions||0),0);
+  const tClick = src.reduce((a,b)=>a+(b.link_clicks||0),0);
+  const tLead = src.reduce((a,b)=>a+(b.leads||0),0);
+  
+  const avgCPL = tLead > 0 ? (tSpend / tLead).toFixed(2) : '0.00';
+  const avgCPC = tClick > 0 ? (tSpend / tClick).toFixed(2) : '0.00';
+  const ctr = tImp > 0 ? ((tClick / tImp)*100).toFixed(2) + '%' : '0.00%';
+
+  const datePills = [['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['全部','all']].map(([l,v])=>`<div onclick="fAdsRange='${v}';render()" style="padding:5px 12px; border-radius:6px; font-size:12px; font-weight:${fAdsRange===v?'600':'500'}; background:${fAdsRange===v?'var(--brand)':'transparent'}; color:${fAdsRange===v?'#fff':'var(--ts)'}; cursor:pointer; transition:all .2s;">${l}</div>`).join('');
+
+  return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportFbAI()">🤖 导出 AI 分析</button><button class="btn bp" onclick="openFbImport()">📥 导入 FB 报表</button>`) + `
+  
+  <div class="fsec"><div class="frow" style="align-items:center;">
+    <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px;">${datePills}</div>
+    <select class="fsel" onchange="fAdsCamp=this.value;render()"><option value="全部">全部广告系列</option>${allCamps.map(c=>`<option ${fAdsCamp===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <select class="fsel" onchange="fAdsCountry=this.value;render()"><option value="全部">全部国家/地区</option>${allCountries.map(c=>`<option ${fAdsCountry===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+  </div></div>
+
+  <div class="sg6">
+    <div class="sc sm"><div class="sc-lbl">总花费 (USD)</div><div class="sc-val" style="color:var(--danger)">$${tSpend.toFixed(2)}</div></div>
+    <div class="sc sm"><div class="sc-lbl">总展示</div><div class="sc-val" style="color:var(--ts)">${tImp}</div></div>
+    <div class="sc sm"><div class="sc-lbl">链接点击</div><div class="sc-val" style="color:var(--ts)">${tClick}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">CTR: ${ctr}</div></div>
+    <div class="sc sm"><div class="sc-lbl">询盘/消息数</div><div class="sc-val" style="color:var(--success)">${tLead}</div></div>
+    <div class="sc sm"><div class="sc-lbl">单条询盘成本 (CPL)</div><div class="sc-val" style="color:var(--brand)">$${avgCPL}</div></div>
+    <div class="sc sm"><div class="sc-lbl">单次点击成本 (CPC)</div><div class="sc-val" style="color:var(--purple)">$${avgCPC}</div></div>
+  </div>
+
+  <div class="cg2">
+    <div class="cc"><div class="cc-title">📅 每日消耗与询盘走势</div><div class="chart-wrap" style="height:250px"><canvas id="fbLineChart"></canvas></div></div>
+    <div class="cc"><div class="cc-title">🌍 国家获客成本 (CPL) 对比</div><div class="chart-wrap" style="height:250px"><canvas id="fbBarChart"></canvas></div></div>
+  </div>
+  </div>`;
+}
+
+function renderFbAdsChart(){
+  if(!document.getElementById('fbLineChart')) return;
+  const rDate = getDateRange(fAdsRange, '', '');
+  let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
+  if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
+  if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
+
+  ['fbLineChart', 'fbBarChart'].forEach(id => { if(CI[id]) { CI[id].destroy(); delete CI[id]; } });
+
+  const daysMap = {};
+  src.forEach(d => {
+    if(!daysMap[d.record_date]) daysMap[d.record_date] = { spend:0, leads:0 };
+    daysMap[d.record_date].spend += Number(d.spend||0);
+    daysMap[d.record_date].leads += Number(d.leads||0);
+  });
+  const days = Object.keys(daysMap).sort();
+  
+  CI['fbLineChart'] = new Chart(document.getElementById('fbLineChart'), {
+    type: 'line',
+    data: {
+      labels: days.map(fmt),
+      datasets: [
+        { label: '花费 (USD)', data: days.map(d=>daysMap[d].spend), borderColor: '#FF3B30', backgroundColor: '#FF3B30', yAxisID: 'y' },
+        { label: '询盘数', data: days.map(d=>daysMap[d].leads), borderColor: '#34C759', backgroundColor: '#34C759', yAxisID: 'y1' }
+      ]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: false,
+      scales: {
+        y: { type: 'linear', display: true, position: 'left', grid: { color: 'rgba(0,0,0,.04)' } },
+        y1: { type: 'linear', display: true, position: 'right', grid: { drawOnChartArea: false } }
+      }
+    }
+  });
+
+  const coMap = {};
+  src.forEach(d => {
+    if(!coMap[d.country]) coMap[d.country] = { spend:0, leads:0 };
+    coMap[d.country].spend += Number(d.spend||0);
+    coMap[d.country].leads += Number(d.leads||0);
+  });
+  const coData = Object.entries(coMap).map(([c, v]) => ({ country: c, cpl: v.leads > 0 ? (v.spend/v.leads) : 0, leads: v.leads }))
+    .filter(x => x.cpl > 0 || x.leads > 0).sort((a,b) => b.cpl - a.cpl).slice(0, 15); 
+
+  if (coData.length > 0 && window.Chart) {
+    CI['fbBarChart'] = new Chart(document.getElementById('fbBarChart'), {
+      type: 'bar',
+      data: {
+        labels: coData.map(d => d.country),
+        datasets: [{ label: '单条询盘成本 (CPL)', data: coData.map(d => d.cpl.toFixed(2)), backgroundColor: 'rgba(0,102,204,.65)', borderRadius: 4 }]
+      },
+      options: { responsive: true, maintainAspectRatio: false, scales: { x: { grid: { display: false } }, y: { grid: { color: 'rgba(0,0,0,.04)' } } } }
+    });
+  }
+}
+
+// ===== FB IMPORT ETL PARSER =====
+function openFbImport(){
+  document.getElementById('fb-imp-ov')?.remove();
+  const el=document.createElement('div');el.className='overlay';el.id='fb-imp-ov';
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">📥 极速导入 FB 报表</div><button class="modal-close" onclick="document.getElementById('fb-imp-ov').remove()">×</button></div></div>
+  <div class="simple-body">
+    <p style="font-size:13px;color:var(--ts);margin-bottom:12px">请直接将带有【国家/地区】细分维度的 Facebook 原生 CSV 报表内容粘贴至下方。系统将自动清洗脏数据、合并指标，并以增量方式更新（同日同国家同广告的数据将自动覆盖，绝不重复计算）。</p>
+    <div class="fg"><textarea class="fi" id="fb-imp-txt" rows="10" placeholder="在此粘贴 CSV 内容..."></textarea></div>
+    <div style="display:flex;gap:10px;align-items:center"><label style="padding:7px 13px;border:1px solid var(--border);border-radius:var(--r);font-size:13px;cursor:pointer;background:var(--surface2);color:var(--ts)">📁 选择 CSV 文件 <input type="file" accept=".csv" style="display:none" onchange="loadFbFile(this)"/></label><span id="fb-fn" style="font-size:12px;color:var(--tt)"></span></div>
+  </div>
+  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('fb-imp-ov').remove()">取消</button><button class="btn bp" onclick="doFbImp()">🚀 开始洗表入库</button></div>
+  </div>`;
+  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+}
+
+function loadFbFile(inp){
+  const f=inp.files[0];if(!f)return;document.getElementById('fb-fn').textContent=f.name;
+  const tryRead=(enc)=>{const r=new FileReader();r.onload=e=>{const txt=e.target.result;if(enc==='UTF-8'&&txt.includes('\uFFFD')){tryRead('GBK');}else{document.getElementById('fb-imp-txt').value=txt;}};r.readAsText(f,enc);};tryRead('UTF-8');
+}
+
+async function doFbImp(){
+  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
+  const rows = parseCSV(raw); if(rows.length < 2){toast('无有效数据');return;}
+  
+  const headers = rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
+  const getIdx = (name) => headers.findIndex(h => h.includes(name));
+  
+  const iDate = getIdx('报告开始日期');
+  const iCamp = getIdx('广告系列名称');
+  const iAdset = getIdx('广告组名称');
+  const iAd = getIdx('广告名称');
+  const iCountry = getIdx('国家/地区');
+  const iSpend = getIdx('已花费金额');
+  const iImp = getIdx('展示次数');
+  const iClick = getIdx('链接点击量');
+  const iLead1 = getIdx('潜在客户');
+  const iLead2 = getIdx('消息对话');
+
+  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 表头缺失关键列 (日期/国家/花费)，请检查导出格式'); return; }
+
+  const data = [];
+  for(let i=1; i<rows.length; i++){
+    const r = rows[i];
+    if(!r[iDate] || r[iDate].includes('总计')) continue; 
+    
+    const leadsCount = (iLead1 !== -1 ? (parseFloat(r[iLead1])||0) : 0) + (iLead2 !== -1 ? (parseFloat(r[iLead2])||0) : 0);
+    
+    data.push({
+      record_date: fixDate(r[iDate]),
+      campaign_name: r[iCamp] ? r[iCamp].trim() : '-',
+      adset_name: r[iAdset] ? r[iAdset].trim() : '-',
+      ad_name: r[iAd] ? r[iAd].trim() : '-',
+      country: r[iCountry] ? r[iCountry].trim() : 'Unknown',
+      spend: parseFloat(r[iSpend]) || 0,
+      impressions: parseInt(r[iImp]) || 0,
+      link_clicks: parseInt(r[iClick]) || 0,
+      leads: leadsCount
+    });
+  }
+
+  if(!data.length){toast('数据均被清洗，无有效载荷');return;}
+  
+  showLoading(true);
+  let total = 0;
+  for(let i=0; i<data.length; i+=100){
+    const batch = data.slice(i, i+100);
+    const {error} = await db.from('fb_ads_metrics').upsert(batch, {onConflict: 'record_date,campaign_name,adset_name,ad_name,country'});
+    if(error){ toast(`入库中断: ${error.message}`); showLoading(false); return; }
+    total += batch.length;
+  }
+  showLoading(false);
+  toast(`✅ 洗表完毕！成功写入/更新 ${total} 条 FB 维度数据`);
+  document.getElementById('fb-imp-ov')?.remove();
+  await load();
+}
+
+function exportFbAI() {
+  const rDate = getDateRange(fAdsRange, '', '');
+  let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
+  if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
+  if(fAdsCountry !== '全部') src = src.filter(d => d.country === fAdsCountry);
+  
+  if(!src.length) { toast('当前视图无数据可导'); return; }
+
+  const headers = ['日期', '国家', '广告系列', '花费(USD)', '展示', '点击', '询盘数', 'CPL', 'CPC'];
+  const lines = [headers.join(',')];
+  src.forEach(d => {
+    const cpl = d.leads > 0 ? (d.spend/d.leads).toFixed(2) : 0;
+    const cpc = d.link_clicks > 0 ? (d.spend/d.link_clicks).toFixed(2) : 0;
+    lines.push(`${d.record_date},${d.country},"${d.campaign_name}",${d.spend},${d.impressions},${d.link_clicks},${d.leads},${cpl},${cpc}`);
+  });
+  
+  navigator.clipboard.writeText(lines.join('\n')).then(()=>{
+    toast('🤖 数据已转为 AI 格式并存入剪贴板，直接粘贴给大模型即可！');
+  });
 }
 </script>
 </body>
