@@ -1973,6 +1973,21 @@ function renderFbAds(){
   const allCountries = [...new Set(src.map(d=>getCoName(d.country)))].sort();
   if(fAdsCountry !== '全部') src = src.filter(d => getCoName(d.country) === fAdsCountry);
 
+  const datePills = [['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['全部','all'],['自定义','custom']].map(([l,v])=>`<div onclick="setAdsDR('${v}')" style="padding:5px 12px; border-radius:6px; font-size:12px; font-weight:${fAdsRange===v?'600':'500'}; background:${fAdsRange===v?'var(--brand)':'transparent'}; color:${fAdsRange===v?'#fff':'var(--ts)'}; cursor:pointer; transition:all .2s;">${l}</div>`).join('');
+  const customDateHtml = fAdsRange === 'custom' ? `<div style="display:flex; align-items:center; gap:8px; margin-left:8px; flex-wrap:wrap;"><input type="date" id="ads-ds" value="${fAdsDateStart}" style="flex:1; min-width:110px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><span style="color:var(--ts);font-size:12px;">至</span><input type="date" id="ads-de" value="${fAdsDateEnd}" style="flex:1; min-width:110px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><button class="btn bp" style="padding:4px 10px; font-size:12px; border-radius:6px;" onclick="setAdsDR('custom2')">查询</button></div>` : '';
+
+  const filterHeader = `<div class="fsec"><div class="frow" style="align-items:center;">
+    <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px; flex-wrap:wrap; align-items:center;">${datePills}${customDateHtml}</div>
+    <select class="fsel" onchange="fAdsCamp=this.value;render()"><option value="全部">全部广告系列</option>${allCamps.map(c=>`<option ${fAdsCamp===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+    <select class="fsel" onchange="fAdsCountry=this.value;render()"><option value="全部">全部国家/地区</option>${allCountries.map(c=>`<option ${fAdsCountry===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
+  </div></div>`;
+
+  // 空状态保护
+  if (src.length === 0) {
+    return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + filterHeader + 
+    `<div class="empty" style="margin-top:40px"><div class="empty-icon">📊</div><div class="empty-ttl">当前区间暂无营销数据</div><div style="font-size:13px;color:var(--ts);margin-top:8px">请调整筛选条件，或点击右上角导入最新报表</div></div></div>`;
+  }
+
   const tSpend = src.reduce((a,b)=>a+(b.spend||0),0);
   const tImp = src.reduce((a,b)=>a+(b.impressions||0),0);
   const tClick = src.reduce((a,b)=>a+(b.link_clicks||0),0);
@@ -1983,9 +1998,7 @@ function renderFbAds(){
   const avgCPM = tImp > 0 ? ((tSpend / tImp)*1000).toFixed(2) : '0.00';
   const ctr = tImp > 0 ? ((tClick / tImp)*100).toFixed(2) + '%' : '0.00%';
 
-  const datePills = [['今日','today'],['昨日','yesterday'],['近7天','7'],['近14天','14'],['近30天','30'],['全部','all'],['自定义','custom']].map(([l,v])=>`<div onclick="setAdsDR('${v}')" style="padding:5px 12px; border-radius:6px; font-size:12px; font-weight:${fAdsRange===v?'600':'500'}; background:${fAdsRange===v?'var(--brand)':'transparent'}; color:${fAdsRange===v?'#fff':'var(--ts)'}; cursor:pointer; transition:all .2s;">${l}</div>`).join('');
-  const customDateHtml = fAdsRange === 'custom' ? `<div style="display:flex; align-items:center; gap:8px; margin-left:8px; flex-wrap:wrap;"><input type="date" id="ads-ds" value="${fAdsDateStart}" style="flex:1; min-width:110px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><span style="color:var(--ts);font-size:12px;">至</span><input type="date" id="ads-de" value="${fAdsDateEnd}" style="flex:1; min-width:110px; padding:4px 8px; border:1px solid var(--border); border-radius:6px; font-size:12px; outline:none; font-family:inherit; color:var(--tp); background:var(--surface);"><button class="btn bp" style="padding:4px 10px; font-size:12px; border-radius:6px;" onclick="setAdsDR('custom2')">查询</button></div>` : '';
-
+  // 1. 聚合表逻辑
   const aggMap = {};
   src.forEach(d => {
     const mappedCo = getCoName(d.country);
@@ -2016,17 +2029,15 @@ function renderFbAds(){
     return fAdsSortDesc ? valB - valA : valA - valB;
   });
 
-  let rawList = src.map(d => {
-    return {
-      ...d,
-      mappedCo: getCoName(d.country),
-      cpl: d.leads > 0 ? d.spend / d.leads : 0,
-      sortCpl: d.leads > 0 ? (d.spend / d.leads) : (d.spend > 0 ? 99999 + d.spend : 0),
-      cpc: d.link_clicks > 0 ? d.spend / d.link_clicks : 0,
-      cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
-      ctr: d.impressions > 0 ? (d.link_clicks / d.impressions) * 100 : 0
-    };
-  });
+  // 2. 原始表逻辑
+  let rawList = src.map(d => ({
+    ...d, mappedCo: getCoName(d.country),
+    cpl: d.leads > 0 ? d.spend / d.leads : 0,
+    sortCpl: d.leads > 0 ? (d.spend / d.leads) : (d.spend > 0 ? 99999 + d.spend : 0),
+    cpc: d.link_clicks > 0 ? d.spend / d.link_clicks : 0,
+    cpm: d.impressions > 0 ? (d.spend / d.impressions) * 1000 : 0,
+    ctr: d.impressions > 0 ? (d.link_clicks / d.impressions) * 100 : 0
+  }));
 
   rawList.sort((a, b) => {
     let valA = a[fAdsRawSort] || 0, valB = b[fAdsRawSort] || 0;
@@ -2037,30 +2048,45 @@ function renderFbAds(){
     return fAdsRawSortDesc ? valB - valA : valA - valB;
   });
 
-  // Insights
+  // Insights 计算
   const coMap = {};
+  const freqMap = {}; // 抓取频次预警广告
   src.forEach(d => { 
     const mappedCo = getCoName(d.country);
     if(!coMap[mappedCo]) coMap[mappedCo] = { spend:0, leads:0 }; 
     coMap[mappedCo].spend += d.spend; 
     coMap[mappedCo].leads += d.leads; 
+
+    if(!freqMap[d.ad_name]) freqMap[d.ad_name] = { imp:0, reach:0 };
+    freqMap[d.ad_name].imp += d.impressions;
+    freqMap[d.ad_name].reach += d.reach;
   });
+  
   const coStats = Object.entries(coMap).map(([c,v])=>({ c, cpl: v.leads>0?v.spend/v.leads:v.spend*999, leads:v.leads, spend:v.spend })).filter(x=>x.spend>0).sort((a,b)=>a.cpl-b.cpl);
   const bestCo = coStats.filter(x=>x.leads>0)[0];
   const worstCo = [...coStats].sort((a,b)=>b.cpl-a.cpl)[0];
+
+  const badFreqAds = Object.entries(freqMap).map(([name, v]) => ({ name, freq: v.reach > 0 ? v.imp/v.reach : 0 })).filter(x => x.freq >= 2.5).sort((a,b) => b.freq - a.freq);
+  const freqWarningHtml = badFreqAds.length > 0
+    ? `<div style="font-size:14px;color:var(--tp);font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${esc(badFreqAds[0].name)}">${esc(badFreqAds[0].name)} (频次: ${badFreqAds[0].freq.toFixed(2)})</div><div style="font-size:11px;color:var(--danger);margin-top:4px">等 ${badFreqAds.length} 个广告受众出现疲劳</div>`
+    : `<div style="font-size:14px;color:var(--tp);font-weight:600;">暂无高频广告</div><div style="font-size:11px;color:var(--ts);margin-top:4px">当前受众池较为健康</div>`;
   
   const insightsHtml = `<div style="display:flex;gap:12px;margin-bottom:16px;">
-    <div style="flex:1;background:var(--success-l);border:1px solid rgba(52,199,89,.3);padding:12px 16px;border-radius:var(--r2);">
+    <div style="flex:1;background:var(--success-l);border:1px solid rgba(52,199,89,.3);padding:12px 16px;border-radius:var(--r2);min-width:0">
       <div style="font-size:11px;color:var(--success);font-weight:700;margin-bottom:4px;">🔥 最佳获客区域</div>
       <div style="font-size:14px;color:var(--tp);font-weight:600;">${bestCo ? `${bestCo.c} (CPL: $${(bestCo.spend/bestCo.leads).toFixed(2)})` : '数据不足'}</div>
     </div>
-    <div style="flex:1;background:var(--danger-l);border:1px solid rgba(255,59,48,.3);padding:12px 16px;border-radius:var(--r2);">
+    <div style="flex:1;background:var(--danger-l);border:1px solid rgba(255,59,48,.3);padding:12px 16px;border-radius:var(--r2);min-width:0">
       <div style="font-size:11px;color:var(--danger);font-weight:700;margin-bottom:4px;">🚨 高亏损预警区域</div>
       <div style="font-size:14px;color:var(--tp);font-weight:600;">${worstCo ? `${worstCo.c} (${worstCo.leads>0 ? `CPL $${(worstCo.spend/worstCo.leads).toFixed(2)}` : `纯消耗 $${worstCo.spend.toFixed(2)}`})` : '数据不足'}</div>
     </div>
+    <div style="flex:1;background:var(--warn-l);border:1px solid rgba(255,149,0,.3);padding:12px 16px;border-radius:var(--r2);min-width:0">
+      <div style="font-size:11px;color:var(--warn);font-weight:700;margin-bottom:4px;">🟡 受众疲劳预警 (>2.5)</div>
+      ${freqWarningHtml}
+    </div>
   </div>`;
 
-  const th = (lbl, col, w, align='left') => `<th style="width:${w};text-align:${align};cursor:pointer;user-select:none;transition:background .15s" onclick="fAdsSort='${col}';fAdsSortDesc=${fAdsSort===col?!fAdsSortDesc:true};render()" onmouseover="this.style.background='var(--border-l)'" onmouseout="this.style.background='transparent'">${lbl} ${fAdsSort===col?(fAdsSortDesc?'↓':'↑'):'<span style="color:transparent">↓</span>'}</th>`;
+  const th = (lbl, col, w, align='left', tip='') => `<th title="${tip}" style="width:${w};text-align:${align};cursor:pointer;user-select:none;transition:background .15s" onclick="fAdsSort='${col}';fAdsSortDesc=${fAdsSort===col?!fAdsSortDesc:true};render()" onmouseover="this.style.background='var(--border-l)'" onmouseout="this.style.background='transparent'">${lbl} ${tip?'<span style="color:var(--ts)">ⓘ</span>':''} ${fAdsSort===col?(fAdsSortDesc?'↓':'↑'):'<span style="color:transparent">↓</span>'}</th>`;
   const thRaw = (lbl, col, w, align='left') => `<th style="width:${w};text-align:${align};cursor:pointer;user-select:none;transition:background .15s" onclick="fAdsRawSort='${col}';fAdsRawSortDesc=${fAdsRawSort===col?!fAdsRawSortDesc:true};render()" onmouseover="this.style.background='var(--border-l)'" onmouseout="this.style.background='transparent'">${lbl} ${fAdsRawSort===col?(fAdsRawSortDesc?'↓':'↑'):'<span style="color:transparent">↓</span>'}</th>`;
 
   const aggRows = aggList.map(d => `<tr>
@@ -2079,8 +2105,7 @@ function renderFbAds(){
 
   const allFbSel = src.length > 0 && src.every(d => fbSelIds.has(d.id));
   const rawRowsHtml = rawList.slice(0,100).map(d => {
-    let warning = '';
-    let wColor = 'var(--ts)';
+    let warning = ''; let wColor = 'var(--ts)';
     if(d.frequency >= 3.5) { warning = '⚠️频次极高'; wColor = 'var(--danger)'; }
     else if(d.frequency >= 2.5) { warning = '注意频次'; wColor = 'var(--warn)'; }
     else if(d.leads === 0 && d.spend > 5) { warning = '⚠️纯消耗'; wColor = 'var(--danger)'; }
@@ -2104,14 +2129,7 @@ function renderFbAds(){
 
   const batchFbBar = fAdsTab === 'raw' && fbSelIds.size > 0 ? `<div style="display:flex;gap:6px;margin-bottom:12px;padding:8px 12px;background:var(--danger-l);border-radius:var(--r2);border:1px solid rgba(255,59,48,.2);align-items:center"><span style="font-size:12px;font-weight:600;color:var(--danger)">已选中 ${fbSelIds.size} 条记录</span><button onclick="deleteFbAds()" style="padding:4px 10px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:11px;font-weight:600;cursor:pointer;">🗑 批量永久删除</button><button onclick="fbSelIds.clear();render()" style="padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:11px;cursor:pointer;">✕ 取消</button></div>` : '';
 
-  return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportCoreData()">📋 复制高维报表</button><button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + `
-  
-  <div class="fsec"><div class="frow" style="align-items:center;">
-    <div style="display:inline-flex; background:var(--surface2); padding:3px; border-radius:8px; border:1px solid var(--border-l); gap:2px; flex-wrap:wrap; align-items:center;">${datePills}${customDateHtml}</div>
-    <select class="fsel" onchange="fAdsCamp=this.value;render()"><option value="全部">全部广告系列</option>${allCamps.map(c=>`<option ${fAdsCamp===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
-    <select class="fsel" onchange="fAdsCountry=this.value;render()"><option value="全部">全部国家/地区</option>${allCountries.map(c=>`<option ${fAdsCountry===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
-  </div></div>
-
+  return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bg col-hide" onclick="exportCoreData()">📋 提取高维报表</button><button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + filterHeader + `
   <div class="sg6">
     <div class="sc sm"><div class="sc-lbl">总花费 (USD)</div><div class="sc-val" style="color:var(--danger)">$${tSpend.toFixed(2)}</div></div>
     <div class="sc sm"><div class="sc-lbl">总展示</div><div class="sc-val" style="color:var(--ts)">${tImp}</div><div style="font-size:11px;color:var(--tt);margin-top:4px">平均 CPM: $${avgCPM}</div></div>
@@ -2125,14 +2143,14 @@ function renderFbAds(){
 
   <div class="cg2">
     <div class="cc"><div class="cc-title">📅 每日消耗与线索走势</div><div class="chart-wrap" style="height:250px"><canvas id="fbLineChart"></canvas></div></div>
-    <div class="cc"><div class="cc-title">🎯 矩阵诊断</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
+    <div class="cc"><div class="cc-title">🎯 矩阵诊断 (高频吞金兽预警)</div><div class="chart-wrap" style="height:250px"><canvas id="fbScatterChart"></canvas></div></div>
   </div>
 
   <div class="tc" style="margin-top:16px">
     <div class="tc-head" style="padding:0;border-bottom:none;flex-direction:column;align-items:stretch">
       <div class="tabs" style="width:100%;border-bottom:1px solid var(--border-l)">
         <div class="tab ${fAdsTab==='agg'?'on':''}" onclick="fAdsTab='agg';render()" style="padding:14px 20px">📊 转化成本诊断表 (聚合)</div>
-        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (前100条)</div>
+        <div class="tab ${fAdsTab==='raw'?'on':''}" onclick="fAdsTab='raw';render()" style="padding:14px 20px">📅 原始流水对账表 (共${src.length}条, 显示前100)</div>
       </div>
       <div style="padding:10px 20px 0;">${batchFbBar}</div>
     </div>
@@ -2144,7 +2162,7 @@ function renderFbAds(){
           ${th('国家', 'country', '80px')}
           ${th('花费(USD)', 'spend', '90px', 'right')}
           ${th('展示', 'impressions', '80px', 'right')}
-          ${th('预估频次', 'frequency', '80px', 'right')}
+          ${th('预估频次', 'frequency', '80px', 'right', '将多日/多条广告的覆盖人数强行相加存在去重误差，此聚合频次仅供参考估算')}
           ${th('点击', 'link_clicks', '80px', 'right')}
           ${th('点击率', 'ctr', '70px', 'right')}
           ${th('CPC', 'cpc', '70px', 'right')}
