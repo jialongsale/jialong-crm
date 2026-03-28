@@ -1416,23 +1416,23 @@ function confirmClaimModal(idStr) {
 
 async function executeClaim(id, targetSales) {
   const t = T();
-  // 核心数据重置：变更归属并重置跟进周期
   const upd = {
      sales: targetSales,
-     last_follow_date: t,
-     follow_stage: 1,
+     follow_stage: 0,
+     last_follow_date: null,
      first_follow_date: t,
-     next_follow_date: addD(t, 3)
+     next_follow_date: t,
+     last_log_note: null
   };
 
   if (typeof showLoading === 'function') showLoading(true);
   if (id) {
     await db.from('customers').update(upd).eq('id', id);
-    toast(`✅ 已认领/分配给 ${targetSales}`);
+    toast(`✅ 已认领/分配给 ${targetSales}，请尽快首次跟进`);
     if (selIds.has(id)) selIds.delete(id);
   } else {
     await db.from('customers').update(upd).in('id', [...selIds]);
-    toast(`✅ 已将 ${selIds.size} 条线索分配给 ${targetSales}`);
+    toast(`✅ 已将 ${selIds.size} 条线索分配给 ${targetSales}，请提醒其跟进`);
     selIds.clear();
   }
   if (typeof showLoading === 'function') showLoading(false);
