@@ -1528,6 +1528,9 @@ async function confirmBatchStatus(){
   const sel = document.querySelector('#status-tags .on');
   if (!sel) { toast('⚠️ 请先点击选择一个状态'); return; }
   const s = sel.textContent;
+ 
+  if(!confirm(`⚠️ 确定要将选中的 ${selIds.size} 条客户状态全部改为「${s}」吗？`)) return;
+
   const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
   if (error) { toast('失败:'+error.message); return; }
   toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
@@ -1595,6 +1598,7 @@ async function batchProducts(){
 async function confirmBatchProducts(){
   const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
   if(!selected.length){toast('请至少选一个');return;}
+  if(!confirm(`⚠️ 确定要将选中的 ${selIds.size} 条客户的产品意向全部覆盖替换为「${selected.join(', ')}」吗？`)) return;
   const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
   if(error){toast('失败:'+error.message);return;}
   toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
@@ -1608,6 +1612,7 @@ async function batchCtype(){
 async function confirmBatchCtype(){
   const sel=document.querySelector('#bct-tags .on');
   if(!sel){toast('请选择一个');return;}
+  if(!confirm(`⚠️ 确定要将选中的 ${selIds.size} 条客户类型全部改为「${sel.textContent}」吗？`)) return;
   const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
   if(error){toast('失败:'+error.message);return;}
   toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
