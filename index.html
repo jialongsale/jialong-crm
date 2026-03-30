@@ -1084,12 +1084,16 @@ function renderCus(){
 
 // ===== TASKS =====
 window.snoozeTask = window.snoozeTask || async function(id, days) {
-  const t = T();
-  const nextDate = addD(t, days);
+  const c = ALL.find(x => x.id === id);
+  if (!c) return;
+  
+  const baseDate = (c.next_follow_date && c.next_follow_date > T()) ? c.next_follow_date : T();
+  const nextDate = addD(baseDate, days);
+  
   showLoading(true);
   await db.from('customers').update({next_follow_date: nextDate}).eq('id', id);
   showLoading(false);
-  toast(`✅ 延期 ${days} 天`);
+  toast(`✅ 智能延期至 ${nextDate}`);
   await load();
 };
 
@@ -1102,22 +1106,26 @@ window.toggleTaskSel = function(id, checked) {
 };
 
 window.toggleAllTasks = function(cb) {
-  document.querySelectorAll('.task-row-sel').forEach(b => {
-    if (cb.checked) window.taskSelIds.add(b.value);
-    else window.taskSelIds.delete(b.value);
-  });
+  if (cb.checked) {
+    window._currentTaskIds.forEach(id => window.taskSelIds.add(id));
+  } else {
+    window._currentTaskIds.forEach(id => window.taskSelIds.delete(id));
+  }
   render();
 };
 
 window.batchSnoozeTask = async function(days) {
   if (window.taskSelIds.size === 0) return;
-  const t = T();
-  const nextDate = addD(t, days);
   showLoading(true);
-  const {error} = await db.from('customers').update({next_follow_date: nextDate}).in('id', [...window.taskSelIds]);
+  for (let id of window.taskSelIds) {
+    const c = ALL.find(x => x.id === id);
+    if (!c) continue;
+    const baseDate = (c.next_follow_date && c.next_follow_date > T()) ? c.next_follow_date : T();
+    await db.from('customers').update({next_follow_date: addD(baseDate, days)}).eq('id', id);
+  }
+  
   showLoading(false);
-  if (error) { toast('失败:'+error.message); return; }
-  toast(`✅ 已将 ${window.taskSelIds.size} 个任务批量推迟 ${days} 天`);
+  toast(`✅ 已将 ${window.taskSelIds.size} 个任务智能推迟`);
   window.taskSelIds.clear();
   await load();
 };
@@ -1160,7 +1168,6 @@ function renderTasks() {
     const isToday = c.next_follow_date === tDate && !isStageZero;
     const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isStageZero;
 
-    // 四宫格切页
     if (window.fTaskTab === 'overdue' && !isOverdue) return false;
     if (window.fTaskTab === 'today' && !isToday) return false;
     if (window.fTaskTab === 'new' && !isStageZero) return false;
@@ -1207,6 +1214,8 @@ function renderTasks() {
     return dateA < dateB ? -1 : 1;
   });
 
+  window._currentTaskIds = filtered.map(c => c.id);
+
   const tabCard = (id, count, label, icon, color, bgL) => `
     <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.taskSelIds.clear();window.fTaskTab='${id}';window.fTaskType='all';render()">
       <div style="font-size:22px; font-weight:700; color:var(--${color}); line-height:1">${count}</div>
@@ -1231,7 +1240,7 @@ function renderTasks() {
   </div>
   <div class="fsec">
     <div class="frow">
-      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,400)" placeholder="搜姓名/公司/电话/备注..."/></div>
+      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,600)" placeholder="搜姓名/公司/电话/备注..."/></div>
       ${typeFilterHtml}
       <select class="fsel" onchange="window.fTaskRating=this.value;render()">
         <option value="全部">全部评级</option>
