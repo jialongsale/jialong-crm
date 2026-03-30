@@ -474,22 +474,29 @@ const getCoName = (c) => FB_COUNTRIES[c?.trim()?.toUpperCase()] || c;
 function toggleFbSel(id, checked) { if(checked) fbSelIds.add(id); else fbSelIds.delete(id); render(); }
 function toggleFbAll(cb) { document.querySelectorAll('.fb-row-sel').forEach(b => { if(cb.checked) fbSelIds.add(b.value); else fbSelIds.delete(b.value); }); render(); }
 
-async function deleteFbAds(idStr = null) {
+function deleteFbAds(idStr = null) {
   const count = idStr ? 1 : fbSelIds.size;
   if(count === 0) return;
-  if(!confirm(`⚠️ 确定要从底层数据库中永久删除这 ${count} 条流水记录吗？此操作不可逆。`)) return;
-
-  showLoading(true);
-  if (idStr) {
-    await db.from('fb_ads_metrics').delete().eq('id', idStr);
-    fbSelIds.delete(idStr);
-  } else {
-    await db.from('fb_ads_metrics').delete().in('id', [...fbSelIds]);
-    fbSelIds.clear();
-  }
-  showLoading(false);
-  toast(`✅ 成功清理 ${count} 条冗余数据`);
-  await load();
+  
+  showCustomConfirm(
+    '<span style="color:var(--danger)">⚠️ 删除流水确认</span>',
+    `确定要永久删除这 <span style="color:var(--danger)">${count}</span> 条流水记录吗？`,
+    '删除后不可恢复，大盘数据将自动重算。',
+    '永久删除', 'danger',
+    async () => {
+      showLoading(true);
+      if (idStr) {
+        await db.from('fb_ads_metrics').delete().eq('id', idStr);
+        fbSelIds.delete(idStr);
+      } else {
+        await db.from('fb_ads_metrics').delete().in('id', [...fbSelIds]);
+        fbSelIds.clear();
+      }
+      showLoading(false);
+      toast(`✅ 成功清理 ${count} 条冗余数据`);
+      await load();
+    }
+  );
 }
 
 function setAdsDR(v){
@@ -591,6 +598,38 @@ function showLoading(show) {
   } else {
     if (el) el.remove();
   }
+}
+
+let _customConfirmCallback = null;
+function showCustomConfirm(titleHtml, msgHtml, subMsgHtml, confirmBtnText, btnColorVar, callback) {
+  document.getElementById('custom-confirm-ov')?.remove();
+  _customConfirmCallback = callback;
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'custom-confirm-ov';
+  el.style.zIndex = '3000';
+  el.innerHTML = `
+    <div class="modal msm" style="max-width:320px; box-shadow:0 20px 60px rgba(0,0,0,0.25);">
+      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
+        <div class="modal-top" style="margin-bottom:0">
+          <div class="modal-title" style="font-size:16px;">${titleHtml}</div>
+          <button class="modal-close" onclick="document.getElementById('custom-confirm-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="padding:16px 24px 24px; text-align:center;">
+        <div style="font-size:15px;color:var(--tp);font-weight:600;margin-bottom:10px;line-height:1.5">${msgHtml}</div>
+        ${subMsgHtml ? `<div style="font-size:12px;color:var(--ts);line-height:1.5">${subMsgHtml}</div>` : ''}
+      </div>
+      <div class="modal-footer" style="border-top:none; padding-top:0; justify-content:center; gap:12px;">
+        <button class="btn bg" onclick="document.getElementById('custom-confirm-ov').remove()" style="flex:1; justify-content:center; padding:9px; border-radius:10px;">取消</button>
+        <button class="btn bp" id="custom-confirm-btn" style="flex:1; justify-content:center; padding:9px; border-radius:10px; background:var(--${btnColorVar}); color:#fff; border:none; box-shadow:0 4px 12px rgba(0,0,0,0.1);">${confirmBtnText}</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  document.getElementById('custom-confirm-btn').onclick = () => {
+    document.getElementById('custom-confirm-ov').remove();
+    if(_customConfirmCallback) _customConfirmCallback();
+  };
 }
 // ===== DATA =====
 async function fetchAll(table,orderCol){
@@ -1177,23 +1216,34 @@ function openTransferModal(id = null){
   document.body.appendChild(el);
 }
 
-async function confirmTransfer(idStr){
+function confirmTransfer(idStr){
   const sel=document.querySelector('#ts-tags .on');
   if(!sel){toast('⚠️ 请先点击选择一个销售');return;}
   const tgt=sel.textContent;
   const id = idStr || null;
+  const count = id ? 1 : selIds.size;
 
-  if (id) {
-    await db.from('customers').update({sales:tgt}).eq('id',id);
-    toast(`✅ 已转移给 ${tgt}`);
-  } else {
-    const{error}=await db.from('customers').update({sales:tgt}).in('id',[...selIds]);
-    if(error){toast('失败:'+error.message);return;}
-    toast(`✅ 已将 ${selIds.size} 条转移给 ${tgt}`);
-    selIds.clear();
-  }
-  document.getElementById('transfer-ov')?.remove();
-  await load();
+  showCustomConfirm(
+    '<span style="color:var(--brand)">👤 转移客户确认</span>',
+    `确定将 ${id ? '这 1' : `选中的 <span style="color:var(--brand)">${count}</span>`} 条客户<br>全部转移给销售「<b>${tgt}</b>」吗？`,
+    '转移后，该客户将从你的待办列表中移除。',
+    '确定转移', 'brand',
+    async () => {
+      document.getElementById('transfer-ov')?.remove();
+      showLoading(true);
+      if (id) {
+        await db.from('customers').update({sales:tgt}).eq('id',id);
+        toast(`✅ 已转移给 ${tgt}`);
+      } else {
+        const{error}=await db.from('customers').update({sales:tgt}).in('id',[...selIds]);
+        if(error){toast('失败:'+error.message); showLoading(false); return;}
+        toast(`✅ 已将 ${selIds.size} 条转移给 ${tgt}`);
+        selIds.clear();
+      }
+      showLoading(false);
+      await load();
+    }
+  );
 }
 
 function transfer(id) { openTransferModal(id); }
@@ -1539,38 +1589,29 @@ async function confirmBatchStatus(){
   await load();
 }
 
-function openDeleteConfirmModal(id = null){
-  const isBatch = !id;
-  const count = isBatch ? selIds.size : 1;
-  if (isBatch && count === 0) return;
-  document.getElementById('del-confirm-ov')?.remove();
-  const el = document.createElement('div');
-  el.className = 'overlay';
-  el.id = 'del-confirm-ov';
-  el.innerHTML = `
-    <div class="modal msm" style="max-width:320px;">
-      <div class="modal-header" style="border-bottom:none; padding-bottom:0;">
-        <div class="modal-top" style="margin-bottom:0">
-          <div class="modal-title" style="color:var(--danger);">⚠️ 确认删除</div>
-          <button class="modal-close" onclick="document.getElementById('del-confirm-ov').remove()">×</button>
-        </div>
-      </div>
-      <div class="simple-body" style="padding:16px 24px 20px; text-align:center;">
-        <div style="font-size:14px;color:var(--tp);font-weight:600;margin-bottom:8px;">确定要删除这 ${count} 条客户记录吗？</div>
-        <div style="font-size:12px;color:var(--ts);">关联的历史日志将被连同销毁，此操作不可逆。</div>
-      </div>
-      <div class="modal-footer" style="border-top:none; justify-content:center; gap:12px;">
-        <button class="btn bg" onclick="document.getElementById('del-confirm-ov').remove()" style="flex:1; justify-content:center;">取消</button>
-        <button class="btn bp" onclick="executeDelete('${id || ''}')" style="flex:1; justify-content:center; background:var(--danger); box-shadow:0 2px 8px rgba(255,59,48,.2); border:none;">永久删除</button>
-      </div>
-    </div>`;
-  document.body.appendChild(el);
+function delCus(id) { 
+  showCustomConfirm(
+    '<span style="color:var(--danger)">⚠️ 删除客户确认</span>',
+    `确定要永久删除这 <span style="color:var(--danger)">1</span> 位客户吗？`,
+    '关联的历史日志将被连同销毁，此操作不可逆。',
+    '永久删除', 'danger',
+    () => executeDelete(id)
+  );
 }
 
-async function executeDelete(idStr) {
-  const id = idStr || null;
-  if (typeof showLoading === 'function') showLoading(true);
-  document.getElementById('del-confirm-ov')?.remove();
+function batchDel() { 
+  if (selIds.size === 0) return;
+  showCustomConfirm(
+    '<span style="color:var(--danger)">⚠️ 批量删除确认</span>',
+    `确定要永久删除选中的 <span style="color:var(--danger)">${selIds.size}</span> 位客户吗？`,
+    '关联的历史日志将被连同销毁，此操作不可逆。',
+    '永久删除', 'danger',
+    () => executeDelete(null)
+  );
+}
+
+async function executeDelete(id) {
+  showLoading(true);
   if (id) {
     await db.from('follow_logs').delete().eq('customer_id',id);
     await db.from('customers').delete().eq('id',id);
@@ -1583,7 +1624,7 @@ async function executeDelete(idStr) {
     selIds.clear();
     toast(`✅ 已删除 ${ids.length} 条`);
   }
-  if (typeof showLoading === 'function') showLoading(false);
+  showLoading(false);
   await load();
 }
 
@@ -1595,13 +1636,26 @@ async function batchProducts(){
   el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
-async function confirmBatchProducts(){
+function confirmBatchProducts(){
   const selected=[...document.querySelectorAll('#bp-tags .on')].map(b=>b.textContent);
   if(!selected.length){toast('请至少选一个');return;}
-  if(!confirm(`⚠️ 确定要将选中的 ${selIds.size} 条客户的产品意向全部覆盖替换为「${selected.join(', ')}」吗？`)) return;
-  const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已更新 ${selIds.size} 条`);document.getElementById('bp-ov')?.remove();selIds.clear();await load();
+  
+  showCustomConfirm(
+    '<span style="color:var(--purple)">📦 批量修改产品</span>',
+    `确定将选中的 <span style="color:var(--purple)">${selIds.size}</span> 条客户的产品<br>全部替换为「<b>${selected.join(', ')}</b>」吗？`,
+    '此操作会覆盖原有产品标签，且不可逆。',
+    '确定覆盖', 'purple',
+    async () => {
+      document.getElementById('bp-ov')?.remove();
+      showLoading(true);
+      const{error}=await db.from('customers').update({products:selected}).in('id',[...selIds]);
+      showLoading(false);
+      if(error){toast('失败:'+error.message);return;}
+      toast(`✅ 已更新 ${selIds.size} 条`);
+      selIds.clear();
+      await load();
+    }
+  );
 }
 
 async function batchCtype(){
@@ -1609,13 +1663,26 @@ async function batchCtype(){
   el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">🏢 批量改客户类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bct-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择客户类型</label><div class="prod-tags" id="bct-tags">${CTYPES.map(p=>`<button type="button" class="ptag" onclick="document.querySelectorAll('#bct-tags .ptag').forEach(b=>b.classList.remove('on'));this.classList.add('on')">${p}</button>`).join('')}</div></div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bct-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchCtype()">确认</button></div></div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
-async function confirmBatchCtype(){
+function confirmBatchCtype(){
   const sel=document.querySelector('#bct-tags .on');
   if(!sel){toast('请选择一个');return;}
-  if(!confirm(`⚠️ 确定要将选中的 ${selIds.size} 条客户类型全部改为「${sel.textContent}」吗？`)) return;
-  const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
-  if(error){toast('失败:'+error.message);return;}
-  toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);document.getElementById('bct-ov')?.remove();selIds.clear();await load();
+  
+  showCustomConfirm(
+    '<span style="color:var(--teal)">🏢 批量修改类型</span>',
+    `确定将选中的 <span style="color:var(--teal)">${selIds.size}</span> 条客户类型<br>全部改为「<b>${sel.textContent}</b>」吗？`,
+    '此操作将立即同步至云端数据库。',
+    '确定修改', 'teal',
+    async () => {
+      document.getElementById('bct-ov')?.remove();
+      showLoading(true);
+      const{error}=await db.from('customers').update({customer_type:sel.textContent}).in('id',[...selIds]);
+      showLoading(false);
+      if(error){toast('失败:'+error.message);return;}
+      toast(`✅ 已将 ${selIds.size} 条改为「${sel.textContent}」`);
+      selIds.clear();
+      await load();
+    }
+  );
 }
 
 function batchExport(filtered){
