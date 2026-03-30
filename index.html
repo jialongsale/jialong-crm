@@ -1574,19 +1574,27 @@ function batchStatus(){
   document.body.appendChild(el);
 }
 
-async function confirmBatchStatus(){
+function confirmBatchStatus(){
   const sel = document.querySelector('#status-tags .on');
   if (!sel) { toast('⚠️ 请先点击选择一个状态'); return; }
   const s = sel.textContent;
- 
-  if(!confirm(`⚠️ 确定要将选中的 ${selIds.size} 条客户状态全部改为「${s}」吗？`)) return;
-
-  const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
-  if (error) { toast('失败:'+error.message); return; }
-  toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
-  document.getElementById('status-ov')?.remove();
-  selIds.clear();
-  await load();
+  
+  showCustomConfirm(
+    '<span style="color:var(--warn)">📊 批量修改状态</span>',
+    `确定要将选中的 <span style="color:var(--warn)">${selIds.size}</span> 条客户状态<br>全部改为「<b>${s}</b>」吗？`,
+    '此操作将立即同步至云端数据库。',
+    '确定修改', 'warn',
+    async () => {
+      document.getElementById('status-ov')?.remove();
+      showLoading(true);
+      const {error} = await db.from('customers').update({status:s}).in('id',[...selIds]);
+      showLoading(false);
+      if (error) { toast('失败:'+error.message); return; }
+      toast(`✅ 已将 ${selIds.size} 条改为「${s}」`);
+      selIds.clear();
+      await load();
+    }
+  );
 }
 
 function delCus(id) { 
