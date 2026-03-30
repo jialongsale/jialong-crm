@@ -1093,6 +1093,16 @@ window.snoozeTask = window.snoozeTask || async function(id, days) {
   await load();
 };
 
+  window.snoozeTask = window.snoozeTask || async function(id, days) {
+  const t = T();
+  const nextDate = addD(t, days);
+  showLoading(true);
+  await db.from('customers').update({next_follow_date: nextDate}).eq('id', id);
+  showLoading(false);
+  toast(`✅ 延期 ${days} 天`);
+  await load();
+};
+
 function renderTasks() {
   window.fTaskTab = window.fTaskTab || 'today'; 
   window.fTaskSearch = window.fTaskSearch || '';
@@ -1132,7 +1142,9 @@ function renderTasks() {
     if (q) {
       const match = (c.name||'').toLowerCase().includes(q) ||
                     (c.company||'').toLowerCase().includes(q) ||
-                    (c.last_log_note||'').toLowerCase().includes(q);
+                    (c.last_log_note||'').toLowerCase().includes(q) ||
+                    (c.phone||'').includes(q) ||
+                    (c.email||'').toLowerCase().includes(q);
       if (!match) return false;
     }
     return true;
@@ -1161,57 +1173,75 @@ function renderTasks() {
   <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
     ${tabCard('overdue', cntOverdue, '逾期未跟', '🔴', 'danger', 'danger-l')}
     ${tabCard('today', cntToday, '今日任务', '🟠', 'warn', 'warn-l')}
-    ${tabCard('new', cntNew, '新客首跟', '🔵', 'brand', 'brand-l')}
-    ${tabCard('future', cntFuture, '未来预告', '⚪', 'ts', 'surface2')}
+    ${tabCard('new', cntNew, '待首次跟进', '🔵', 'brand', 'brand-l')}
+    ${tabCard('future', cntFuture, '未来三天', '⚪', 'ts', 'surface2')}
   </div>
   <div class="fsec"><div class="frow">
-    <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,400)" placeholder="搜索客户名、公司、备注..."/></div>
+    <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,400)" placeholder="搜索姓名、公司、电话或备注..."/></div>
     <select class="fsel" onchange="window.fTaskRating=this.value;render()">
       <option value="全部">全部评级</option>
-      <option value="A" ${window.fTaskRating==='A'?'selected':''}>⭐ A级优先</option>
-      <option value="B" ${window.fTaskRating==='B'?'selected':''}>👍 B级优先</option>
+      <option value="A" ${window.fTaskRating==='A'?'selected':''}>仅看 A 级</option>
+      <option value="B" ${window.fTaskRating==='B'?'selected':''}>仅看 B 级</option>
     </select>
     <select class="fsel" onchange="window.fTaskSort=this.value;render()">
-      <option value="urgent" ${window.fTaskSort==='urgent'?'selected':''}>按紧急程度</option>
-      <option value="rating" ${window.fTaskSort==='rating'?'selected':''}>按评级</option>
+      <option value="urgent" ${window.fTaskSort==='urgent'?'selected':''}>按截止时间</option>
+      <option value="rating" ${window.fTaskSort==='rating'?'selected':''}>按客户评级</option>
     </select>
   </div></div>
   `;
 
   if(!filtered.length) {
-     return tbHtml('⚡ 任务中心',`${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">🎉</div><div class="empty-ttl">当前列表为空</div></div></div>`;
+     return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">✓</div><div class="empty-ttl">当前无待办任务</div><div style="font-size:13px; color:var(--ts)">所有跟进均已按计划完成</div></div></div>`;
   }
 
   const listHtml = `<div style="display:flex;flex-direction:column;gap:12px;padding-bottom:40px">` + filtered.map(c => {
     const n = nfi(c);
-    const wa = waLink(c.phone), ml = mailLink(c.email);
-    const isNew = (c.follow_stage || 0) === 0;
+    let wa = waLink(c.phone), ml = mailLink(c.email);
+
+    const isStageZero = (c.follow_stage || 0) === 0;
+    const daysSinceCreated = diffD(cusDate(c));
+    const isRecycled = isStageZero && daysSinceCreated <= -7;
     
+    let badgeHtml = '';
+    if (isRecycled) {
+        badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--teal); background:var(--teal-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">公海捞回</span>';
+    } else if (isStageZero) {
+        badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--brand); background:var(--brand-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">新线索</span>';
+    }
+    
+    const daysSinceLastLog = c.last_follow_date ? -diffD(c.last_follow_date) : null;
+    const timeElapsedTxt = daysSinceLastLog === 0 ? '(今天)' : daysSinceLastLog ? `(${daysSinceLastLog}天前)` : '';
+
     return `
     <div class="task-row" style="align-items:stretch; padding:16px; box-shadow:var(--sh); border:1px solid var(--border-l); border-radius:12px;">
       <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-right:12px; width:36px; padding-top:4px">
          ${ratingBadge(c.rating)}
-         ${isNew ? '<span style="font-size:10px; font-weight:700; color:var(--brand); background:var(--brand-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">新线索</span>' : ''}
+         ${badgeHtml}
       </div>
       
       <div class="tinfo" style="display:flex; flex-direction:column;">
         <div class="tname" style="font-size:15px; margin-bottom:4px;">
-          <span style="cursor:pointer;color:var(--brand)" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
+          <span style="cursor:pointer;color:var(--brand);font-weight:700" onclick="openDetail('${c.id}')">${esc(c.name)}</span>
           <span class="badge s-${c.status||''}">${c.status||'未设置'}</span>
-          ${!isNew ? `<span class="badge" style="background:var(--surface2); color:var(--ts); border:1px solid var(--border)">第${c.follow_stage+1}轮</span>` : ''}
-          <span style="font-size:11px; color:var(--tt); font-weight:500; margin-left:auto;">[入库: ${fmt(cusDate(c))}]</span>
+          ${!isStageZero ? `<span class="badge" style="background:var(--surface2); color:var(--ts); border:1px solid var(--border)">第${c.follow_stage+1}轮</span>` : ''}
+          <span style="font-size:11px; color:var(--tt); font-weight:500; margin-left:auto;">创建于: ${fmt(cusDate(c))}</span>
         </div>
-        <div class="tmeta" style="font-size:12px; margin-bottom:8px;">🏢 ${esc(c.company||'未留公司')} · 🌍 ${esc(c.country||'未知国家')} · 👤 ${esc(c.sales)}</div>
+        <div class="tmeta" style="font-size:12px; margin-bottom:8px;">🏢 ${esc(c.company||'未知公司')} · 🌍 ${esc(c.country||'未知国家')} · 👤 ${esc(c.sales)}</div>
         
-        ${c.last_log_note ? `<div style="margin-top:auto; padding:8px 12px; background:var(--surface2); border-radius:6px; border-left:3px solid var(--warn); font-size:12px; color:var(--tp); line-height:1.5;"><span style="color:var(--ts); font-weight:600;">上回提要：</span>${esc(c.last_log_note)}</div>` : `<div style="margin-top:auto; font-size:12px; color:var(--tt); font-style:italic">无记录</div>`}
+        <div style="display:flex; gap:8px; font-size:12px; font-family:monospace; color:var(--ts); margin-bottom:10px; flex-wrap:wrap">
+           ${c.phone ? `<span style="cursor:pointer; padding:3px 8px; background:var(--surface2); border-radius:6px; border:1px solid var(--border-l); transition:all .15s" onmouseover="this.style.borderColor='var(--ts)'" onmouseout="this.style.borderColor='var(--border-l)'" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📞 电话已复制')">📞 ${esc(c.phone)}</span>` : ''}
+           ${c.email ? `<span style="cursor:pointer; padding:3px 8px; background:var(--surface2); border-radius:6px; border:1px solid var(--border-l); transition:all .15s" onmouseover="this.style.borderColor='var(--ts)'" onmouseout="this.style.borderColor='var(--border-l)'" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('✉️ 邮箱已复制')">✉️ ${esc(c.email)}</span>` : ''}
+        </div>
+
+        ${c.last_log_note ? `<div style="margin-top:auto; padding:8px 12px; background:var(--surface2); border-radius:6px; border-left:3px solid var(--warn); font-size:12px; color:var(--tp); line-height:1.5;"><span style="color:var(--ts); font-weight:600;">最近备注 ${timeElapsedTxt}：</span>${esc(c.last_log_note)}</div>` : `<div style="margin-top:auto; font-size:12px; color:var(--tt); font-style:italic">暂无历史沟通记录</div>`}
       </div>
       
       <div class="tr-right" style="flex-direction:column; align-items:flex-end; justify-content:space-between; width:135px; border-left:1px dashed var(--border-l); padding-left:14px; margin-left:8px;">
         <div style="display:flex; flex-direction:column; align-items:flex-end; gap:4px; width:100%">
            <div class="${n.cls}" style="font-size:13px;">${n.t}</div>
            <div style="display:flex; gap:6px; margin-top:4px">
-             ${wa ? `<button class="wa-btn" style="width:26px;height:26px;font-size:14px;box-shadow:var(--sh)" onclick="window.open('${wa}','_blank')">💬</button>` : ''} 
-             ${ml ? `<button class="mail-btn" style="width:26px;height:26px;font-size:14px;box-shadow:var(--sh)" onclick="window.open('${ml}','_blank')">✉</button>` : ''}
+             ${wa ? `<button class="wa-btn" style="width:28px;height:28px;font-size:14px;box-shadow:var(--sh);border-radius:8px" onclick="window.open('${wa}','_blank')">💬</button>` : ''} 
+             ${ml ? `<button class="mail-btn" style="width:28px;height:28px;font-size:14px;box-shadow:var(--sh);border-radius:8px" onclick="window.open('${ml}','_blank')">✉</button>` : ''}
            </div>
         </div>
         
@@ -1226,15 +1256,15 @@ function renderTasks() {
            </div>
            
            <div style="display:flex; gap:4px;">
-              <button class="ab ab2" style="flex:1; height:28px; justify-content:center" onclick="openLog('${c.id}')">📝</button>
-              <button class="ab ag" style="flex:1; height:28px; justify-content:center" onclick="followUp('${c.id}')">✓</button>
+              <button class="ab ab2" style="flex:1; height:28px; justify-content:center; border-radius:6px" onclick="openLog('${c.id}')">📝</button>
+              <button class="ab ag" style="flex:1; height:28px; justify-content:center; border-radius:6px" onclick="followUp('${c.id}')">✓</button>
            </div>
         </div>
       </div>
     </div>`;
   }).join('') + `</div>`;
 
-  return tbHtml('⚡ 今日待办',`${T()}`,`<button class="btn bp" onclick="openAdd()">+ 新建</button>`) + headerHtml + listHtml + `</div>`;
+  return tbHtml('⚡ 今日待办',`${T()}`,`<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + listHtml + `</div>`;
 }
 
 // ===== SEA =====
