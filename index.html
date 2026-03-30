@@ -1093,13 +1093,32 @@ window.snoozeTask = window.snoozeTask || async function(id, days) {
   await load();
 };
 
-  window.snoozeTask = window.snoozeTask || async function(id, days) {
+window.taskSelIds = window.taskSelIds || new Set();
+
+window.toggleTaskSel = function(id, checked) {
+  if (checked) window.taskSelIds.add(id);
+  else window.taskSelIds.delete(id);
+  render();
+};
+
+window.toggleAllTasks = function(cb) {
+  document.querySelectorAll('.task-row-sel').forEach(b => {
+    if (cb.checked) window.taskSelIds.add(b.value);
+    else window.taskSelIds.delete(b.value);
+  });
+  render();
+};
+
+window.batchSnoozeTask = async function(days) {
+  if (window.taskSelIds.size === 0) return;
   const t = T();
   const nextDate = addD(t, days);
   showLoading(true);
-  await db.from('customers').update({next_follow_date: nextDate}).eq('id', id);
+  const {error} = await db.from('customers').update({next_follow_date: nextDate}).in('id', [...window.taskSelIds]);
   showLoading(false);
-  toast(`✅ 延期 ${days} 天`);
+  if (error) { toast('失败:'+error.message); return; }
+  toast(`✅ 已将 ${window.taskSelIds.size} 个任务批量推迟 ${days} 天`);
+  window.taskSelIds.clear();
   await load();
 };
 
@@ -1108,6 +1127,9 @@ function renderTasks() {
   window.fTaskSearch = window.fTaskSearch || '';
   window.fTaskRating = window.fTaskRating || '全部';
   window.fTaskSort = window.fTaskSort || 'urgent';
+  window.fTaskType = window.fTaskType || 'all';
+  window.fTaskCountry = window.fTaskCountry || '全部';
+  window.fTaskTag = window.fTaskTag || '全部';
 
   const tDate = T();
   const futureDate = addD(tDate, 3);
@@ -1120,23 +1142,38 @@ function renderTasks() {
     return c.next_follow_date <= futureDate; 
   }).filter(c => isAdm() ? (dashSales === '全部' || c.sales === dashSales) : c.sales === CU);
 
+  const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
+  const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
+
   const cntOverdue = rawTasks.filter(c => c.next_follow_date < tDate && c.follow_stage > 0).length;
   const cntToday = rawTasks.filter(c => c.next_follow_date === tDate && c.follow_stage > 0).length;
   const cntNew = rawTasks.filter(c => (c.follow_stage || 0) === 0).length;
   const cntFuture = rawTasks.filter(c => c.next_follow_date > tDate && c.next_follow_date <= futureDate && c.follow_stage > 0).length;
 
   let filtered = rawTasks.filter(c => {
-    const isNew = (c.follow_stage || 0) === 0;
-    const isOverdue = c.next_follow_date < tDate && !isNew;
-    const isToday = c.next_follow_date === tDate && !isNew;
-    const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isNew;
+    const isStageZero = (c.follow_stage || 0) === 0;
+    const daysSinceCreated = diffD(cusDate(c));
+    const isRecycled = isStageZero && daysSinceCreated <= -7;
+    const isPureNew = isStageZero && daysSinceCreated > -7;
 
+    const isOverdue = c.next_follow_date < tDate && !isStageZero;
+    const isToday = c.next_follow_date === tDate && !isStageZero;
+    const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isStageZero;
+
+    // 四宫格切页
     if (window.fTaskTab === 'overdue' && !isOverdue) return false;
     if (window.fTaskTab === 'today' && !isToday) return false;
-    if (window.fTaskTab === 'new' && !isNew) return false;
+    if (window.fTaskTab === 'new' && !isStageZero) return false;
     if (window.fTaskTab === 'future' && !isFuture) return false;
 
+    if (window.fTaskTab === 'new') {
+      if (window.fTaskType === 'pure' && !isPureNew) return false;
+      if (window.fTaskType === 'recycled' && !isRecycled) return false;
+    }
+
     if (window.fTaskRating !== '全部' && (c.rating || '') !== window.fTaskRating) return false;
+    if (window.fTaskCountry !== '全部' && c.country !== window.fTaskCountry) return false;
+    if (window.fTaskTag !== '全部' && !(c.tags||[]).includes(window.fTaskTag)) return false;
 
     const q = window.fTaskSearch.toLowerCase();
     if (q) {
@@ -1157,17 +1194,33 @@ function renderTasks() {
       const rB = rm[b.rating] || 5;
       if (rA !== rB) return rA - rB;
     }
+    if (window.fTaskSort === 'created_desc') {
+      return cusDate(a) > cusDate(b) ? -1 : 1;
+    }
+    if (window.fTaskSort === 'silent_desc') {
+      const dA = a.last_follow_date || '2000-01-01';
+      const dB = b.last_follow_date || '2000-01-01';
+      return dA < dB ? -1 : 1;
+    }
     const dateA = ((a.follow_stage||0)===0) ? cusDate(a) : (a.next_follow_date || '9999-99-99');
     const dateB = ((b.follow_stage||0)===0) ? cusDate(b) : (b.next_follow_date || '9999-99-99');
     return dateA < dateB ? -1 : 1;
   });
 
   const tabCard = (id, count, label, icon, color, bgL) => `
-    <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.fTaskTab='${id}';render()">
+    <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.taskSelIds.clear();window.fTaskTab='${id}';window.fTaskType='all';render()">
       <div style="font-size:22px; font-weight:700; color:var(--${color}); line-height:1">${count}</div>
       <div style="font-size:12px; color:var(--${window.fTaskTab===id?color:'ts'}); font-weight:600; margin-top:6px;">${icon} ${label}</div>
     </div>
   `;
+
+  const typeFilterHtml = window.fTaskTab === 'new' ? `
+    <select class="fsel" onchange="window.fTaskType=this.value;render()">
+      <option value="all" ${window.fTaskType==='all'?'selected':''}>全部首跟类别</option>
+      <option value="pure" ${window.fTaskType==='pure'?'selected':''}>🆕 仅看纯新线索</option>
+      <option value="recycled" ${window.fTaskType==='recycled'?'selected':''}>♻️ 仅看公海捞回</option>
+    </select>
+  ` : '';
 
   const headerHtml = `
   <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
@@ -1176,23 +1229,55 @@ function renderTasks() {
     ${tabCard('new', cntNew, '待首次跟进', '🔵', 'brand', 'brand-l')}
     ${tabCard('future', cntFuture, '未来三天', '⚪', 'ts', 'surface2')}
   </div>
-  <div class="fsec"><div class="frow">
-    <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,400)" placeholder="搜索姓名、公司、电话或备注..."/></div>
-    <select class="fsel" onchange="window.fTaskRating=this.value;render()">
-      <option value="全部">全部评级</option>
-      <option value="A" ${window.fTaskRating==='A'?'selected':''}>仅看 A 级</option>
-      <option value="B" ${window.fTaskRating==='B'?'selected':''}>仅看 B 级</option>
-    </select>
-    <select class="fsel" onchange="window.fTaskSort=this.value;render()">
-      <option value="urgent" ${window.fTaskSort==='urgent'?'selected':''}>按截止时间</option>
-      <option value="rating" ${window.fTaskSort==='rating'?'selected':''}>按客户评级</option>
-    </select>
-  </div></div>
+  <div class="fsec">
+    <div class="frow">
+      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,400)" placeholder="搜姓名/公司/电话/备注..."/></div>
+      ${typeFilterHtml}
+      <select class="fsel" onchange="window.fTaskRating=this.value;render()">
+        <option value="全部">全部评级</option>
+        <option value="A" ${window.fTaskRating==='A'?'selected':''}>⭐ 仅看 A 级</option>
+        <option value="B" ${window.fTaskRating==='B'?'selected':''}>👍 仅看 B 级</option>
+      </select>
+      <select class="fsel" onchange="window.fTaskSort=this.value;render()">
+        <option value="urgent" ${window.fTaskSort==='urgent'?'selected':''}>按紧急程度优先</option>
+        <option value="rating" ${window.fTaskSort==='rating'?'selected':''}>按客户评级优先</option>
+        <option value="created_desc" ${window.fTaskSort==='created_desc'?'selected':''}>按入库时间 (最新优先)</option>
+        <option value="silent_desc" ${window.fTaskSort==='silent_desc'?'selected':''}>按静默时长 (最久未联)</option>
+      </select>
+    </div>
+    <div class="frow" style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-l)">
+      <select class="fsel" onchange="window.fTaskCountry=this.value;render()" style="min-width:140px">
+        <option value="全部">🌍 全部国家/时区</option>
+        ${taskCountries.map(c=>`<option ${window.fTaskCountry===c?'selected':''}>${esc(c)}</option>`).join('')}
+      </select>
+      <select class="fsel" onchange="window.fTaskTag=this.value;render()" style="min-width:140px">
+        <option value="全部">🏷️ 全部高意向标签</option>
+        ${taskTags.map(t=>`<option ${window.fTaskTag===t?'selected':''}>${esc(t)}</option>`).join('')}
+      </select>
+    </div>
+  </div>
   `;
 
   if(!filtered.length) {
      return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">✓</div><div class="empty-ttl">当前无待办任务</div><div style="font-size:13px; color:var(--ts)">所有跟进均已按计划完成</div></div></div>`;
   }
+
+  const batchActionBar = window.taskSelIds.size > 0 ? `
+    <div style="display:flex; gap:6px; flex-wrap:wrap; margin-bottom:12px; padding:10px 14px; background:var(--brand-l); border-radius:var(--r2); border:1px solid rgba(0,102,204,.2); align-items:center">
+      <span style="font-size:13px; font-weight:700; color:var(--brand); margin-right:6px">已选 ${window.taskSelIds.size} 项</span>
+      <button onclick="batchSnoozeTask(1)" style="padding:5px 12px; border-radius:6px; border:none; background:#fff; color:var(--tp); box-shadow:var(--sh); font-size:12px; font-weight:600; cursor:pointer;">推迟至明天</button>
+      <button onclick="batchSnoozeTask(3)" style="padding:5px 12px; border-radius:6px; border:none; background:#fff; color:var(--tp); box-shadow:var(--sh); font-size:12px; font-weight:600; cursor:pointer;">推迟 3 天</button>
+      <button onclick="batchSnoozeTask(7)" style="padding:5px 12px; border-radius:6px; border:none; background:#fff; color:var(--tp); box-shadow:var(--sh); font-size:12px; font-weight:600; cursor:pointer;">推迟下周</button>
+      <button onclick="window.taskSelIds.clear();render()" style="padding:5px 12px; border-radius:6px; border:1px solid var(--brand); background:transparent; color:var(--brand); font-size:12px; font-weight:600; cursor:pointer; margin-left:auto">✕ 取消</button>
+    </div>
+  ` : '';
+
+  const selectAllHtml = `
+    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:0 4px">
+      <input type="checkbox" onchange="toggleAllTasks(this)" ${filtered.every(c => window.taskSelIds.has(c.id)) ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer"/>
+      <span style="font-size:13px; color:var(--ts); font-weight:500">全选当前列表 (${filtered.length}个任务)</span>
+    </div>
+  `;
 
   const listHtml = `<div style="display:flex;flex-direction:column;gap:12px;padding-bottom:40px">` + filtered.map(c => {
     const n = nfi(c);
@@ -1213,8 +1298,9 @@ function renderTasks() {
     const timeElapsedTxt = daysSinceLastLog === 0 ? '(今天)' : daysSinceLastLog ? `(${daysSinceLastLog}天前)` : '';
 
     return `
-    <div class="task-row" style="align-items:stretch; padding:16px; box-shadow:var(--sh); border:1px solid var(--border-l); border-radius:12px;">
+    <div class="task-row" style="align-items:stretch; padding:16px; box-shadow:var(--sh); border:1px solid var(--border-l); border-radius:12px; position:relative; background:${window.taskSelIds.has(c.id) ? 'var(--brand-l)' : 'var(--surface)'}">
       <div style="display:flex; flex-direction:column; align-items:center; gap:8px; margin-right:12px; width:36px; padding-top:4px">
+         <input type="checkbox" class="task-row-sel" value="${c.id}" ${window.taskSelIds.has(c.id)?'checked':''} onchange="toggleTaskSel('${c.id}',this.checked)" style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer;margin-bottom:4px"/>
          ${ratingBadge(c.rating)}
          ${badgeHtml}
       </div>
@@ -1246,7 +1332,7 @@ function renderTasks() {
         </div>
         
         <div style="display:flex; flex-direction:column; gap:6px; width:100%;">
-           <div class="more-dd-btn" style="width:100%; height:28px; font-size:11px; border-radius:6px; justify-content:space-between; padding:0 8px; border-color:var(--border); font-weight:600" onclick="event.stopPropagation();toggleDD(this)">
+           <div class="more-dd-btn" style="width:100%; height:28px; font-size:11px; border-radius:6px; justify-content:space-between; padding:0 8px; border-color:var(--border); font-weight:600; background:var(--surface)" onclick="event.stopPropagation();toggleDD(this)">
               <span>⏳ 延期</span> ▾
               <div class="dd" style="right:0; top:100%; width:100%; min-width:110px">
                  <div class="ddi" onclick="snoozeTask('${c.id}', 1)">推迟至明天 (+1)</div>
@@ -1256,7 +1342,7 @@ function renderTasks() {
            </div>
            
            <div style="display:flex; gap:4px;">
-              <button class="ab ab2" style="flex:1; height:28px; justify-content:center; border-radius:6px" onclick="openLog('${c.id}')">📝</button>
+              <button class="ab ab2" style="flex:1; height:28px; justify-content:center; border-radius:6px; background:var(--surface)" onclick="openLog('${c.id}')">📝</button>
               <button class="ab ag" style="flex:1; height:28px; justify-content:center; border-radius:6px" onclick="followUp('${c.id}')">✓</button>
            </div>
         </div>
@@ -1264,7 +1350,7 @@ function renderTasks() {
     </div>`;
   }).join('') + `</div>`;
 
-  return tbHtml('⚡ 今日待办',`${T()}`,`<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + listHtml + `</div>`;
+  return tbHtml('⚡ 今日待办',`${T()}`,`<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + batchActionBar + selectAllHtml + listHtml + `</div>`;
 }
 
 // ===== SEA =====
