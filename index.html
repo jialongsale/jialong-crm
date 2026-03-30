@@ -493,6 +493,7 @@ async function deleteFbAds(idStr = null) {
 }
 
 function setAdsDR(v){
+  fAdsAdset='全部';fAdsAd='全部';
   if(v==='custom'){fAdsRange='custom';fAdsDateStart='';fAdsDateEnd='';render();return;}
   if(v==='custom2'){fAdsRange='custom';fAdsDateStart=document.getElementById('ads-ds')?.value||'';fAdsDateEnd=document.getElementById('ads-de')?.value||'';render();return;}
   fAdsRange=v;render();
@@ -1967,7 +1968,6 @@ function renderFbAds(){
   const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   
-  // 级联筛选逻辑 (Cascade Filtering)
   const allCamps = [...new Set(src.map(d=>d.campaign_name))].sort();
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   
@@ -1991,7 +1991,6 @@ function renderFbAds(){
     <select class="fsel" onchange="fAdsCountry=this.value;render()"><option value="全部">全部国家/地区</option>${allCountries.map(c=>`<option ${fAdsCountry===c?'selected':''}>${esc(c)}</option>`).join('')}</select>
   </div></div>`;
 
-  // 空状态保护
   if (src.length === 0) {
     return tbHtml('📈 营销大盘 (Facebook)', `全局数据总览`, `<button class="btn bp" onclick="openFbImport()">📥 导入明细数据</button>`) + filterHeader + 
     `<div class="empty" style="margin-top:40px"><div class="empty-icon">📊</div><div class="empty-ttl">当前区间暂无营销数据</div><div style="font-size:13px;color:var(--ts);margin-top:8px">请调整筛选条件，或点击右上角导入最新报表</div></div></div>`;
@@ -2007,7 +2006,6 @@ function renderFbAds(){
   const avgCPM = tImp > 0 ? ((tSpend / tImp)*1000).toFixed(2) : '0.00';
   const ctr = tImp > 0 ? ((tClick / tImp)*100).toFixed(2) + '%' : '0.00%';
 
-  // 1. 聚合表逻辑
   const aggMap = {};
   src.forEach(d => {
     const mappedCo = getCoName(d.country);
@@ -2038,7 +2036,6 @@ function renderFbAds(){
     return fAdsSortDesc ? valB - valA : valA - valB;
   });
 
-  // 2. 原始表逻辑
   let rawList = src.map(d => ({
     ...d, mappedCo: getCoName(d.country),
     cpl: d.leads > 0 ? d.spend / d.leads : 0,
@@ -2057,7 +2054,6 @@ function renderFbAds(){
     return fAdsRawSortDesc ? valB - valA : valA - valB;
   });
 
-  // Insights 计算
   const coMap = {};
   const freqMap = {};
   src.forEach(d => { 
@@ -2312,7 +2308,7 @@ function loadFbFile(inp){
 }
 
 async function doFbImp(){
-  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('未检测到数据流');return;}
+  const raw = document.getElementById('fb-imp-txt')?.value; if(!raw?.trim()){toast('请先粘贴或选择文件');return;}
   const rows = parseCSV(raw); if(rows.length < 2){toast('无有效数据行');return;}
   
   const headers = rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
@@ -2330,7 +2326,7 @@ async function doFbImp(){
   const iReach = getIdx('覆盖人数');
   const iFreq = getIdx('频次');
 
-  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 数据流异常：表头缺失关键物理列 (日期/国家/花费)'); return; }
+  if(iDate===-1 || iCountry===-1 || iSpend===-1) { toast('⚠️ 缺少必要列（日期 / 国家 / 花费）'); return; }
 
   const data = [];
   for(let i=1; i<rows.length; i++){
@@ -2354,90 +2350,61 @@ async function doFbImp(){
     });
   }
 
-  if(!data.length){toast('无有效载荷');return;}
+  if(!data.length){toast('没有可导入的数据行');return;}
   
   showLoading(true);
   let total = 0;
   for(let i=0; i<data.length; i+=100){
     const batch = data.slice(i, i+100);
     const {error} = await db.from('fb_ads_metrics').upsert(batch, {onConflict: 'record_date,campaign_name,adset_name,ad_name,country'});
-    if(error){ toast(`管道中断: ${error.message}`); showLoading(false); return; }
+    if(error){ toast(`写入失败: ${error.message}`); showLoading(false); return; }
     total += batch.length;
   }
   showLoading(false);
-  toast(`✅ 底层数据更新完毕！共写入 ${total} 条`);
+  toast(`✅ 导入完成，共 ${total} 条`);
   document.getElementById('fb-imp-ov')?.remove();
   await load();
 }
 
-function exportCoreData() {
+function buildFbExportLines() {
   const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
   let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
   if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
   if(fAdsAdset !== '全部') src = src.filter(d => d.adset_name === fAdsAdset);
   if(fAdsAd !== '全部') src = src.filter(d => d.ad_name === fAdsAd);
   if(fAdsCountry !== '全部') src = src.filter(d => getCoName(d.country) === fAdsCountry);
-  
-  if(!src.length) { toast('当前视图区无数据'); return; }
+  if(!src.length) return null;
 
-  const contextHeader = "背景：佳龙包装 Facebook广告数据 | B2B工业机器 | 目标：降低CPL、找到高质量受众、排查受众疲劳(频次) | 账户层级：广告系列 > 广告组(对应受众) > 广告名称(对应素材)\n\n";
-  
-  const headers = ['日期', '国家', '广告系列', '广告组', '广告名称', '花费(USD)', '展示', '覆盖人数', '频次', '点击', 'CTR(%)', '转化数', '表单转化率(%)', 'CPL', 'CPC', 'CPM', '健康度预警'];
+  const ctx = "背景：佳龙包装 Facebook广告数据 | B2B工业机器 | 目标：降低CPL、找到高质量受众、排查受众疲劳(频次)\n\n";
+  const headers = ['日期','国家','广告系列','广告组','广告名称','花费(USD)','展示','覆盖人数','频次','点击','CTR(%)','转化数','表单转化率(%)','CPL','CPC','CPM','健康度预警'];
   const lines = [headers.join(',')];
-  
   src.forEach(d => {
     const cpl = d.leads > 0 ? (d.spend/d.leads).toFixed(2) : 0;
     const cpc = d.link_clicks > 0 ? (d.spend/d.link_clicks).toFixed(2) : 0;
     const cpm = d.impressions > 0 ? ((d.spend/d.impressions)*1000).toFixed(2) : 0;
-    const ctr = d.ctr || 0; 
     const leadRate = d.link_clicks > 0 ? ((d.leads/d.link_clicks)*100).toFixed(1) : 0;
-    const warning = d.frequency >= 3.5 ? '⚠️频率过高-换素材' : (d.frequency >= 2.5 ? '注意频率' : (d.leads === 0 && d.spend > 5 ? '⚠️零转化-纯消耗' : '正常'));
-    
-    lines.push(`${d.record_date},${getCoName(d.country)},"${d.campaign_name}","${d.adset_name}","${d.ad_name}",${d.spend},${d.impressions},${d.reach||0},${d.frequency||0},${d.link_clicks},${ctr},${d.leads},${leadRate},${cpl},${cpc},${cpm},${warning}`);
+    const warning = d.frequency >= 3.5 ? '频率过高-换素材' : d.frequency >= 2.5 ? '注意频率' : (d.leads === 0 && d.spend > 5 ? '零转化-纯消耗' : '正常');
+    lines.push(`${d.record_date},${getCoName(d.country)},"${d.campaign_name}","${d.adset_name}","${d.ad_name}",${d.spend},${d.impressions},${d.reach||0},${d.frequency||0},${d.link_clicks},${d.ctr||0},${d.leads},${leadRate},${cpl},${cpc},${cpm},${warning}`);
   });
-  
-  const finalStr = contextHeader + lines.join('\n');
-  navigator.clipboard.writeText(finalStr).then(()=>{
-    toast('✅ 高维聚合数据已提取并放入剪贴板');
-  }).catch(() => {
-    const blob=new Blob(['\uFEFF'+finalStr],{type:'text/csv;charset=utf-8'});
-    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`FB_分析数据提取_${T()}.csv`;a.click();
-    toast('✅ 剪贴板受限，已自动下载为 CSV 文件');
-  });
+  return ctx + lines.join('\n');
 }
-  function downloadCoreData() {
-  const rDate = getDateRange(fAdsRange, fAdsDateStart, fAdsDateEnd);
-  let src = fAdsRange === 'all' ? FB_ADS : FB_ADS.filter(d => d.record_date >= rDate.s && d.record_date <= rDate.e);
-  if(fAdsCamp !== '全部') src = src.filter(d => d.campaign_name === fAdsCamp);
-  if(fAdsAdset !== '全部') src = src.filter(d => d.adset_name === fAdsAdset);
-  if(fAdsAd !== '全部') src = src.filter(d => d.ad_name === fAdsAd);
-  if(fAdsCountry !== '全部') src = src.filter(d => getCoName(d.country) === fAdsCountry);
-  
-  if(!src.length) { toast('当前视图区无数据，无法下载'); return; }
 
-  const contextHeader = "背景：佳龙包装 Facebook广告数据 | B2B工业机器 | 目标：降低CPL、找到高质量受众、排查受众疲劳(频次) | 账户层级：广告系列 > 广告组(对应受众) > 广告名称(对应素材)\n\n";
-  const headers = ['日期', '国家', '广告系列', '广告组', '广告名称', '花费(USD)', '展示', '覆盖人数', '频次', '点击', 'CTR(%)', '转化数', '表单转化率(%)', 'CPL', 'CPC', 'CPM', '健康度预警'];
-  const lines = [headers.join(',')];
-  
-  src.forEach(d => {
-    const cpl = d.leads > 0 ? (d.spend/d.leads).toFixed(2) : 0;
-    const cpc = d.link_clicks > 0 ? (d.spend/d.link_clicks).toFixed(2) : 0;
-    const cpm = d.impressions > 0 ? ((d.spend/d.impressions)*1000).toFixed(2) : 0;
-    const ctr = d.ctr || 0; 
-    const leadRate = d.link_clicks > 0 ? ((d.leads/d.link_clicks)*100).toFixed(1) : 0;
-    const warning = d.frequency >= 3.5 ? '⚠️频率过高-换素材' : (d.frequency >= 2.5 ? '注意频率' : (d.leads === 0 && d.spend > 5 ? '⚠️零转化-纯消耗' : '正常'));
-    
-    lines.push(`${d.record_date},${getCoName(d.country)},"${d.campaign_name}","${d.adset_name}","${d.ad_name}",${d.spend},${d.impressions},${d.reach||0},${d.frequency||0},${d.link_clicks},${ctr},${d.leads},${leadRate},${cpl},${cpc},${cpm},${warning}`);
-  });
-  
-  const finalStr = contextHeader + lines.join('\n');
-  const blob = new Blob(['\uFEFF' + finalStr], { type: 'text/csv;charset=utf-8' });
+function exportCoreData() {
+  const str = buildFbExportLines();
+  if(!str){toast('当前视图区无数据');return;}
+  navigator.clipboard.writeText(str)
+    .then(()=>toast('✅ 已复制到剪贴板'))
+    .catch(()=>downloadCoreData());
+}
+
+function downloadCoreData() {
+  const str = buildFbExportLines();
+  if(!str){toast('暂无数据');return;}
   const a = document.createElement('a');
-  a.href = URL.createObjectURL(blob);
-  a.download = `FB_大盘明细数据_${T()}.csv`;
+  a.href = URL.createObjectURL(new Blob(['\uFEFF'+str],{type:'text/csv;charset=utf-8'}));
+  a.download = `FB_数据_${T()}.csv`;
   a.click();
-  
-  toast('✅ 已成功下载 CSV 表格文件');
+  toast('✅ 已下载');
 }
 </script>
 </body>
