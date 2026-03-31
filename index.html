@@ -1515,10 +1515,15 @@ function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
 
 // ===== GEMINI AI ENGINE =====
+// 1. 修复 Key 获取逻辑：确保强制保存为字符串
 function getGeminiKey() {
   return new Promise((resolve) => {
-    const cached = localStorage.getItem('sk-Pxj0slWoNkyhJlgn2wOIOQZxpDqPqznwIwD6C15Lu064n7GT');
-    if (cached) { resolve(cached); return; }
+    const cached = localStorage.getItem('CRM_AI_KEY');
+    // 增加判断：如果缓存的是旧的 Coze 对象格式，强制清除重新输入
+    if (cached && !cached.includes('{')) { 
+      resolve(cached); 
+      return; 
+    }
 
     document.getElementById('ai-key-ov')?.remove();
     const el = document.createElement('div');
@@ -1529,42 +1534,39 @@ function getGeminiKey() {
       <div class="modal msm" style="max-width:380px">
         <div class="modal-header">
           <div class="modal-top">
-            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
-              <span style="font-size:20px">🔍</span> 配置 Kimi 情报引擎
-            </div>
+            <div class="modal-title">🔍 配置 Kimi 情报引擎</div>
             <button class="modal-close" onclick="document.getElementById('ai-key-ov').remove();window._aiKeyResolve&&window._aiKeyResolve(null)">×</button>
           </div>
         </div>
         <div class="simple-body" style="padding:16px 24px 0">
-          <div style="background:var(--brand-l);border:1px solid rgba(0,102,204,.15);border-radius:var(--r2);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--brand);line-height:1.6">
-            💡 免费引擎搜索能力受限。请前往 <a href="https://platform.moonshot.cn" target="_blank" style="color:var(--brand);font-weight:700">platform.moonshot.cn</a> 获取 API Key。
-          </div>
           <div class="fg">
             <label class="fl">Kimi API Key (sk-开头)</label>
-            <input id="ai-key-input" class="fi" type="password" placeholder="粘贴你的 Kimi Key…" style="letter-spacing:1px"/>
+            <input id="ai-key-input" class="fi" type="password" placeholder="粘贴 sk- 开头的密钥..." style="letter-spacing:1px"/>
           </div>
+          <div style="margin-top:10px; font-size:11px; color:var(--ts)">密钥将安全保存在您的浏览器本地。</div>
         </div>
         <div class="modal-footer">
-          <button class="btn bg" onclick="document.getElementById('ai-key-ov').remove();window._aiKeyResolve&&window._aiKeyResolve(null)">取消</button>
-          <button class="btn bp" onclick="
+          <button class="btn bp" style="width:100%" onclick="
             const v=document.getElementById('ai-key-input').value.trim();
-            if(!v){toast('⚠️ 请输入 Key');return;}
-            localStorage.setItem('CRM_AI_KEY',v);
+            if(!v){alert('请输入 Key');return;}
+            localStorage.setItem('CRM_AI_KEY', v); // 存入本地缓存
             document.getElementById('ai-key-ov').remove();
             window._aiKeyResolve&&window._aiKeyResolve(v);
-          ">确认保存</button>
+          ">保存并开始背调</button>
         </div>
       </div>`;
     document.body.appendChild(el);
     window._aiKeyResolve = resolve;
-    setTimeout(() => document.getElementById('ai-key-input')?.focus(), 100);
   });
 }
-async function callGemini(promptText, isJson = false) {
+
+// 2. 核心调用逻辑：增加【自动抗 429 限制】的重试功能
+async function callGemini(promptText, isJson = false, retryCount = 0) {
   const key = await getGeminiKey(); 
   if (!key) return null;
   
-  showLoading(true); 
+  if (retryCount === 0) showLoading(true);
+
   try {
     const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
       method: 'POST',
@@ -1580,17 +1582,22 @@ async function callGemini(promptText, isJson = false) {
       })
     });
 
-    showLoading(false);
-
-    if (!res.ok) {
-      if (res.status === 401) {
-        localStorage.removeItem('CRM_AI_KEY');
-        throw new Error('Key 无效或额度不足');
+    // 处理频率限制 (429)
+    if (res.status === 429) {
+      if (retryCount < 3) { // 最多重试 3 次
+        const waitTime = (retryCount + 1) * 3000; // 递增等待时间：3s, 6s, 9s
+        toast(`⚠️ 触发 Kimi 频率限制，${waitTime/1000}秒后自动重试...`);
+        await new Promise(r => setTimeout(r, waitTime));
+        return callGemini(promptText, isJson, retryCount + 1);
+      } else {
+        throw new Error('Kimi 引擎太忙了，请等 1 分钟后再试');
       }
-      throw new Error(`HTTP 异常 ${res.status}`);
     }
 
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
     const data = await res.json();
+    showLoading(false);
     let text = data.choices?.[0]?.message?.content || '';
 
     if (isJson) {
@@ -1601,7 +1608,7 @@ async function callGemini(promptText, isJson = false) {
 
   } catch (err) {
     showLoading(false);
-    toast('⚠️ Kimi 引擎异常: ' + err.message);
+    toast('⚠️背调中断: ' + err.message);
     return null;
   }
 }
