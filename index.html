@@ -345,26 +345,46 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
   .modal { max-height: 90vh; margin: 10px; width: calc(100% - 20px); }
   .drawer { width: 85vw; }
   .task-row { flex-wrap: wrap !important; padding: 14px 12px !important; }
-  .task-row .tinfo { min-width: calc(100% - 50px); }
+  .task-row .tinfo { min-width: 100% !important; margin-right: 0 !important; }
   .task-row .tr-right {
     width: 100% !important;
     flex-direction: row !important;
+    justify-content: space-between !important;
+    align-items: center !important;
     border-left: none !important;
-    border-top: 1px dashed var(--border-l);
+    border-top: 1px dashed var(--border-l) !important;
     padding-left: 0 !important;
     margin-left: 0 !important;
-    margin-top: 12px;
-    padding-top: 12px;
-    align-items: center !important;
+    margin-top: 12px !important;
+    padding-top: 12px !important;
   }
-  .task-row .tr-right > div:first-child { align-items: flex-start !important; }
+  .task-row .tr-right > div:first-child { 
+    flex-direction: row !important; 
+    align-items: center !important; 
+    width: auto !important; 
+    gap: 8px !important;
+  }
+  .task-row .tr-right > div:first-child > div:last-child { margin-top: 0 !important; }
   .task-row .tr-right > div:last-child {
     flex-direction: row !important;
     width: auto !important;
     align-items: center !important;
+    gap: 6px !important;
   }
-  .task-row .tr-right .more-dd-btn { width: auto !important; padding: 0 10px !important; }
-  .task-row .tr-right .ab { flex: none !important; width: 36px !important; }
+  .task-row .tr-right .more-dd-btn { 
+    width: auto !important; 
+    min-width: 72px !important;
+    padding: 0 8px !important; 
+    white-space: nowrap !important; /* 绝对禁止文字换行 */
+    height: 30px !important;
+  }
+  .task-row .tr-right > div:last-child > div:last-child { gap: 6px !important; }
+  .task-row .tr-right .ab { 
+    flex: none !important; 
+    width: 36px !important; 
+    height: 30px !important;
+    padding: 0 !important;
+  }
 }
 #toast {
   position: fixed;
