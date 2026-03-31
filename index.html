@@ -1736,12 +1736,12 @@ async function aiGenerateScript(id) {
   const researchData = researchEl ? researchEl.innerText : '暂无深度背调数据，请基于原始线索发挥。';
 
   const jialongProductKB = `
-【佳龙核心产品全维度选型库 - 2025版】
+【佳龙核心产品库】
 当客户线索中包含具体的物料、重量、产能需求时，优先从以下型号中匹配（仅推荐最合适的一款）：
 
 1. 全自动定量包装机组 (Rice/Grain 高端自动化首选)：
 - ZDB-900-Q30/Q35/Q8：全自动旗舰。适合 5~25kg，产能 550~800包/小时。Q30标配折边机，Q35带热合功能。
-- ZDB-600-Q9：大包装全自动方案。专攻 25~50kg 大米，产能 500~600包/小时。
+- ZDB-600-Q9：大包装全自动方案。专攻 25~50kg 大米谷物等颗粒，产能 500~600包/小时。
 
 2. 电子定量包装秤 (灵活/高速选型)：
 - DCS-25K(H10)：双秤极速版。适合 5~25kg，产能 900~1400包/小时。适合追求纯产量的客户。
@@ -1777,7 +1777,7 @@ async function aiGenerateScript(id) {
   ].filter(Boolean).join('\n');
 
   const promptText = `【角色设定】
-你是佳龙科技（Jialong Technology）的资深海外售前工程师。请为客户 ${c.name || 'Sir/Madam'} 撰写 2 个略有差异的高转化率 WhatsApp 跟进话术版本。
+你是佳龙科技（Jialong Technology）的资深海外售前工程师。请为客户 ${c.name || 'Sir/Madam'} 撰写 3 个略有差异的高转化率 WhatsApp 跟进话术版本。
 
 【内部产品库】
 ${jialongProductKB}
@@ -1797,7 +1797,7 @@ ${researchData}
    - 核心卖点：用纯技术视角，用 1-2 句话解释这款机器的产能或自动化优势如何完美契合他们的生产线。
    - 追问与促单：如果背调情报中提示缺乏袋型尺寸、车间空间等数据，请在结尾以专业顾问的口吻提问。
 4. 格式与语言：使用专业、地道的商务英语。不废话，纯技术营销风格。根据目标国家(${c.country || '未知'})微调语气。每条 WhatsApp 消息务必精简。
-请直接输出编号为 1 和 2 的两套纯文本话术。`;
+请直接输出编号为 1 和 2 和 3 的两套纯文本话术。`;
 
   const res = await callGemini(promptText);
 
