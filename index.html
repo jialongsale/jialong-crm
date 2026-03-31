@@ -1516,12 +1516,49 @@ function batchTransfer() { openTransferModal(null); }
 
 // ===== GEMINI AI ENGINE =====
 function getGeminiKey() {
-  let key = localStorage.getItem('CRM_AI_KEY');
-  if (!key) {
-    key = prompt("请输入 AI Key（去 open.bigmodel.cn 获取）");
-    if (key) localStorage.setItem('CRM_AI_KEY', key.trim());
-  }
-  return key;
+  return new Promise((resolve) => {
+    const cached = localStorage.getItem('CRM_AI_KEY');
+    if (cached) { resolve(cached); return; }
+
+    document.getElementById('ai-key-ov')?.remove();
+    const el = document.createElement('div');
+    el.className = 'overlay';
+    el.id = 'ai-key-ov';
+    el.style.zIndex = '5000';
+    el.innerHTML = `
+      <div class="modal msm" style="max-width:380px">
+        <div class="modal-header">
+          <div class="modal-top">
+            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">🤖</span> 配置 AI 引擎
+            </div>
+            <button class="modal-close" onclick="document.getElementById('ai-key-ov').remove();window._aiKeyResolve&&window._aiKeyResolve(null)">×</button>
+          </div>
+        </div>
+        <div class="simple-body" style="padding:16px 24px 0">
+          <div style="background:var(--brand-l);border:1px solid rgba(0,102,204,.15);border-radius:var(--r2);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--brand);line-height:1.6">
+            💡 前往 <a href="https://open.bigmodel.cn" target="_blank" style="color:var(--brand);font-weight:700">open.bigmodel.cn</a> 注册并获取免费 API Key
+          </div>
+          <div class="fg">
+            <label class="fl">API Key</label>
+            <input id="ai-key-input" class="fi" type="password" placeholder="粘贴你的 API Key…" style="letter-spacing:1px"/>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button class="btn bg" onclick="document.getElementById('ai-key-ov').remove();window._aiKeyResolve&&window._aiKeyResolve(null)">取消</button>
+          <button class="btn bp" onclick="
+            const v=document.getElementById('ai-key-input').value.trim();
+            if(!v){toast('⚠️ 请输入 Key');return;}
+            localStorage.setItem('CRM_AI_KEY',v);
+            document.getElementById('ai-key-ov').remove();
+            window._aiKeyResolve&&window._aiKeyResolve(v);
+          ">确认保存</button>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    window._aiKeyResolve = resolve;
+    setTimeout(() => document.getElementById('ai-key-input')?.focus(), 100);
+  });
 }
 
 async function callGemini(promptText, isJson = false) {
@@ -1570,9 +1607,50 @@ async function callGemini(promptText, isJson = false) {
 }
 
 async function aiParseInquiry() {
-  const raw = prompt('请粘贴询盘原文或聊天记录（AI 将结合当前表单已有信息进行智能提取与增量融合）：');
-  if (!raw?.trim()) return;
-  
+  document.getElementById('ai-parse-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'ai-parse-ov';
+  el.style.zIndex = '5000';
+  el.innerHTML = `
+    <div class="modal mlg">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+            <span style="font-size:18px">✨</span> AI 智能解析询盘
+          </div>
+          <button class="modal-close" onclick="document.getElementById('ai-parse-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="padding:16px 24px 0">
+        <div style="background:var(--brand-l);border:1px solid rgba(0,102,204,.15);border-radius:var(--r2);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--brand);line-height:1.6">
+          💡 粘贴客户询盘原文、WhatsApp 聊天记录或邮件内容，AI 将自动提取并填入表单字段
+        </div>
+        <div class="fg">
+          <label class="fl">询盘原文 / 聊天记录</label>
+          <textarea id="ai-parse-input" class="fi" rows="8" placeholder="例如：
+Hi, I'm Felix from Kenya. I run a small pig farm and I'm looking for a vacuum packaging machine for swine feed, about 25-50kg per bag, speed around 5-15 bags/min. Budget is flexible. Can you send a quote?
+
+Contact: felix@example.com | +254720000000"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="document.getElementById('ai-parse-ov').remove()">取消</button>
+        <button class="btn bp" onclick="executeAiParse()">
+          <span style="font-size:14px">✨</span> 开始解析
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if(e.target === el) el.remove() });
+  setTimeout(() => document.getElementById('ai-parse-input')?.focus(), 100);
+}
+
+async function executeAiParse() {
+  const raw = document.getElementById('ai-parse-input')?.value?.trim();
+  if (!raw) { toast('⚠️ 请先粘贴询盘内容'); return; }
+  document.getElementById('ai-parse-ov').remove();
+
   const currentData = [
     FD.name ? `姓名: ${FD.name}` : '',
     FD.company ? `公司: ${FD.company}` : '',
@@ -1582,44 +1660,53 @@ async function aiParseInquiry() {
     FD.project_details ? `现有需求: ${FD.project_details}` : ''
   ].filter(Boolean).join(', ');
 
-  const contextPrompt = currentData ? `\n【重要数据上下文】：该客户在系统中已存在以下基础信息：[${currentData}]。请在此基础上，利用新文本进行数据修正与补充，切勿丢失原有的有效数据。` : '';
+  const contextPrompt = currentData ? `\n【已有数据】：${currentData}。请在此基础上增量补充，勿丢失原有数据。` : '';
 
-  const promptText = `作为外贸 CRM 的 NLP 数据中枢，请解析以下新收到的客户文本，提取关键实体并严格输出纯 JSON 格式（禁用 Markdown 语法，如 \`\`\`json）。${contextPrompt}
+  const promptText = `你是漳州佳龙科技有限公司的外贸 CRM 数据处理专家，我司主营大型工业包装机械（真空包装机、封口机、全自动/半自动包装线等），主要面向海外 B2B 客户。请解析以下询盘文本，提取关键客户信息，严格输出纯 JSON 格式（禁止使用 Markdown 语法或代码块）。${contextPrompt}
 
-必须输出的 JSON 键值规范：
-- name (姓名)
-- company (公司名称)
-- email (邮箱)
-- phone (联系电话，尽量包含区号)
-- country (国家)
-- products (提取其感兴趣的具体机器类型，必须是纯字符串数组格式)
-- project_details (梳理出的具体需求、产量、包装物料等核心业务细节)
+输出 JSON 字段规范：
+- name（联系人姓名）
+- company（公司名称）
+- email（邮箱）
+- phone（电话，尽量含国际区号）
+- country（国家）
+- products（感兴趣的机器类型，纯字符串数组，如["真空机","全自动"]）
+- packaging_material（包装物料/产品，如 swine feed、食品等）
+- packaging_weight（包装重量规格，如 25-50kg）
+- packaging_speed（包装速度，如 5-15 bags/min）
+- vacuum_need（真空需求：有/无/待确认）
+- automation_need（自动化：全自动/半自动/手动/待确认）
+- project_details（核心需求摘要，含产量、用途、特殊要求等）
 
-新收到的文本数据源：
+待解析询盘：
 ${raw}`;
 
   const d = await callGemini(promptText, true);
-  
+
   if (d) {
     FD.name = d.name || FD.name;
     FD.company = d.company || FD.company;
     FD.email = d.email || FD.email;
     FD.phone = d.phone || FD.phone;
     FD.country = d.country || FD.country;
-    
+    FD.packaging_material = d.packaging_material || FD.packaging_material;
+    FD.packaging_weight = d.packaging_weight || FD.packaging_weight;
+    FD.packaging_speed = d.packaging_speed || FD.packaging_speed;
+    FD.vacuum_need = d.vacuum_need || FD.vacuum_need;
+    FD.automation_need = d.automation_need || FD.automation_need;
+
     if (Array.isArray(d.products) && d.products.length > 0) {
       FD.products = [...new Set([...FD.products, ...d.products])];
     }
-    
     if (d.project_details && d.project_details !== FD.project_details) {
-      FD.project_details = FD.project_details 
-        ? `${FD.project_details}\n\n[AI 增量补充]: ${d.project_details}` 
+      FD.project_details = FD.project_details
+        ? `${FD.project_details}\n\n[AI 补充]: ${d.project_details}`
         : d.project_details;
     }
-    
+
     const activeTab = Array.from(document.querySelectorAll('#form-tabs .tab')).findIndex(t => t.classList.contains('on'));
     showFormModal(EID ? `编辑客户 — ${FD.name}` : '新建客户', Math.max(0, activeTab));
-    toast('✨ 解析与融合完成，数据已同步至表单');
+    toast('✨ 解析完成，数据已同步至表单');
   }
 }
 
@@ -1644,9 +1731,9 @@ ${text}`;
 async function aiGenerateScript(id) {
   const c = ALL.find(x => x.id === id);
   if (!c) return;
-  
+
   const latestLog = LOGS.filter(l => l.customer_id === id).sort((a,b) => b.created_at > a.created_at ? 1 : -1)[0];
-  
+
   const ctxData = [
     c.name ? `- 客户姓名：${c.name}` : '',
     c.company ? `- 公司名称：${c.company}` : '',
@@ -1654,82 +1741,107 @@ async function aiGenerateScript(id) {
     c.phone ? `- 联系电话：${c.phone}` : '',
     c.country ? `- 所在地区：${c.country} ${c.region || ''}` : '',
     c.source ? `- 获客来源：${c.source}` : '',
-    c.customer_type ? `- 客户类型：${c.customer_type} / ${c.self_type || ''}` : '',
+    c.customer_type ? `- 客户类型：${c.customer_type}` : '',
+    c.self_type ? `- 客户自述：${c.self_type}` : '',
     (c.products && c.products.length) ? `- 意向产品：${c.products.join(', ')}` : '',
+    c.packaging_material ? `- 包装物料：${c.packaging_material}` : '',
+    c.packaging_weight ? `- 包装重量：${c.packaging_weight}` : '',
+    c.packaging_speed ? `- 包装速度：${c.packaging_speed}` : '',
+    c.vacuum_need ? `- 真空需求：${c.vacuum_need}` : '',
+    c.automation_need ? `- 自动化需求：${c.automation_need}` : '',
+    c.purchase_timeline ? `- 预计购买时间：${c.purchase_timeline}` : '',
     c.project_details ? `- 需求详情：${c.project_details}` : '',
-    c.notes ? `- 历史备注：${c.notes}` : '',
-    `- 最后沟通记录：${latestLog ? latestLog.notes : '首次建联'}`
+    `- 最近沟通：${latestLog ? `[${latestLog.log_date}] ${latestLog.notes}` : '首次建联，尚无沟通记录'}`
   ].filter(Boolean).join('\n');
 
-  const promptText = `你是一个 B2B 工业包装机械的资深海外销售。请基于以下全维度客户画像与历史动态，生成一段地道、专业的英文 WhatsApp/Email 跟进话术。
+  const promptText = `你是漳州佳龙科技有限公司（英文：Zhangzhou Jialong Technology Co., Ltd.）的资深海外销售顾问。
 
-已知客户档案：
+【公司背景】
+- 主营产品：大型工业包装机械，包括真空包装机、外置式真空封口机、全自动/半自动包装生产线、多工位高速包装机（最高可达1200袋/小时）
+- 核心优势：OEM/ODM 定制能力、完整售后技术支持、通过 CE 认证、出口超过 60 国
+- 联系方式：WhatsApp +86-13625794992 | export@jialong.cn | https://jialong-packing.com/
+- 目标客户：食品加工厂、农业企业、饲料厂、化工厂、贸易商、机械经销商
+
+【客户档案】
 ${ctxData}
 
-执行指令：
-1. 结合国家偏好、具体产品需求与历史沟通上下文，进行针对性破冰或跟进。
-2. 语气热情、专业，必须包含一个明确的 Call to Action (如索要具体包装尺寸、邀约视频会议或确认样机需求)。
-3. 纯数据导向：绝不编造未提供的机器参数或虚假案例。
-4. 直接输出正文，禁用 Markdown，无需任何解释性废话。`;
+【任务】
+基于以上客户画像，生成一段专业、地道的英文 WhatsApp 跟进话术。
 
-  if (typeof showLoading === 'function') showLoading(true);
+要求：
+1. 开门见山，针对其具体包装物料（${c.packaging_material || '产品'}）和需求场景精准切入
+2. 自然带出佳龙对应机型的核心卖点（产能、自动化程度、物料适配性）
+3. 结尾必须包含明确的 Call to Action（如：索要包装尺寸/视频演示/报价单/工厂参观邀请）
+4. 语气热情专业，符合 ${c.country || '目标国家'} 的沟通习惯
+5. 绝不编造未提供的技术参数或虚假案例
+6. 直接输出正文，不需要任何解释`;
+
+  showLoading(true);
   const res = await callGemini(promptText);
-  if (typeof showLoading === 'function') showLoading(false);
+  showLoading(false);
 
-  if (res) {
-    showAIResultModal(res, c);
-  }
+  if (res) showAIResultModal(res, c);
 }
 
 async function aiCompanyResearch(id) {
   const c = ALL.find(x => x.id === id);
   if (!c) return;
-  
+
   if (!c.company && !c.website && !c.email && !c.name) {
-    toast('⚠️ 数据维度过低：无法触发有效背调');
+    toast('⚠️ 数据维度过低，无法触发有效背调');
     return;
   }
 
   const ctxData = [
-    c.name ? `- 联系人姓名：${c.name}` : '',
+    c.name ? `- 联系人：${c.name}` : '',
     c.company ? `- 公司名称：${c.company}` : '',
-    c.website ? `- 官网地址：${c.website}` : '',
-    c.email ? `- 电子邮箱：${c.email}` : '',
-    c.phone ? `- 联系电话：${c.phone}` : '',
+    c.website ? `- 官网：${c.website}` : '',
+    c.email ? `- 邮箱：${c.email}（注意域名线索）` : '',
+    c.phone ? `- 电话：${c.phone}（注意区号）` : '',
     c.country ? `- 所在地区：${c.country} ${c.region || ''}` : '',
     c.customer_type ? `- 自述类型：${c.customer_type} / ${c.self_type || ''}` : '',
+    c.source ? `- 询盘来源：${c.source}` : '',
     (c.products && c.products.length) ? `- 意向产品：${c.products.join(', ')}` : '',
-    c.project_details ? `- 需求详情：${c.project_details}` : ''
+    c.packaging_material ? `- 包装物料：${c.packaging_material}` : '',
+    c.packaging_weight ? `- 包装规格：${c.packaging_weight}` : '',
+    c.packaging_speed ? `- 产能需求：${c.packaging_speed}` : '',
+    c.project_details ? `- 需求描述：${c.project_details}` : ''
   ].filter(Boolean).join('\n');
 
-  const promptText = `你是一个资深 B2B 市场与风险分析师。请结合以下线索的全维数据，进行深度的背景调查与商业推理（注意提取邮箱域名、电话区号等隐藏线索进行交叉验证）。
-已知数据流：
+  const promptText = `你是漳州佳龙科技有限公司的 B2B 市场情报分析师，我司主营大型工业包装机械，服务全球 60+ 国家的食品、农业、饲料、化工等行业客户。
+
+请基于以下询盘线索，对该潜在采购商进行深度商业推理与价值评估，帮助销售团队快速判断跟进优先级。
+
+【询盘线索数据】
 ${ctxData}
 
-请按以下 3 个维度输出（保持客观、冷峻、纯数据导向，总字数严格控制在 200 字以内，禁用 Markdown 格式，绝不编造缺失信息）：
-1. 【企业画像】：行业定位、主营业务及预估采购规模。
-2. 【决策链推理】：基于姓名拼写、邮箱特征及来源，推测该联系人在组织内的职位层级与决策话语权。
-3. 【极速转化策略】：结合其意向产品与地缘特征，提供 1-2 条直击痛点的销售切入建议。`;
+请按以下 4 个维度输出分析报告（客观冷静，总字数控制在 250 字内，禁止 Markdown，不编造信息）：
 
-  if (typeof showLoading === 'function') showLoading(true);
+1.【企业画像】基于公司名、邮箱域名、电话区号、官网等线索，推断其行业定位、规模层级（小型作坊/中型工厂/大型企业/贸易商），以及在 ${c.country || '目标市场'} 的市场地位。
+
+2.【需求适配度】结合其包装物料（${c.packaging_material || '未知'}）、规格（${c.packaging_weight || '未知'}）、产能（${c.packaging_speed || '未知'}）需求，判断佳龙哪款机型最适合推荐，并说明适配原因。
+
+3.【决策链判断】基于联系人姓名格式、询盘措辞专业度、来源渠道，推测其在组织内的职级与采购决策话语权。
+
+4.【极速转化策略】针对该客户的痛点与所在市场特性，给出 1-2 条直击要害的跟进建议，包括推荐切入角度和可能的成交障碍。`;
+
+  showLoading(true);
   const res = await callGemini(promptText);
-  if (typeof showLoading === 'function') showLoading(false);
+  showLoading(false);
 
   if (res) {
     const bodyEl = document.querySelector('#detail-ov .simple-body');
     if (bodyEl) {
       document.getElementById('ai-research-result')?.remove();
-      
       const researchHtml = `<div id="ai-research-result" style="background:var(--teal-l);color:var(--teal);padding:14px;border-radius:var(--r2);font-size:12px;border:1px solid rgba(8,145,178,.2);margin-bottom:14px;line-height:1.6;box-shadow:var(--sh);animation:dvFade .3s var(--ease)">
         <div style="font-weight:700;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;font-size:13px;border-bottom:1px dashed rgba(8,145,178,.3);padding-bottom:6px">
-          <span>🔍 AI 全维商业推理报告</span>
-          <span style="cursor:pointer;opacity:0.6;font-size:16px;line-height:1;padding:0 4px" onclick="this.closest('#ai-research-result').remove()" title="关闭">×</span>
+          <span>🔍 佳龙专属客户情报报告</span>
+          <span style="cursor:pointer;opacity:0.6;font-size:16px;line-height:1;padding:0 4px" onclick="this.closest('#ai-research-result').remove()">×</span>
         </div>
         <div style="color:var(--tp)">${esc(res).replace(/\n/g, '<br/>')}</div>
       </div>`;
-      
       bodyEl.insertAdjacentHTML('afterbegin', researchHtml);
-      toast('✨ 商业推理完成');
+      toast('✨ 情报分析完成');
     }
   }
 }
