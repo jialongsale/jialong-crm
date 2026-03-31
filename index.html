@@ -1776,9 +1776,7 @@ ${ctxData}
 5. 绝不编造未提供的技术参数或虚假案例
 6. 直接输出正文，不需要任何解释`;
 
-  showLoading(true);
   const res = await callGemini(promptText);
-  showLoading(false);
 
   if (res) showAIResultModal(res, c);
 }
@@ -1825,9 +1823,7 @@ ${ctxData}
 
 4.【极速转化策略】针对该客户的痛点与所在市场特性，给出 1-2 条直击要害的跟进建议，包括推荐切入角度和可能的成交障碍。`;
 
-  showLoading(true);
   const res = await callGemini(promptText);
-  showLoading(false);
 
   if (res) {
     const bodyEl = document.querySelector('#detail-ov .simple-body');
