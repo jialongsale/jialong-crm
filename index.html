@@ -1518,7 +1518,7 @@ function batchTransfer() { openTransferModal(null); }
 function getGeminiKey() {
   let key = localStorage.getItem('CRM_GEMINI_KEY');
   if (!key) {
-    key = prompt(AIzaSyBr4N2XZ4z5aB9t4XZz_B3XdPYKMb8SjQU);
+    key = prompt("请输入 Gemini API Key");
     if (key) localStorage.setItem('CRM_GEMINI_KEY', key.trim());
   }
   return key;
