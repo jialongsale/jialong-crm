@@ -1517,9 +1517,8 @@ function batchTransfer() { openTransferModal(null); }
 // ===== GEMINI AI ENGINE =====
 function getGeminiKey() {
   return new Promise((resolve) => {
-    const cachedToken = localStorage.getItem('CRM_AI_KEY');
-    const cachedBotId = localStorage.getItem('CRM_COZE_BOT_ID');
-    if (cachedToken && cachedBotId) { resolve({token: cachedToken, botId: cachedBotId}); return; }
+    const cached = localStorage.getItem('sk-Pxj0slWoNkyhJlgn2wOIOQZxpDqPqznwIwD6C15Lu064n7GT');
+    if (cached) { resolve(cached); return; }
 
     document.getElementById('ai-key-ov')?.remove();
     const el = document.createElement('div');
@@ -1527,65 +1526,57 @@ function getGeminiKey() {
     el.id = 'ai-key-ov';
     el.style.zIndex = '5000';
     el.innerHTML = `
-      <div class="modal msm" style="max-width:420px">
+      <div class="modal msm" style="max-width:380px">
         <div class="modal-header">
           <div class="modal-top">
-            <div class="modal-title">🤖 配置 Coze 必应情报引擎</div>
+            <div class="modal-title" style="display:flex;align-items:center;gap:8px">
+              <span style="font-size:20px">🔍</span> 配置 Kimi 情报引擎
+            </div>
             <button class="modal-close" onclick="document.getElementById('ai-key-ov').remove();window._aiKeyResolve&&window._aiKeyResolve(null)">×</button>
           </div>
         </div>
         <div class="simple-body" style="padding:16px 24px 0">
-          <div style="background:var(--brand-l);border:1px solid rgba(0,102,204,.15);border-radius:var(--r2);padding:10px 14px;margin-bottom:14px;font-size:12px;color:var(--brand);line-height:1.6">
-            💡 请在 coze.cn 创建挂载了【搜索】插件的 Bot，并在此填入鉴权参数。
+          <div style="background:var(--brand-l);border:1px solid rgba(0,102,204,.15);border-radius:var(--r2);padding:12px 14px;margin-bottom:16px;font-size:12px;color:var(--brand);line-height:1.6">
+            💡 免费引擎搜索能力受限。请前往 <a href="https://platform.moonshot.cn" target="_blank" style="color:var(--brand);font-weight:700">platform.moonshot.cn</a> 获取 API Key。
           </div>
           <div class="fg">
-            <label class="fl">Personal Access Token (API 令牌)</label>
-            <input id="coze-token-input" class="fi" type="password" placeholder="pat_ 开头的长字符串..." value="${cachedToken||''}"/>
-          </div>
-          <div class="fg" style="margin-top:14px">
-            <label class="fl">Bot ID (机器人 ID)</label>
-            <input id="coze-bot-input" class="fi" type="text" placeholder="URL 结尾的纯数字，例如：7356123..." value="${cachedBotId||''}"/>
+            <label class="fl">Kimi API Key (sk-开头)</label>
+            <input id="ai-key-input" class="fi" type="password" placeholder="粘贴你的 Kimi Key…" style="letter-spacing:1px"/>
           </div>
         </div>
         <div class="modal-footer">
           <button class="btn bg" onclick="document.getElementById('ai-key-ov').remove();window._aiKeyResolve&&window._aiKeyResolve(null)">取消</button>
           <button class="btn bp" onclick="
-            const t=document.getElementById('coze-token-input').value.trim();
-            const b=document.getElementById('coze-bot-input').value.trim();
-            if(!t || !b){toast('⚠️ 请完整填写 Token 和 Bot ID');return;}
-            localStorage.setItem('CRM_AI_KEY',t);
-            localStorage.setItem('CRM_COZE_BOT_ID',b);
+            const v=document.getElementById('ai-key-input').value.trim();
+            if(!v){toast('⚠️ 请输入 Key');return;}
+            localStorage.setItem('CRM_AI_KEY',v);
             document.getElementById('ai-key-ov').remove();
-            window._aiKeyResolve&&window._aiKeyResolve({token:t, botId:b});
+            window._aiKeyResolve&&window._aiKeyResolve(v);
           ">确认保存</button>
         </div>
       </div>`;
     document.body.appendChild(el);
     window._aiKeyResolve = resolve;
+    setTimeout(() => document.getElementById('ai-key-input')?.focus(), 100);
   });
 }
-async function callGemini(promptText, isJson = false, forceSearch = '') {
-  const config = await getGeminiKey();
-  if (!config) return null;
+async function callGemini(promptText, isJson = false) {
+  const key = await getGeminiKey(); 
+  if (!key) return null;
   
-  showLoading(true);
+  showLoading(true); 
   try {
-    const finalQuery = forceSearch 
-      ? `【🚨 强制搜索指令】请务必立刻使用必应搜索插件，搜索以下关键词提取情报：${forceSearch}\n\n${promptText}` 
-      : promptText;
-
-    const res = await fetch('https://api.coze.cn/open_api/v2/chat', {
+    const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${config.token}`,
-        'Accept': '*/*'
+        'Authorization': `Bearer ${key}`
       },
       body: JSON.stringify({
-        bot_id: config.botId,
-        user: 'crm_sales_user',
-        query: finalQuery,
-        stream: false
+        model: 'moonshot-v1-8k', 
+        messages: [{ role: 'user', content: promptText }],
+        temperature: 0.3,
+        tools: [{"type": "builtin_function", "function": {"name": "$web_search"}}]
       })
     });
 
@@ -1594,18 +1585,13 @@ async function callGemini(promptText, isJson = false, forceSearch = '') {
     if (!res.ok) {
       if (res.status === 401) {
         localStorage.removeItem('CRM_AI_KEY');
-        throw new Error('Token 无效，请重新配置');
+        throw new Error('Key 无效或额度不足');
       }
       throw new Error(`HTTP 异常 ${res.status}`);
     }
 
     const data = await res.json();
-    if (data.code !== 0) {
-       throw new Error(data.msg || 'Coze 接口返回错误');
-    }
-
-    const answerMsg = data.messages?.find(m => m.type === 'answer');
-    let text = answerMsg ? answerMsg.content : '';
+    let text = data.choices?.[0]?.message?.content || '';
 
     if (isJson) {
       text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
@@ -1615,7 +1601,7 @@ async function callGemini(promptText, isJson = false, forceSearch = '') {
 
   } catch (err) {
     showLoading(false);
-    toast('⚠️ 情报引擎异常: ' + err.message);
+    toast('⚠️ Kimi 引擎异常: ' + err.message);
     return null;
   }
 }
