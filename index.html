@@ -1516,10 +1516,10 @@ function batchTransfer() { openTransferModal(null); }
 
 // ===== GEMINI AI ENGINE =====
 function getGeminiKey() {
-  let key = localStorage.getItem('CRM_GEMINI_KEY');
+  let key = localStorage.getItem('CRM_GROQ_KEY');
   if (!key) {
-    key = prompt("请输入 Gemini API Key");
-    if (key) localStorage.setItem('CRM_GEMINI_KEY', key.trim());
+    key = prompt("请输入 Groq API Key（免费，去 console.groq.com 获取）");
+    if (key) localStorage.setItem('CRM_GROQ_KEY', key.trim());
   }
   return key;
 }
@@ -1528,34 +1528,42 @@ async function callGemini(promptText, isJson = false) {
   const key = getGeminiKey();
   if (!key) return null;
   
-  if (typeof showLoading === 'function') showLoading(true);
+  showLoading(true);
   try {
-    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash-lite:generateContent?key=${key}`, {
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${key}`
+      },
+      body: JSON.stringify({
+        model: 'llama-3.3-70b-versatile',
+        messages: [{ role: 'user', content: promptText }],
+        temperature: 0.7
+      })
     });
-    
-    if (typeof showLoading === 'function') showLoading(false);
-    
+
+    showLoading(false);
+
     if (!res.ok) {
-      if (res.status === 400 || res.status === 403) {
-        localStorage.removeItem('CRM_GEMINI_KEY');
-        throw new Error('API Key 无效或已过期，请刷新页面重新输入');
+      if (res.status === 401) {
+        localStorage.removeItem('CRM_GROQ_KEY');
+        throw new Error('API Key 无效，请重新输入');
       }
       throw new Error(`HTTP 异常 ${res.status}`);
     }
-    
+
     const data = await res.json();
-    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
-    
+    let text = data.choices?.[0]?.message?.content || '';
+
     if (isJson) {
       text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
       return JSON.parse(text);
     }
     return text;
+
   } catch (err) {
-    if (typeof showLoading === 'function') showLoading(false);
+    showLoading(false);
     toast('⚠️ AI 异常: ' + err.message);
     return null;
   }
