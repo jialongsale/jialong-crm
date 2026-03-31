@@ -2978,6 +2978,30 @@ function downloadCoreData() {
   a.click();
   toast('✅ 已下载');
 }
+function showAIResultModal(text, c) {
+  document.getElementById('ai-result-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'ai-result-ov';
+  el.innerHTML = `
+    <div class="modal mlg">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">✨ AI 生成话术 — ${esc(c.name)}</div>
+          <button class="modal-close" onclick="document.getElementById('ai-result-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="white-space:pre-wrap;font-size:13px;line-height:1.8;color:var(--tp);background:var(--surface2);border-radius:var(--r);padding:16px;margin:0 24px 16px;">
+${esc(text)}
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="navigator.clipboard.writeText(${JSON.stringify(text)});toast('📋 已复制到剪贴板')">📋 复制话术</button>
+        <button class="btn bp" onclick="document.getElementById('ai-result-ov').remove()">关闭</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if(e.target === el) el.remove() });
+}
 </script>
 </body>
 </html>
