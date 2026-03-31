@@ -1562,10 +1562,10 @@ function getGeminiKey() {
 }
 
 async function callGemini(promptText, isJson = false) {
-  const key = await getGeminiKey();
+  const key = await getGeminiKey();  // 先获取 Key
   if (!key) return null;
   
-  showLoading(true);
+  showLoading(true);  // Key 拿到后再显示 loading
   try {
     const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
       method: 'POST',
