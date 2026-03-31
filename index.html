@@ -1516,10 +1516,10 @@ function batchTransfer() { openTransferModal(null); }
 
 // ===== GEMINI AI ENGINE =====
 function getGeminiKey() {
-  let key = localStorage.getItem('CRM_GROQ_KEY');
+  let key = localStorage.getItem('CRM_AI_KEY');
   if (!key) {
-    key = prompt("请输入 Groq API Key（免费，去 console.groq.com 获取）");
-    if (key) localStorage.setItem('CRM_GROQ_KEY', key.trim());
+    key = prompt("请输入 AI Key（去 open.bigmodel.cn 获取）");
+    if (key) localStorage.setItem('CRM_AI_KEY', key.trim());
   }
   return key;
 }
@@ -1530,14 +1530,14 @@ async function callGemini(promptText, isJson = false) {
   
   showLoading(true);
   try {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch('https://open.bigmodel.cn/api/paas/v4/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${key}`
       },
       body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
+        model: 'glm-4-flash',
         messages: [{ role: 'user', content: promptText }],
         temperature: 0.7
       })
@@ -1547,7 +1547,7 @@ async function callGemini(promptText, isJson = false) {
 
     if (!res.ok) {
       if (res.status === 401) {
-        localStorage.removeItem('CRM_GROQ_KEY');
+        localStorage.removeItem('CRM_AI_KEY');
         throw new Error('API Key 无效，请重新输入');
       }
       throw new Error(`HTTP 异常 ${res.status}`);
