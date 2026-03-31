@@ -1514,6 +1514,217 @@ function confirmTransfer(idStr){
 function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
 
+// ===== GEMINI AI ENGINE =====
+function getGeminiKey() {
+  let key = localStorage.getItem('CRM_GEMINI_KEY');
+  if (!key) {
+    key = prompt(AIzaSyBr4N2XZ4z5aB9t4XZz_B3XdPYKMb8SjQU);
+    if (key) localStorage.setItem('CRM_GEMINI_KEY', key.trim());
+  }
+  return key;
+}
+
+async function callGemini(promptText, isJson = false) {
+  const key = getGeminiKey();
+  if (!key) return null;
+  
+  if (typeof showLoading === 'function') showLoading(true);
+  try {
+    const res = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${key}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+    });
+    
+    if (typeof showLoading === 'function') showLoading(false);
+    
+    if (!res.ok) {
+      if (res.status === 400 || res.status === 403) {
+        localStorage.removeItem('CRM_GEMINI_KEY');
+        throw new Error('API Key 无效或已过期，请刷新页面重新输入');
+      }
+      throw new Error(`HTTP 异常 ${res.status}`);
+    }
+    
+    const data = await res.json();
+    let text = data.candidates?.[0]?.content?.parts?.[0]?.text || '';
+    
+    if (isJson) {
+      text = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+      return JSON.parse(text);
+    }
+    return text;
+  } catch (err) {
+    if (typeof showLoading === 'function') showLoading(false);
+    toast('⚠️ AI 异常: ' + err.message);
+    return null;
+  }
+}
+
+async function aiParseInquiry() {
+  const raw = prompt('请粘贴询盘原文或聊天记录（AI 将结合当前表单已有信息进行智能提取与增量融合）：');
+  if (!raw?.trim()) return;
+  
+  const currentData = [
+    FD.name ? `姓名: ${FD.name}` : '',
+    FD.company ? `公司: ${FD.company}` : '',
+    FD.email ? `邮箱: ${FD.email}` : '',
+    FD.phone ? `电话: ${FD.phone}` : '',
+    FD.country ? `国家: ${FD.country}` : '',
+    FD.project_details ? `现有需求: ${FD.project_details}` : ''
+  ].filter(Boolean).join(', ');
+
+  const contextPrompt = currentData ? `\n【重要数据上下文】：该客户在系统中已存在以下基础信息：[${currentData}]。请在此基础上，利用新文本进行数据修正与补充，切勿丢失原有的有效数据。` : '';
+
+  const promptText = `作为外贸 CRM 的 NLP 数据中枢，请解析以下新收到的客户文本，提取关键实体并严格输出纯 JSON 格式（禁用 Markdown 语法，如 \`\`\`json）。${contextPrompt}
+
+必须输出的 JSON 键值规范：
+- name (姓名)
+- company (公司名称)
+- email (邮箱)
+- phone (联系电话，尽量包含区号)
+- country (国家)
+- products (提取其感兴趣的具体机器类型，必须是纯字符串数组格式)
+- project_details (梳理出的具体需求、产量、包装物料等核心业务细节)
+
+新收到的文本数据源：
+${raw}`;
+
+  const d = await callGemini(promptText, true);
+  
+  if (d) {
+    FD.name = d.name || FD.name;
+    FD.company = d.company || FD.company;
+    FD.email = d.email || FD.email;
+    FD.phone = d.phone || FD.phone;
+    FD.country = d.country || FD.country;
+    
+    if (Array.isArray(d.products) && d.products.length > 0) {
+      FD.products = [...new Set([...FD.products, ...d.products])];
+    }
+    
+    if (d.project_details && d.project_details !== FD.project_details) {
+      FD.project_details = FD.project_details 
+        ? `${FD.project_details}\n\n[AI 增量补充]: ${d.project_details}` 
+        : d.project_details;
+    }
+    
+    const activeTab = Array.from(document.querySelectorAll('#form-tabs .tab')).findIndex(t => t.classList.contains('on'));
+    showFormModal(EID ? `编辑客户 — ${FD.name}` : '新建客户', Math.max(0, activeTab));
+    toast('✨ 解析与融合完成，数据已同步至表单');
+  }
+}
+
+async function aiSummarizeLogs(id) {
+  const logs = LOGS.filter(l => l.customer_id === id);
+  if (!logs.length) { toast('⚠️ 暂无跟进记录'); return; }
+  
+  const text = logs.map(l => `[${l.log_date}] ${l.stage_label}: ${l.notes}`).join('\n');
+  const promptText = `请作为资深销售总监，客观总结该客户的核心痛点、意向程度及后续成交关键点。字数控制在 150 字以内。
+历史跟进记录：
+${text}`;
+
+  const res = await callGemini(promptText);
+  if (res) {
+    const el = document.getElementById('det-hist-list');
+    if (el) {
+      el.insertAdjacentHTML('afterbegin', `<div style="background:var(--brand-l);color:var(--brand);padding:12px;border-radius:var(--r);font-size:12px;border:1px dashed rgba(0,102,204,.3);margin-bottom:12px;line-height:1.6;box-shadow:var(--sh)"><div style="font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:6px"><span>🤖</span> AI 智能洞察</div>${esc(res)}</div>`);
+    }
+  }
+}
+
+async function aiGenerateScript(id) {
+  const c = ALL.find(x => x.id === id);
+  if (!c) return;
+  
+  const latestLog = LOGS.filter(l => l.customer_id === id).sort((a,b) => b.created_at > a.created_at ? 1 : -1)[0];
+  
+  const ctxData = [
+    c.name ? `- 客户姓名：${c.name}` : '',
+    c.company ? `- 公司名称：${c.company}` : '',
+    c.email ? `- 电子邮箱：${c.email}` : '',
+    c.phone ? `- 联系电话：${c.phone}` : '',
+    c.country ? `- 所在地区：${c.country} ${c.region || ''}` : '',
+    c.source ? `- 获客来源：${c.source}` : '',
+    c.customer_type ? `- 客户类型：${c.customer_type} / ${c.self_type || ''}` : '',
+    (c.products && c.products.length) ? `- 意向产品：${c.products.join(', ')}` : '',
+    c.project_details ? `- 需求详情：${c.project_details}` : '',
+    c.notes ? `- 历史备注：${c.notes}` : '',
+    `- 最后沟通记录：${latestLog ? latestLog.notes : '首次建联'}`
+  ].filter(Boolean).join('\n');
+
+  const promptText = `你是一个 B2B 工业包装机械的资深海外销售。请基于以下全维度客户画像与历史动态，生成一段地道、专业的英文 WhatsApp/Email 跟进话术。
+
+已知客户档案：
+${ctxData}
+
+执行指令：
+1. 结合国家偏好、具体产品需求与历史沟通上下文，进行针对性破冰或跟进。
+2. 语气热情、专业，必须包含一个明确的 Call to Action (如索要具体包装尺寸、邀约视频会议或确认样机需求)。
+3. 纯数据导向：绝不编造未提供的机器参数或虚假案例。
+4. 直接输出正文，禁用 Markdown，无需任何解释性废话。`;
+
+  if (typeof showLoading === 'function') showLoading(true);
+  const res = await callGemini(promptText);
+  if (typeof showLoading === 'function') showLoading(false);
+
+  if (res) {
+    showAIResultModal(res, c);
+  }
+}
+
+async function aiCompanyResearch(id) {
+  const c = ALL.find(x => x.id === id);
+  if (!c) return;
+  
+  if (!c.company && !c.website && !c.email && !c.name) {
+    toast('⚠️ 数据维度过低：无法触发有效背调');
+    return;
+  }
+
+  const ctxData = [
+    c.name ? `- 联系人姓名：${c.name}` : '',
+    c.company ? `- 公司名称：${c.company}` : '',
+    c.website ? `- 官网地址：${c.website}` : '',
+    c.email ? `- 电子邮箱：${c.email}` : '',
+    c.phone ? `- 联系电话：${c.phone}` : '',
+    c.country ? `- 所在地区：${c.country} ${c.region || ''}` : '',
+    c.customer_type ? `- 自述类型：${c.customer_type} / ${c.self_type || ''}` : '',
+    (c.products && c.products.length) ? `- 意向产品：${c.products.join(', ')}` : '',
+    c.project_details ? `- 需求详情：${c.project_details}` : ''
+  ].filter(Boolean).join('\n');
+
+  const promptText = `你是一个资深 B2B 市场与风险分析师。请结合以下线索的全维数据，进行深度的背景调查与商业推理（注意提取邮箱域名、电话区号等隐藏线索进行交叉验证）。
+已知数据流：
+${ctxData}
+
+请按以下 3 个维度输出（保持客观、冷峻、纯数据导向，总字数严格控制在 200 字以内，禁用 Markdown 格式，绝不编造缺失信息）：
+1. 【企业画像】：行业定位、主营业务及预估采购规模。
+2. 【决策链推理】：基于姓名拼写、邮箱特征及来源，推测该联系人在组织内的职位层级与决策话语权。
+3. 【极速转化策略】：结合其意向产品与地缘特征，提供 1-2 条直击痛点的销售切入建议。`;
+
+  if (typeof showLoading === 'function') showLoading(true);
+  const res = await callGemini(promptText);
+  if (typeof showLoading === 'function') showLoading(false);
+
+  if (res) {
+    const bodyEl = document.querySelector('#detail-ov .simple-body');
+    if (bodyEl) {
+      document.getElementById('ai-research-result')?.remove();
+      
+      const researchHtml = `<div id="ai-research-result" style="background:var(--teal-l);color:var(--teal);padding:14px;border-radius:var(--r2);font-size:12px;border:1px solid rgba(8,145,178,.2);margin-bottom:14px;line-height:1.6;box-shadow:var(--sh);animation:dvFade .3s var(--ease)">
+        <div style="font-weight:700;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;font-size:13px;border-bottom:1px dashed rgba(8,145,178,.3);padding-bottom:6px">
+          <span>🔍 AI 全维商业推理报告</span>
+          <span style="cursor:pointer;opacity:0.6;font-size:16px;line-height:1;padding:0 4px" onclick="this.closest('#ai-research-result').remove()" title="关闭">×</span>
+        </div>
+        <div style="color:var(--tp)">${esc(res).replace(/\n/g, '<br/>')}</div>
+      </div>`;
+      
+      bodyEl.insertAdjacentHTML('afterbegin', researchHtml);
+      toast('✨ 商业推理完成');
+    }
+  }
+}
 // ===== LOG DRAWER & FOLLOW UP (RELATIVE TIME + ROLLBACK + OPTIMISTIC LAZY LOAD) =====
 function getNextDateByStep(logDate, stageNum) {
   if(!logDate) return null;
@@ -2007,7 +2218,7 @@ async function openDetail(id){
     ? logs.map(l=>`<div style="padding:8px 10px;background:var(--surface2);border-radius:var(--r);margin-bottom:4px"><div style="font-size:11px;color:var(--brand);font-weight:600;margin-bottom:3px">${l.log_date||l.created_at?.split('T')[0]} [${esc(l.stage_label||'—')}]${l.status_update?` → ${l.status_update}`:''}${l.quality?` <span style="color:var(--warn);background:var(--warn-l);padding:1px 4px;border-radius:4px">${esc(l.quality)}</span>`:''} · ${esc(l.sales)}</div><div style="font-size:12px;color:var(--ts)">${esc(l.notes)}</div></div>`).join('') 
     : '<div style="color:var(--tt);font-size:12px">暂无记录</div>';
 
-  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ratingBadge(c.rating)} 👤 ${esc(c.name)}${c.company?`<span style="font-size:13px;color:var(--tt);font-weight:400">· ${esc(c.company)}</span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div><button class="modal-close" onclick="document.getElementById('detail-ov').remove()">×</button></div></div>
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">${ratingBadge(c.rating)} 👤 ${esc(c.name)}${c.company?`<span style="font-size:13px;color:var(--tt);font-weight:400;display:flex;align-items:center;gap:6px">· ${esc(c.company)} <button class="ab" style="font-size:10px;padding:2px 6px;color:var(--teal);border-color:rgba(8,145,178,.3);background:var(--teal-l)" onclick="aiCompanyResearch('${c.id}')">🔍 AI 背调</button></span>`:''}${dup?'<span class="dup-w">⚠重复</span>':''}</div><button class="modal-close" onclick="document.getElementById('detail-ov').remove()">×</button></div></div>
   <div class="simple-body">
     <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:14px;align-items:center">
       <span class="badge s-${c.status||''}">${c.status||'未设置'}</span><span class="${n.cls}">${n.t}</span>
@@ -2022,13 +2233,21 @@ async function openDetail(id){
     ${c.project_details?`<div style="margin-top:12px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:var(--surface2);padding:10px;border-radius:var(--r);line-height:1.6">${esc(c.project_details)}</div></div>`:''}
     ${c.notes?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:var(--ts)">${esc(c.notes)}</div></div>`:''}
     <div style="margin-top:14px">
-      <div style="font-size:12px;font-weight:600;color:var(--ts);margin-bottom:8px">跟进记录 (<span id="det-hist-cnt">${cl.length}</span>条)</div>
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+  <div style="font-size:12px;font-weight:600;color:var(--ts)">跟进记录 (<span id="det-hist-cnt">${cl.length}</span>条)</div>
+  <button class="ab ab2" onclick="aiSummarizeLogs('${c.id}')" style="padding:4px 10px">🤖 AI 总结</button>
+</div>
       <div id="det-hist-list">
         ${cl.length ? genHistHtml(cl) : (hasCache ? '<div style="color:var(--tt);font-size:12px">暂无记录</div>' : '<div style="color:var(--brand);font-size:12px;font-weight:600">🔄 正在拉取云端记录...</div>')}
       </div>
     </div>
   </div>
-  <div class="modal-footer"><button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button><button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button><button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button></div>
+  <div class="modal-footer">
+  <button class="btn bg" onclick="aiGenerateScript('${c.id}')" style="color:var(--purple);border-color:rgba(175,82,222,.3);background:var(--purple-l);margin-right:auto;"><span style="font-size:14px">✨</span> 生成话术</button>
+  <button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button>
+  <button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button>
+  <button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button>
+</div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 
@@ -2061,7 +2280,7 @@ function showFormModal(title,activeTab){
   const d=FD;
   const salesRow=isAdm()?`<div class="fg"><label class="fl">负责销售</label><select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`:`<div class="fg"><label class="fl">负责销售</label><div style="padding:8px 11px;background:var(--surface2);border-radius:var(--r);font-size:13px;font-weight:600">${CU}</div></div>`;
   const el=document.createElement('div');el.className='overlay';el.id='form-ov';
-  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title">${title}</div><button class="modal-close" onclick="document.getElementById('form-ov').remove()">×</button></div>
+  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:12px">${title} <button class="btn" style="background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2);padding:4px 10px;font-size:12px" onclick="aiParseInquiry()">✨ AI 解析询盘</button></div><button class="modal-close" onclick="document.getElementById('form-ov').remove()">×</button></div>
   <div class="tabs" id="form-tabs" style="overflow-y: hidden; scrollbar-width: none;">${['基本信息','产品需求','业务信息','CRM'].map((t,i)=>`<div class="tab ${i===activeTab?'on':''}" onclick="switchFormTab(${i})">${t}</div>`).join('')}</div></div>
   <div class="modal-body">
     <div class="tab-panel ${activeTab===0?'on':''}" id="ft0">
