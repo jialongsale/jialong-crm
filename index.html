@@ -1735,24 +1735,20 @@ async function aiGenerateScript(id) {
   const latestLog = LOGS.filter(l => l.customer_id === id).sort((a,b) => b.created_at > a.created_at ? 1 : -1)[0];
 
   const ctxData = [
-    c.name ? `- 客户姓名：${c.name}` : '',
-    c.company ? `- 公司名称：${c.company}` : '',
-    c.email ? `- 电子邮箱：${c.email}` : '',
-    c.phone ? `- 联系电话：${c.phone}` : '',
-    c.country ? `- 所在地区：${c.country} ${c.region || ''}` : '',
-    c.source ? `- 获客来源：${c.source}` : '',
-    c.customer_type ? `- 客户类型：${c.customer_type}` : '',
-    c.self_type ? `- 客户自述：${c.self_type}` : '',
-    (c.products && c.products.length) ? `- 意向产品：${c.products.join(', ')}` : '',
-    c.packaging_material ? `- 包装物料：${c.packaging_material}` : '',
-    c.packaging_weight ? `- 包装重量：${c.packaging_weight}` : '',
-    c.packaging_speed ? `- 包装速度：${c.packaging_speed}` : '',
-    c.vacuum_need ? `- 真空需求：${c.vacuum_need}` : '',
-    c.automation_need ? `- 自动化需求：${c.automation_need}` : '',
-    c.purchase_timeline ? `- 预计购买时间：${c.purchase_timeline}` : '',
-    c.project_details ? `- 需求详情：${c.project_details}` : '',
-    `- 最近沟通：${latestLog ? `[${latestLog.log_date}] ${latestLog.notes}` : '首次建联，尚无沟通记录'}`
-  ].filter(Boolean).join('\n');
+    `客户姓名：${c.name || '未提供'}`,
+    `公司名称：${c.company || '未提供'}`,
+    `官方网站：${c.website || '未提供'}`,
+    `电子邮箱：${c.email || '未提供'}`,
+    `联系电话：${c.phone || '未提供'}`,
+    `所在国家/地区：${c.country || '未提供'} ${c.region || ''}`,
+    `客户自述类型：${c.customer_type || '未提供'} / ${c.self_type || '未提供'}`,
+    `询盘来源渠道：${c.source || '未提供'}`,
+    `意向产品大类：${(c.products && c.products.length) ? c.products.join(', ') : '未提供'}`,
+    `具体包装物料：${c.packaging_material || '未提供'}`,
+    `包装重量规格：${c.packaging_weight || '未提供'}`,
+    `目标包装产能：${c.packaging_speed || '未提供'}`,
+    `项目需求详情：${c.project_details || '未提供'}`
+  ].join('\n');
 
   const promptText = `你是漳州佳龙科技有限公司（英文：Zhangzhou Jialong Technology Co., Ltd.）的资深海外销售顾问。
 
@@ -1806,22 +1802,32 @@ async function aiCompanyResearch(id) {
     c.project_details ? `- 需求描述：${c.project_details}` : ''
   ].filter(Boolean).join('\n');
 
-  const promptText = `你是漳州佳龙科技有限公司的 B2B 市场情报分析师，我司主营大型工业包装机械，服务全球 60+ 国家的食品、农业、饲料、化工等行业客户。
+  const promptText = `核心纪律：
+你是漳州佳龙科技（主营工业包装机械）的高级 B2B 商业情报分析师。
+必须永久保持客观、冷静、纯数据导向的分析风格。严禁主观臆断、系统打分或根据概率猜测客户意向。任何无法从已知线索中推导的信息，必须明确写明“公开数据缺失”。绝对禁止使用任何 Markdown 符号（如 **、# 等），仅使用数字序号和破折号排版。
 
-请基于以下询盘线索，对该潜在采购商进行深度商业推理与价值评估，帮助销售团队快速判断跟进优先级。
-
-【询盘线索数据】
+【已知客户结构化数据】
 ${ctxData}
 
-请按以下 4 个维度输出分析报告（客观冷静，总字数控制在 250 字内，禁止 Markdown，不编造信息）：
+请执行以下标准化数据侦察，并按规定格式输出纯文本报告：
 
-1.【企业画像】基于公司名、邮箱域名、电话区号、官网等线索，推断其行业定位、规模层级（小型作坊/中型工厂/大型企业/贸易商），以及在 ${c.country || '目标市场'} 的市场地位。
+1. 实体核验与风险排查 (Entity & Risk)
+- 企业性质判定：检索官网、邮箱后缀或公司名，判定其属于“终端生产工厂”、“设备经销商”、“贸易公司”还是“个人/无实体”。
+- 异常信号警报：客观指出线索中的冲突点（例：邮箱域名与公司名不符、国家区号与物理地址冲突、使用免费公共邮箱等），若无明显异常则回复“未见明显底层数据冲突”。
 
-2.【需求适配度】结合其包装物料（${c.packaging_material || '未知'}）、规格（${c.packaging_weight || '未知'}）、产能（${c.packaging_speed || '未知'}）需求，判断佳龙哪款机型最适合推荐，并说明适配原因。
+2. 行业定位与工业场景 (Industry Context)
+- 提取并分类：根据客户公司名或包装物料，将其归类至具体工业领域（如：食品加工、农产品/粮食加工、化工产品、海鲜加工等）。
+- 规模印记：检索公开渠道是否存在该公司的“factory”、“production line”、“import”等工业扩张或贸易活动的客观提及记录。
 
-3.【决策链判断】基于联系人姓名格式、询盘措辞专业度、来源渠道，推测其在组织内的职级与采购决策话语权。
+3. 数据化选型匹配 (Data-Driven Matching)
+- 将线索中的物料、规格、产能需求与佳龙设备（真空包装机、封口机、自动包装线等）进行技术参数对齐。
+- 指出当前选型最缺乏的关键数据点（例：袋型尺寸、车间空间、是否需要充氮气等），以便销售进行下一次精准提问。
 
-4.【极速转化策略】针对该客户的痛点与所在市场特性，给出 1-2 条直击要害的跟进建议，包括推荐切入角度和可能的成交障碍。`;
+4. 工业级开源情报指令 (Advanced OSINT)
+- 生成 3 条可直接复制的高阶 Google 搜索指令，用于挖掘深层工业背景。必须包含以下组合：
+  a) 寻找供应链/产品册： "公司名" filetype:pdf OR catalogue OR brochure
+  b) 寻找高管/决策人： site:linkedin.com/in "公司名" (purchasing OR manager OR owner)
+  c) 寻找工厂实景/进口记录： "公司名" factory OR packaging OR import`;
 
   const res = await callGemini(promptText);
 
