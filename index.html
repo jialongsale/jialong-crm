@@ -1562,7 +1562,7 @@ function getGeminiKey() {
 }
 
 async function callGemini(promptText, isJson = false) {
-  const key = getGeminiKey();
+  const key = await getGeminiKey();
   if (!key) return null;
   
   showLoading(true);
