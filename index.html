@@ -344,6 +344,27 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
   .col-hide { display:none; }
   .modal { max-height: 90vh; margin: 10px; width: calc(100% - 20px); }
   .drawer { width: 85vw; }
+  .task-row { flex-wrap: wrap !important; padding: 14px 12px !important; }
+  .task-row .tinfo { min-width: calc(100% - 50px); }
+  .task-row .tr-right {
+    width: 100% !important;
+    flex-direction: row !important;
+    border-left: none !important;
+    border-top: 1px dashed var(--border-l);
+    padding-left: 0 !important;
+    margin-left: 0 !important;
+    margin-top: 12px;
+    padding-top: 12px;
+    align-items: center !important;
+  }
+  .task-row .tr-right > div:first-child { align-items: flex-start !important; }
+  .task-row .tr-right > div:last-child {
+    flex-direction: row !important;
+    width: auto !important;
+    align-items: center !important;
+  }
+  .task-row .tr-right .more-dd-btn { width: auto !important; padding: 0 10px !important; }
+  .task-row .tr-right .ab { flex: none !important; width: 36px !important; }
 }
 #toast {
   position: fixed;
@@ -2397,12 +2418,12 @@ async function openDetail(id){
       </div>
     </div>
   </div>
-  <div class="modal-footer">
-  <button class="btn bg" onclick="aiGenerateScript('${c.id}')" style="color:var(--purple);border-color:rgba(175,82,222,.3);background:var(--purple-l);margin-right:auto;"><span style="font-size:14px">✨</span> 生成话术</button>
-  <button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()">📝 写日志</button>
-  <button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()">✓ 标记跟进</button>
-  <button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()">编辑</button>
-</div>
+  <div class="modal-footer" style="flex-wrap: wrap; gap: 8px;">
+    <button class="btn bg" onclick="aiGenerateScript('${c.id}')" style="color:var(--purple);border-color:rgba(175,82,222,.3);background:var(--purple-l); flex: 1 1 auto; justify-content: center; min-width: 100px;"><span style="font-size:14px">✨</span> 生成话术</button>
+    <button class="btn bg" onclick="openLog('${c.id}');document.getElementById('detail-ov').remove()" style="flex: 1 1 auto; justify-content: center; min-width: 80px;">📝 写日志</button>
+    <button class="btn bg" onclick="followUp('${c.id}');document.getElementById('detail-ov').remove()" style="flex: 1 1 auto; justify-content: center; min-width: 80px;">✓ 标记跟进</button>
+    <button class="btn bp" onclick="openEdit('${c.id}');document.getElementById('detail-ov').remove()" style="flex: 1 1 auto; justify-content: center; min-width: 80px;">编辑</button>
+  </div>
   </div>`;
   document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 
