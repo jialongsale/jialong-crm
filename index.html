@@ -1962,8 +1962,8 @@ function batchExport(filtered){
   const ids=[...selIds];
   const list=ids.length>0?ALL.filter(c=>ids.includes(c.id)):filtered;
   if(!list.length){toast('没有可导出的数据');return;}
-  const headers=['姓名','公司','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
-  const fields=['name','company','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
+  const headers=['姓名','公司','官网','邮箱','电话','来源','国家','地区','负责销售','状态','评级','标签','包装物料','包装重量','包装速度','真空需求','自动化需求','客户类型','客户性质','预计购买','项目详情','备注','创建时间'];
+  const fields=['name','company','website','email','phone','source','country','region','sales','status','rating','tags','packaging_material','packaging_weight','packaging_speed','vacuum_need','automation_need','customer_type','self_type','purchase_timeline','project_details','notes','custom_date'];
   const csvQ=v=>{const s=Array.isArray(v)?v.join(';'):String(v||'');return s.includes(',')||s.includes('"')||s.includes('\n')?`"${s.replace(/"/g,'""')}"`:`${s}`};
   const rows=[headers.join(','),...list.map(c=>fields.map(f=>csvQ(c[f]||'')).join(','))];
   const blob=new Blob(['\uFEFF'+rows.join('\n')],{type:'text/csv;charset=utf-8'});
@@ -1998,7 +1998,7 @@ async function openDetail(id){
   const hasCache = LOGS.some(l => l.customer_id === id);
 
   const wa=waLink(c.phone),ml=mailLink(c.email);
-  const fields=[['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],['真空需求',c.vacuum_need],['自动化',c.automation_need],['包装物料',c.packaging_material],['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],['创建时间',fmtF(cusDate(c))]].filter(([,v])=>v);
+  const fields=[['官网',c.website],['邮箱',c.email],['电话',c.phone],['国家',c.country],['地区',c.region],['来源',c.source],['客户类型',c.customer_type],['客户性质',c.self_type],['真空需求',c.vacuum_need],['自动化',c.automation_need],['包装物料',c.packaging_material],['包装重量',c.packaging_weight],['包装速度',c.packaging_speed],['预计购买',c.purchase_timeline],['创建时间',fmtF(cusDate(c))]].filter(([,v])=>v);
   
   document.getElementById('detail-ov')?.remove();
   const el=document.createElement('div');el.className='overlay';el.id='detail-ov';
@@ -2017,7 +2017,7 @@ async function openDetail(id){
       <div style="margin-left:auto;display:flex;gap:6px">${ml?`<a href="${ml}" target="_blank" class="btn bg" style="padding:5px 11px;font-size:12px;text-decoration:none">✉ 发邮件</a>`:''}${wa?`<a href="${wa}" target="_blank" class="btn bg" style="padding:5px 11px;font-size:12px;text-decoration:none;color:var(--success);border-color:rgba(52,199,89,.3)">💬 WhatsApp</a>`:''}</div>
     </div>
     ${c.tags?.length?`<div style="margin-bottom:12px">${tagChips(c.tags)}</div>`:''}
-    <div class="det-grid">${fields.map(([k,v])=>`<div class="di"><div class="dk">${k}</div><div class="dv">${esc(v)}</div></div>`).join('')}</div>
+    <div class="det-grid">${fields.map(([k,v])=>`<div class="di"><div class="dk">${k}</div><div class="dv">${k==='官网'?`<a href="${v.startsWith('http')?v:'https://'+v}" target="_blank" style="color:var(--brand);text-decoration:none;font-weight:600">🌐 ${esc(v)}</a>`:esc(v)}</div></div>`).join('')}</div>
     ${c.products?.length?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:5px">产品兴趣</div><div>${c.products.map(p=>`<span class="badge" style="background:var(--brand-l);color:var(--brand);margin:2px">${p}</span>`).join('')}</div></div>`:''}
     ${c.project_details?`<div style="margin-top:12px"><div class="dk" style="margin-bottom:4px">项目详情</div><div style="font-size:13px;background:var(--surface2);padding:10px;border-radius:var(--r);line-height:1.6">${esc(c.project_details)}</div></div>`:''}
     ${c.notes?`<div style="margin-top:10px"><div class="dk" style="margin-bottom:3px">备注</div><div style="font-size:13px;color:var(--ts)">${esc(c.notes)}</div></div>`:''}
@@ -2048,7 +2048,7 @@ async function openDetail(id){
 // ===== EDIT/ADD MODAL (TABS) =====
 function openAdd(){
   EID=null;
-  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',vacuum_need:'',automation_need:'',customer_type:'',self_type:'',purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,status:'',custom_date:T(),first_record_date:'',notes:'',rating:'',tags:[]};
+  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',vacuum_need:'',automation_need:'',customer_type:'',self_type:'',purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,status:'',custom_date:T(),first_record_date:'',notes:'',rating:'',tags:[],website:''};
   showFormModal('新建客户',0);
 }
 function openEdit(id){
@@ -2066,7 +2066,7 @@ function showFormModal(title,activeTab){
   <div class="modal-body">
     <div class="tab-panel ${activeTab===0?'on':''}" id="ft0">
       <div class="g2"><div class="fg"><label class="fl">客户姓名 <span style="color:var(--danger)">*</span></label><input class="fi" value="${esc(d.name)}" oninput="FD.name=this.value" placeholder="联系人姓名"/></div><div class="fg"><label class="fl">公司名称</label><input class="fi" value="${esc(d.company)}" oninput="FD.company=this.value"/></div></div>
-      <div class="g2"><div class="fg"><label class="fl">邮箱</label><input class="fi" type="email" value="${esc(d.email)}" oninput="FD.email=this.value"/></div><div class="fg"><label class="fl">电话</label><input class="fi" value="${esc(d.phone)}" oninput="FD.phone=this.value"/></div></div>
+      <div class="g3"><div class="fg"><label class="fl">邮箱</label><input class="fi" type="email" value="${esc(d.email)}" oninput="FD.email=this.value"/></div><div class="fg"><label class="fl">电话</label><input class="fi" value="${esc(d.phone)}" oninput="FD.phone=this.value"/></div><div class="fg"><label class="fl">官网</label><input class="fi" type="url" value="${esc(d.website||'')}" oninput="FD.website=this.value" placeholder="www.example.com"/></div></div>
       <div class="g3"><div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写"/></div><div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div></div>
       <div class="fg"><label class="fl">创建时间 <span style="color:var(--tt);font-weight:400;font-size:11px">（可修改，用于历史客户）</span></label><input class="fi" type="date" value="${esc(d.custom_date||T())}" onchange="FD.custom_date=this.value"/></div>
     </div>
@@ -2132,7 +2132,7 @@ function removeTagEdit(tag, el){
 
 async function saveCus(){
   if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
-  const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[]};
+  const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[],website:FD.website||''};
   if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
   
   showLoading(true);
@@ -2188,7 +2188,7 @@ async function doImp(){
   const raw=document.getElementById('imp-txt')?.value;if(!raw?.trim()){toast('请粘贴 CSV 数据');return;}
   const rows=parseCSV(raw);if(rows.length<2){toast('至少需要表头+一行数据');return;}
   const headers=rows[0].map(h=>h.replace(/^\uFEFF/,'').trim());
-  const map={姓名:'name',公司:'company',邮箱:'email',电话:'phone',来源:'source',国家:'country',地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',创建时间:'custom_date'};
+  const map={姓名:'name',公司:'company',官网:'website',邮箱:'email',电话:'phone',来源:'source',国家:'country',地区:'region',负责销售:'sales',状态:'status',包装物料:'packaging_material',包装重量:'packaging_weight',包装速度:'packaging_speed',真空需求:'vacuum_need',自动化需求:'automation_need',客户类型:'customer_type',客户性质:'self_type',预计购买:'purchase_timeline',项目详情:'project_details',备注:'notes',创建时间:'custom_date'};
   const data=[];
   for(let i=1;i<rows.length;i++){const vals=rows[i];const obj={products:[],tags:[],rating:''};headers.forEach((h,j)=>{if(map[h])obj[map[h]]=(vals[j]||'').trim();});if(!obj.name)continue;if(!obj.sales)obj.sales=CU;obj.custom_date=fixDate(obj.custom_date)||T();data.push(obj);}
   if(!data.length){toast('没有有效数据行');return;}
