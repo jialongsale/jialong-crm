@@ -1824,7 +1824,7 @@ async function aiCompanyResearch(id) {
     c.project_details ? `- 需求描述：${c.project_details}` : ''
   ].filter(Boolean).join('\n');
 
-  const promptText = const promptText = `【🚨 强制动作指令】
+  const promptText =`【🚨 强制动作指令】
 你现在的首要任务是背景调查！在你输出任何内容之前，你**必须立即调用 web_search 联网搜索工具**，使用目标公司名称 "${c.company || ''}" 以及联系人 "${c.name || ''}" 邮箱 "${c.email} || ''}" 电话 "${c.phone} || ''}" 作为关键词进行全网实时搜索！
 必须优先抓取 Zauba Corp, Justdial, LinkedIn, Tracxn , Facebook 等商业黄页或该国官方注册信息网站的真实数据。
 
