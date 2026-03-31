@@ -1561,11 +1561,11 @@ function getGeminiKey() {
 }
 
 // 2. 核心调用逻辑：增加【自动抗 429 限制】的重试功能
-async function callGemini(promptText, isJson = false, retryCount = 0) {
+async function callGemini(promptText, isJson = false) {
   const key = await getGeminiKey(); 
   if (!key) return null;
   
-  if (retryCount === 0) showLoading(true);
+  showLoading(true);
 
   try {
     const res = await fetch('https://api.moonshot.cn/v1/chat/completions', {
@@ -1582,16 +1582,9 @@ async function callGemini(promptText, isJson = false, retryCount = 0) {
       })
     });
 
-    // 处理频率限制 (429)
+    // 客观拦截 429 状态码并阻断死循环
     if (res.status === 429) {
-      if (retryCount < 3) { // 最多重试 3 次
-        const waitTime = (retryCount + 1) * 3000; // 递增等待时间：3s, 6s, 9s
-        toast(`⚠️ 触发 Kimi 频率限制，${waitTime/1000}秒后自动重试...`);
-        await new Promise(r => setTimeout(r, waitTime));
-        return callGemini(promptText, isJson, retryCount + 1);
-      } else {
-        throw new Error('Kimi 引擎太忙了，请等 1 分钟后再试');
-      }
+      throw new Error('API 并发超限 (429)。由于当前账户并发配额过低，请等待 1 分钟后再试，或在 Kimi 开放平台充值以解锁高并发额度。');
     }
 
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
@@ -1608,7 +1601,8 @@ async function callGemini(promptText, isJson = false, retryCount = 0) {
 
   } catch (err) {
     showLoading(false);
-    toast('⚠️背调中断: ' + err.message);
+    // 将错误信息直接输出到提示框，便于销售人员明确知道需要等待
+    toast('⚠️ 终止: ' + err.message, 4000); 
     return null;
   }
 }
