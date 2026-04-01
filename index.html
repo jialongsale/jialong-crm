@@ -600,15 +600,21 @@ function isNoResp(c){
   if(DONE_STATUSES.includes(c.status)||!c.last_follow_date||(c.follow_stage||0)===0)return false;
   return addD(c.last_follow_date,15)<T();
 }
-function isDup(c,skip=null){
+function isDup(c, skip=null){
   const cleanPhone = p => p ? p.replace(/\D/g, '') : '';
   const p1 = cleanPhone(c.phone);
-  return ALL.some(x=>{
+  const e1 = c.email ? c.email.trim().toLowerCase() : '';
+
+  return ALL.some(x => {
     if(x.id === skip) return false;
+    
     const p2 = cleanPhone(x.phone);
-    const nameMatch = c.name && x.name === c.name;
+    const e2 = x.email ? x.email.trim().toLowerCase() : '';
+    
     const phoneMatch = p1.length > 5 && p1 === p2;
-    return nameMatch || phoneMatch;
+    const emailMatch = e1.length > 0 && e1 === e2;
+    
+    return phoneMatch || emailMatch;
   });
 }
 function nfi(c){
@@ -2548,7 +2554,7 @@ function removeTagEdit(tag, el){
 async function saveCus(){
   if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
   const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[],website:FD.website||''};
-  if(isDup({name:p.name,phone:p.phone},EID)&&!confirm('检测到重复客户（相同姓名或电话），是否继续？'))return;
+  if(isDup({phone:p.phone, email:p.email}, EID) && !confirm('检测到重复客户（已存在相同的 电话 或 邮箱），是否继续保存？')) return;
   
   showLoading(true);
   const{error}=EID?await db.from('customers').update(p).eq('id',EID):await db.from('customers').insert([p]);
