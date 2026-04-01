@@ -1093,6 +1093,7 @@ function renderCus(){
     <span style="font-size:12px;font-weight:600;color:var(--warn)">选 ${selIds.size} 条</span>
     <button onclick="batchStatus()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--warn);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">改状态</button>
     <button onclick="batchProducts()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--purple);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">📦产品</button>
+    <button onclick="batchCtype()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--teal);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">🏢类型</button>
     <button onclick="batchTransfer()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--brand);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">👤转移</button>
     <button onclick="batchDel()" style="padding:4px 8px;border-radius:6px;border:none;background:var(--danger);color:#fff;font-size:11px;font-weight:600;cursor:pointer;font-family:inherit">🗑删除</button>
     <button onclick="selIds.clear();render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--ts);font-size:11px;cursor:pointer;font-family:inherit">✕取消</button>
@@ -2314,9 +2315,6 @@ async function executeDelete(id) {
   await load();
 }
 
-function delCus(id) { openDeleteConfirmModal(id); }
-function batchDel() { openDeleteConfirmModal(null); }
-
 async function batchProducts(){
   const el=document.createElement('div');el.className='overlay';el.id='bp-ov';
   el.innerHTML=`<div class="modal msm"><div class="modal-header"><div class="modal-top"><div class="modal-title">📦 批量改产品类型（${selIds.size}条）</div><button class="modal-close" onclick="document.getElementById('bp-ov').remove()">×</button></div></div><div class="simple-body"><div class="fg"><label class="fl">选择产品类型（可多选）</label><div class="prod-tags" id="bp-tags">${PRODUCTS.map(p=>`<button type="button" class="ptag" onclick="this.classList.toggle('on')">${p}</button>`).join('')}</div></div><div style="font-size:12px;color:var(--tt)">⚠ 会替换选中客户的产品类型</div></div><div class="modal-footer"><button class="btn bg" onclick="document.getElementById('bp-ov').remove()">取消</button><button class="btn bp" onclick="confirmBatchProducts()">确认</button></div></div>`;
@@ -2874,8 +2872,9 @@ function renderFbAds(){
     <td style="text-align:right;font-weight:700;color:${d.leads===0?'var(--danger)':'var(--brand)'}">${d.leads>0 ? '$'+d.cpl.toFixed(2) : '⚠️ 无效消耗'}</td>
   </tr>`).join('');
 
-  const allFbSel = src.length > 0 && src.every(d => fbSelIds.has(d.id));
-  const rawRowsHtml = rawList.slice(0,100).map(d => {
+  const currentRawList = rawList.slice(0, 100);
+  const allFbSel = currentRawList.length > 0 && currentRawList.every(d => fbSelIds.has(d.id));
+  const rawRowsHtml = currentRawList.map(d => {
     let warning = ''; let wColor = 'var(--ts)';
     if(d.frequency >= 3.5) { warning = '⚠️频次极高'; wColor = 'var(--danger)'; }
     else if(d.frequency >= 2.5) { warning = '注意频次'; wColor = 'var(--warn)'; }
