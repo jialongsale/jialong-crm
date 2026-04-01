@@ -1202,9 +1202,17 @@ function renderTasks() {
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
   const cntOverdue = rawTasks.filter(c => c.next_follow_date < tDate && c.follow_stage > 0).length;
-  const cntToday = rawTasks.filter(c => c.next_follow_date === tDate && c.follow_stage > 0).length;
-  const cntNew = rawTasks.filter(c => (c.follow_stage || 0) === 0).length;
-  const cntFuture = rawTasks.filter(c => c.next_follow_date > tDate && c.next_follow_date <= futureDate && c.follow_stage > 0).length;
+  const cntToday = rawTasks.filter(c => {
+    const isStageZero = (c.follow_stage || 0) === 0;
+    const isPureNew = isStageZero && diffD(cusDate(c)) > -7;
+    return (c.next_follow_date === tDate && !isStageZero) || isPureNew;
+  }).length;
+  const cntNew = rawTasks.filter(c => {
+    const isStageZero = (c.follow_stage || 0) === 0;
+    const isRecycled = isStageZero && diffD(cusDate(c)) <= -7;
+    return isRecycled;
+  }).length;
+  const cntFuture = rawTasks.filter(c => c.next_follow_date > tDate && c.next_follow_date <= futureDate && c.follow_stage > 0).length;
 
   let filtered = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
@@ -1217,14 +1225,9 @@ function renderTasks() {
     const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isStageZero;
 
     if (window.fTaskTab === 'overdue' && !isOverdue) return false;
-    if (window.fTaskTab === 'today' && !isToday) return false;
-    if (window.fTaskTab === 'new' && !isStageZero) return false;
-    if (window.fTaskTab === 'future' && !isFuture) return false;
-
-    if (window.fTaskTab === 'new') {
-      if (window.fTaskType === 'pure' && !isPureNew) return false;
-      if (window.fTaskType === 'recycled' && !isRecycled) return false;
-    }
+    if (window.fTaskTab === 'today' && !(isToday || isPureNew)) return false;
+    if (window.fTaskTab === 'new' && !isRecycled) return false;
+    if (window.fTaskTab === 'future' && !isFuture) return false;
 
     if (window.fTaskRating !== '全部' && (c.rating || '') !== window.fTaskRating) return false;
     if (window.fTaskCountry !== '全部' && c.country !== window.fTaskCountry) return false;
@@ -1271,21 +1274,15 @@ function renderTasks() {
     </div>
   `;
 
-  const typeFilterHtml = window.fTaskTab === 'new' ? `
-    <select class="fsel" onchange="window.fTaskType=this.value;render()">
-      <option value="all" ${window.fTaskType==='all'?'selected':''}>全部首跟类别</option>
-      <option value="pure" ${window.fTaskType==='pure'?'selected':''}>🆕 仅看纯新线索</option>
-      <option value="recycled" ${window.fTaskType==='recycled'?'selected':''}>♻️ 仅看公海捞回</option>
-    </select>
-  ` : '';
+  const typeFilterHtml = '';
 
-  const headerHtml = `
-  <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
-    ${tabCard('overdue', cntOverdue, '逾期未跟', '🔴', 'danger', 'danger-l')}
-    ${tabCard('today', cntToday, '今日任务', '🟠', 'warn', 'warn-l')}
-    ${tabCard('new', cntNew, '待首次跟进', '🔵', 'brand', 'brand-l')}
-    ${tabCard('future', cntFuture, '未来三天', '⚪', 'ts', 'surface2')}
-  </div>
+  const headerHtml = `
+  <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
+    ${tabCard('overdue', cntOverdue, '逾期未跟', '🔴', 'danger', 'danger-l')}
+    ${tabCard('today', cntToday, '今日任务', '🟠', 'warn', 'warn-l')}
+    ${tabCard('new', cntNew, '公海捞回', '🔵', 'brand', 'brand-l')}
+    ${tabCard('future', cntFuture, '未来三天', '⚪', 'ts', 'surface2')}
+  </div>
   <div class="fsec">
     <div class="frow">
       <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,600)" placeholder="搜姓名/公司/电话/备注..."/></div>
