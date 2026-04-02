@@ -1372,7 +1372,7 @@ function renderTasks() {
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; font-weight:700; color:var(--ts); margin-right:4px;">跟进阶段:</span>
         <div onclick="window.fTaskStage='all';render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
-        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次破冰 (${stageCounts['0']})</div>
+        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次跟进 (${stageCounts['0']})</div>
         <div onclick="window.fTaskStage='1';render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
         <div onclick="window.fTaskStage='2';render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
         <div onclick="window.fTaskStage='3';render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
@@ -1420,7 +1420,7 @@ function renderTasks() {
     
     let stageBadge = '';
     const s = c.follow_stage || 0;
-    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次破冰</span>`;
+    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次跟进</span>`;
     else if (s == 1) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,149,0,.2)">📞 3天回访</span>`;
     else if (s == 2) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,102,204,.2)">💬 7天回访</span>`;
     else if (s == 3) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(175,82,222,.2)">⏳ 15天回访</span>`;
