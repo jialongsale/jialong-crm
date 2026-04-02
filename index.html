@@ -1360,7 +1360,7 @@ function renderTasks() {
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; font-weight:700; color:var(--ts); margin-right:4px;">跟进阶段:</span>
         <div onclick="window.fTaskStage='all';render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
-        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次破冰 (${stageCounts['0']})</div>
+        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次跟进 (${stageCounts['0']})</div>
         <div onclick="window.fTaskStage='1';render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
         <div onclick="window.fTaskStage='2';render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
         <div onclick="window.fTaskStage='3';render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
