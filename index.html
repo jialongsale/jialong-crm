@@ -973,6 +973,8 @@ function renderDashChart(){
 
 // ===== CUSTOMERS =====
 function renderCus(){
+  window.fAiSort = window.fAiSort || '默认排序';
+
   let filtered=CUS.filter(c=>{
     const q=fS.toLowerCase();
     return(!q||c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.phone?.includes(q)||c.country?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||(c.tags||[]).some(t=>t.toLowerCase().includes(q)))
@@ -985,11 +987,15 @@ function renderCus(){
       &&(!fTag||(c.tags||[]).includes(fTag))
       &&(!fDup||isDup(c,c.id));
   });
+  
   filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
-  if (window.fAiSort === 'AI分最高') {
-    filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
-  }
-  window._filtered=filtered;
+  
+  // AI 评分排序逻辑
+  if (window.fAiSort === 'AI分最高') {
+    filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+  }
+  
+  window._filtered=filtered;
   const total=filtered.length;
   const totalPages=Math.max(1,Math.ceil(total/cusPageSize));
   if(cusPage>totalPages)cusPage=totalPages;
@@ -1012,15 +1018,15 @@ function renderCus(){
         </div>
         <div style="font-size:11px;color:var(--tt);margin-top:1px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.company)}">${esc(c.company)}</div>
       </td>
-     <td class="col-hide">
-  <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
-    <div style="display:flex;align-items:center;gap:6px">
-      ${c.rating ? ratingBadge(c.rating) : '<span style="color:var(--border);font-size:12px">—</span>'}
-      ${renderAiScore(c.ai_score, c.ai_score_reason)}
-    </div>
-    ${c.tags && c.tags.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;max-width:160px">${tagChips((c.tags||[]).slice(0,4))}</div>` : ''}
-  </div>
-</td>
+      <td class="col-hide">
+        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+          <div style="display:flex;align-items:center;gap:6px">
+            ${c.rating ? ratingBadge(c.rating) : '<span style="color:var(--border);font-size:12px">—</span>'}
+            ${renderAiScore(c.ai_score, c.ai_score_reason)}
+          </div>
+          ${c.tags && c.tags.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;max-width:160px">${tagChips((c.tags||[]).slice(0,4))}</div>` : ''}
+        </div>
+      </td>
       <td class="col-hide" style="font-size:12px;white-space:nowrap">
         ${c.email?`<div style="color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:4px" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')"><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block" title="${esc(c.email)}">✉ ${esc(c.email)}</span>${ml?`<button class="mail-btn" onclick="event.stopPropagation();window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}</div>`:''}
         ${c.phone?`<div style="color:var(--ts);cursor:pointer;display:flex;align-items:center;gap:4px;margin-top:2px" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')"><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block" title="${esc(c.phone)}">📞 ${esc(c.phone)}</span>${wa?`<button class="wa-btn" onclick="event.stopPropagation();window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''}</div>`:''}
@@ -1081,37 +1087,18 @@ function renderCus(){
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button></div>`;
 
-  window.fAiSort = window.fAiSort || '默认排序';
-
-  return tbHtml('客户列表',`共 ${total} 条`,`<button class="btn bg" onclick="openBatchScoreModal()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🤖 批量AI打分</button> <button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  return tbHtml('客户列表',`共 ${total} 条`,`<button class="btn bg" onclick="openBatchScoreModal()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🤖 批量AI打分</button> <button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
   <div class="fsec">
     <div class="frow">
       <div class="sbox"><span style="color:var(--tt)">🔍</span><input id="cus-search" value="${esc(fS)}" oninput="handleSearch(this.value, 'cus')" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
       ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
       <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
       
-      <select class="fsel" onchange="window.fAiSort=this.value;cusPage=1;render()" style="color:var(--danger);font-weight:600;">
+      <select class="fsel" onchange="window.fAiSort=this.value;cusPage=1;render()" style="color:var(--brand);font-weight:600;background:var(--brand-l);border-color:var(--brand)">
         <option value="默认排序" ${window.fAiSort==='默认排序'?'selected':''}>默认排序</option>
-        <option value="AI分最高" ${window.fAiSort==='AI分最高'?'selected':''}>🔥 AI 评分最高优先</option>
+        <option value="AI分最高" ${window.fAiSort==='AI分最高'?'selected':''}>🔥 AI分优先</option>
       </select>
-      
-      <button class="more-filter-btn" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
-      <button class="more-filter-btn" onclick="openTagManager()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🏷️ 标签管理</button>
-    </div>
-    ```
 
-**修改点 2：应用排序规则**
-在 `renderCus()` 的顶部，找到 `filtered = filterByDate(filtered,fDateRange,fDateStart,fDateEnd);` 这句话（大概 564 行）。
-在它**下面**加入排序代码：
-```javascript
-  if (window.fAiSort === 'AI分最高') {
-    filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
-  }
-  <div class="fsec">
-    <div class="frow">
-      <div class="sbox"><span style="color:var(--tt)">🔍</span><input id="cus-search" value="${esc(fS)}" oninput="handleSearch(this.value, 'cus')" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
-      ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
-      <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
       <select class="fsel" onchange="fRating=this.value;cusPage=1;render()"><option value="全部">全部评级</option>${RATINGS.map(r=>`<option value="${r}" ${fRating===r?'selected':''}>${r}级</option>`).join('')}</select>
       <button class="more-filter-btn" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
       <button class="more-filter-btn" onclick="openTagManager()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🏷️ 标签管理</button>
