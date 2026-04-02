@@ -3239,7 +3239,14 @@ function renderAiScore(score, reason) {
   if (score >= 80) { cls = 'ai-score-S'; icon = '🔥'; }
   else if (score >= 60) { cls = 'ai-score-A'; icon = '🟢'; }
   else if (score >= 40) { cls = 'ai-score-B'; icon = '🟡'; }
-  return `<span class="ai-score-badge ${cls}" title="${esc(reason||'暂无理由')}">${icon} ${score}分</span>`;
+  
+  const safeReason = esc(reason || '暂无数据');
+  return `<span class="ai-score-badge ${cls}" 
+                data-reason="${safeReason}" 
+                onclick="alert('🤖 AI 打分理由：\\n\\n' + this.getAttribute('data-reason')); event.stopPropagation();" 
+                title="点击查看打分理由">
+            ${icon} ${score}分
+          </span>`;
 }
 
 function openBatchScoreModal() {
