@@ -1227,6 +1227,7 @@ function renderTasks() {
   const tDate = T();
   const futureDate = addD(tDate, 3);
   
+  // 1. 获取全局的基础待办任务
   const rawTasks = ALL.filter(c => {
     if(DONE_STATUSES.includes(c.status)) return false;
     if((c.follow_stage||0) >= 5) return false;
@@ -1238,6 +1239,7 @@ function renderTasks() {
   const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
+  // 2. 计算顶部四个大 Tab 的全局数量 (固定不变)
   const cntOverdue = rawTasks.filter(c => c.next_follow_date < tDate && c.follow_stage > 0).length;
   const cntToday = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
@@ -1251,7 +1253,8 @@ function renderTasks() {
   }).length;
   const cntFuture = rawTasks.filter(c => c.next_follow_date > tDate && c.next_follow_date <= futureDate && c.follow_stage > 0).length;
 
-  let filtered = rawTasks.filter(c => {
+  // 3. 核心修复：先过滤出“当前页面/搜索条件”下的基础任务池
+  const baseTasksForCounts = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
     const daysSinceCreated = diffD(cusDate(c));
     const isRecycled = isStageZero && daysSinceCreated <= -7;
@@ -1261,18 +1264,18 @@ function renderTasks() {
     const isToday = c.next_follow_date === tDate && !isStageZero;
     const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isStageZero;
 
+    // 过滤：大 Tab
     if (window.fTaskTab === 'overdue' && !isOverdue) return false;
     if (window.fTaskTab === 'today' && !(isToday || isPureNew)) return false;
     if (window.fTaskTab === 'new' && !isRecycled) return false;
     if (window.fTaskTab === 'future' && !isFuture) return false;
 
+    // 过滤：各种筛选条件
     if (window.fTaskRating !== '全部' && (c.rating || '') !== window.fTaskRating) return false;
     if (window.fTaskCountry !== '全部' && c.country !== window.fTaskCountry) return false;
     if (window.fTaskTag !== '全部' && !(c.tags||[]).includes(window.fTaskTag)) return false;
 
-    const currentStage = (c.follow_stage || 0).toString();
-    if (window.fTaskStage !== 'all' && currentStage !== window.fTaskStage) return false;
-
+    // 过滤：搜索框
     const q = window.fTaskSearch.toLowerCase();
     if (q) {
       const match = (c.name||'').toLowerCase().includes(q) ||
@@ -1282,9 +1285,26 @@ function renderTasks() {
                     (c.email||'').toLowerCase().includes(q);
       if (!match) return false;
     }
+    return true; // ⚠️ 注意：这里不进行 fTaskStage 的过滤！
+  });
+
+  // 4. ✨ 动态计算：只在当前页面任务池 (baseTasksForCounts) 里计算各阶段的数量
+  const stageCounts = {
+    '0': baseTasksForCounts.filter(c => (c.follow_stage||0)===0).length,
+    '1': baseTasksForCounts.filter(c => c.follow_stage===1).length,
+    '2': baseTasksForCounts.filter(c => c.follow_stage===2).length,
+    '3': baseTasksForCounts.filter(c => c.follow_stage===3).length,
+    '4': baseTasksForCounts.filter(c => c.follow_stage===4).length,
+  };
+
+  // 5. 最后一步：叠加用户点击的阶段胶囊 (fTaskStage)，得出真正要渲染的列表
+  let filtered = baseTasksForCounts.filter(c => {
+    const currentStage = (c.follow_stage || 0).toString();
+    if (window.fTaskStage !== 'all' && currentStage !== window.fTaskStage) return false;
     return true;
   });
 
+  // 排序逻辑
   filtered.sort((a, b) => {
     if (window.fTaskSort === 'rating') {
       const rm = {'A':1, 'B':2, 'C':3, 'D':4, '':5};
@@ -1308,19 +1328,11 @@ function renderTasks() {
   window._currentTaskIds = filtered.map(c => c.id);
 
   const tabCard = (id, count, label, icon, color, bgL) => `
-    <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.taskSelIds.clear();window.fTaskTab='${id}';window.fTaskType='all';render()">
+    <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.taskSelIds.clear();window.fTaskTab='${id}';window.fTaskType='all';window.fTaskStage='all';render()">
       <div style="font-size:22px; font-weight:700; color:var(--${color}); line-height:1">${count}</div>
       <div style="font-size:12px; color:var(--${window.fTaskTab===id?color:'ts'}); font-weight:600; margin-top:6px;">${icon} ${label}</div>
     </div>
   `;
-
-  const stageCounts = {
-    '0': rawTasks.filter(c => (c.follow_stage||0)===0).length,
-    '1': rawTasks.filter(c => c.follow_stage===1).length,
-    '2': rawTasks.filter(c => c.follow_stage===2).length,
-    '3': rawTasks.filter(c => c.follow_stage===3).length,
-    '4': rawTasks.filter(c => c.follow_stage===4).length,
-  };
 
   const headerHtml = `
   <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
@@ -1360,7 +1372,7 @@ function renderTasks() {
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; font-weight:700; color:var(--ts); margin-right:4px;">跟进阶段:</span>
         <div onclick="window.fTaskStage='all';render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
-        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次跟进 (${stageCounts['0']})</div>
+        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次破冰 (${stageCounts['0']})</div>
         <div onclick="window.fTaskStage='1';render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
         <div onclick="window.fTaskStage='2';render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
         <div onclick="window.fTaskStage='3';render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
@@ -1371,7 +1383,7 @@ function renderTasks() {
   `;
 
   if(!filtered.length) {
-     return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">✓</div><div class="empty-ttl">当前无待办任务</div><div style="font-size:13px; color:var(--ts)">所有跟进均已按计划完成</div></div></div>`;
+     return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">✓</div><div class="empty-ttl">当前区间无任务</div><div style="font-size:13px; color:var(--ts)">您可以切换顶部的任务面板或跟进阶段查看</div></div></div>`;
   }
 
   const batchActionBar = window.taskSelIds.size > 0 ? `
@@ -1406,7 +1418,6 @@ function renderTasks() {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--danger); background:var(--danger-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">新线索</span>';
     }
     
-    // 生成彩色的阶段微型标签
     let stageBadge = '';
     const s = c.follow_stage || 0;
     if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次破冰</span>`;
