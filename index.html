@@ -986,7 +986,10 @@ function renderCus(){
       &&(!fDup||isDup(c,c.id));
   });
   filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
-  window._filtered=filtered;
+  if (window.fAiSort === 'AI分最高') {
+    filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+  }
+  window._filtered=filtered;
   const total=filtered.length;
   const totalPages=Math.max(1,Math.ceil(total/cusPageSize));
   if(cusPage>totalPages)cusPage=totalPages;
@@ -1078,10 +1081,9 @@ function renderCus(){
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button></div>`;
 
-  return tbHtml('客户列表',`共 ${total} 条`,`// 注意多了一个按 AI 评分排序的下拉框，以及顶部的 AI 批量打分按钮
-window.fAiSort = window.fAiSort || '默认排序';
+  window.fAiSort = window.fAiSort || '默认排序';
 
-return tbHtml('客户列表',`共 ${total} 条`,`<button class="btn bg" onclick="openBatchScoreModal()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🤖 批量AI打分</button> <button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  return tbHtml('客户列表',`共 ${total} 条`,`<button class="btn bg" onclick="openBatchScoreModal()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🤖 批量AI打分</button> <button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
   <div class="fsec">
     <div class="frow">
       <div class="sbox"><span style="color:var(--tt)">🔍</span><input id="cus-search" value="${esc(fS)}" oninput="handleSearch(this.value, 'cus')" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
