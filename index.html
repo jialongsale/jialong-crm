@@ -3343,24 +3343,40 @@ async function executeBatchScore() {
     const batchData = batch.map(c => ({
       id: c.id,
       email: c.email,
+      phone: c.phone,
+      country: c.country,
+      source: c.source,
       customer_type: c.customer_type,
+      self_type: c.self_type, 
+      automation_need: c.automation_need,
+      purchase_timeline: c.purchase_timeline,
       packaging_material: c.packaging_material,
       packaging_weight: c.packaging_weight,
       packaging_speed: c.packaging_speed,
       project_details: c.project_details
     }));
+    const prompt = `你是佳龙包装机械的资深外贸销售总监，正在评估系统里的线索质量（0-100分）。
+注意：客户填写的参数多为英文（如 farm, feed, 25kg, within 1 month），请准确识别其商业价值。
+请严格按照以下 4 个维度累计加分（总分100分）：
 
-    const prompt = `你是佳龙 CRM 的 AI 智能打分器，专门评估大型包装机械的 B2B 询盘质量（0-100分）。
-请根据以下维度打分：
-1. 邮箱(30分)：企业邮箱满分，gmail等个人邮箱10分，无邮箱0分。
-2. 需求精准度(50分)：综合评估【包装物料、重量、速度】选项以及【project_details 项目详情】文本。
- - 如果提供了具体的参数，或在项目详情中清晰描述了业务场景、产品需求，给 40-50 分；
- - 如果选项不全，但在项目详情中有一定的文字补充，给 20-30 分；
- - 如果选项全是"无/待确认"，且项目详情为空或只有无意义字符（如"hi"），给 0 分。
-3. 身份(20分)：终端客户/经销商给20分，其他给5分。
+1. 🎯 需求与紧迫性 (最高 40分)
+ - 明确提供了【物料、重量、速度、自动化】中至少2项具体参数：加 20 分。全填"待确认/无"得 0 分。
+ - purchase_timeline(预计购买)：如果是 "within 1 month" 或 "ASAP" 等近期急需的，直接额外加 20 分！如果是 3-6个月 加 10 分。未知 0 分。
 
-请严格返回一个纯 JSON 数组格式（禁止包含 markdown 代码块符号如 \`\`\`json ），如下例：
-[{"id": "客户id", "ai_score": 85, "ai_score_reason": "企业邮箱(+30) 明确需要25kg大米包装(+50) 身份未知(+5)"}]
+2. 🏢 客户身份资质 (最高 30分)
+ - customer_type 或 self_type 包含 farm, factory, end-user, dealer, manufacturer 等实体性质：加 15 分。
+ - 邮箱是企业专属域名（非gmail/yahoo等免费邮箱）：加 15 分。如果是免费邮箱但有全名：加 5 分。
+
+3. 📞 触达通道质量 (最高 20分)
+ - 留下了带有国际区号的完整电话号码（可加WhatsApp）：加 15 分。
+ - 有邮箱：加 5 分。
+
+4. 🌍 市场与来源 (最高 10分)
+ - 来源是"官网"或"高质量展会"：加 5 分。
+ - 国家属于包装机械高需求市场（如南亚、东南亚、非洲、南美、中东等发展中国家）：加 5 分。
+
+请严格返回纯 JSON 数组格式（禁止使用 \`\`\`json 等 Markdown 代码块符号），格式如下：
+[{"id": "客户id", "ai_score": 90, "ai_score_reason": "参数齐全且急需1个月内购买(+40) Farm实体(+15) 留有电话可WA(+15) 南亚高潜市场(+5)"}]
 
 待打分客户数组：
 ${JSON.stringify(batchData)}`;
