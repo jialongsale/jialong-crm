@@ -3233,6 +3233,43 @@ ${esc(text)}
 let isScoring = false;
 let cancelScoring = false;
 
+window.showAiReasonModal = function(btn) {
+  const score = Number(btn.getAttribute('data-score'));
+  const reason = btn.getAttribute('data-reason');
+  
+  document.getElementById('ai-reason-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'ai-reason-ov';
+  el.style.zIndex = '4000'; 
+
+  let colorVar = 'ts'; let icon = '⚪'; let title = '低意向线索 (C/D级)';
+  if (score >= 80) { colorVar = 'danger'; icon = '🔥'; title = '极高优客户 (S级)'; }
+  else if (score >= 60) { colorVar = 'success'; icon = '🟢'; title = '优质客户 (A级)'; }
+  else if (score >= 40) { colorVar = 'warn'; icon = '🟡'; title = '普通客户 (B级)'; }
+
+  el.innerHTML = `
+    <div class="modal msm" style="max-width:340px; box-shadow:0 20px 60px rgba(0,0,0,0.15);">
+      <div class="modal-header" style="border-bottom:none; padding-bottom:10px;">
+        <div class="modal-top" style="margin-bottom:0">
+          <div class="modal-title" style="display:flex; align-items:center; gap:10px;">
+            <span style="font-size:28px; font-weight:800; color:var(--${colorVar}); line-height:1">${icon} ${score}</span>
+            <span style="font-size:13px; font-weight:600; color:var(--tp); margin-top:8px">${title}</span>
+          </div>
+          <button class="modal-close" onclick="document.getElementById('ai-reason-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="padding:0 24px 24px;">
+        <div style="font-size:11px; font-weight:700; color:var(--tt); margin-bottom:8px; letter-spacing:0.5px">🤖 AI 判定理由</div>
+        <div style="font-size:13px; color:var(--tp); line-height:1.6; background:var(--surface2); padding:14px; border-radius:var(--r2); border:1px solid var(--border-l);">
+          ${reason}
+        </div>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if(e.target === el) el.remove() });
+};
+
 function renderAiScore(score, reason) {
   if (score === null || score === undefined) return '';
   let cls = 'ai-score-C'; let icon = '⚪';
@@ -3242,9 +3279,9 @@ function renderAiScore(score, reason) {
   
   const safeReason = esc(reason || '暂无数据');
   return `<span class="ai-score-badge ${cls}" 
-                data-reason="${safeReason}" 
-                onclick="alert('🤖 AI 打分理由：\\n\\n' + this.getAttribute('data-reason')); event.stopPropagation();" 
-                title="点击查看打分理由">
+                data-score="${score}"
+                data-reason="${safeReason}"
+                onclick="event.stopPropagation(); showAiReasonModal(this)">
             ${icon} ${score}分
           </span>`;
 }
