@@ -411,6 +411,23 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
   visibility: visible;
   transform: translate(-50%, 0);
 }
+/* AI 打分体系样式 */
+.ai-score-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 2px 6px;
+  border-radius: 6px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: help;
+  border: 1px solid;
+  white-space: nowrap;
+}
+.ai-score-S { background: var(--danger-l); color: var(--danger); border-color: rgba(255,59,48,.2); } /* 80-100分 */
+.ai-score-A { background: var(--success-l); color: var(--success); border-color: rgba(52,199,89,.2); } /* 60-79分 */
+.ai-score-B { background: var(--warn-l); color: var(--warn); border-color: rgba(255,149,0,.2); } /* 40-59分 */
+.ai-score-C { background: var(--surface2); color: var(--ts); border-color: var(--border); } /* 0-39分 */
 </style>
 </head>
 <body>
@@ -992,12 +1009,15 @@ function renderCus(){
         </div>
         <div style="font-size:11px;color:var(--tt);margin-top:1px;max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(c.company)}">${esc(c.company)}</div>
       </td>
-      <td class="col-hide">
-        <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
-          ${c.rating ? ratingBadge(c.rating) : '<span style="color:var(--border);font-size:12px">—</span>'}
-          ${c.tags && c.tags.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;max-width:160px">${tagChips((c.tags||[]).slice(0,4))}</div>` : ''}
-        </div>
-      </td>
+     <td class="col-hide">
+  <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-start">
+    <div style="display:flex;align-items:center;gap:6px">
+      ${c.rating ? ratingBadge(c.rating) : '<span style="color:var(--border);font-size:12px">—</span>'}
+      ${renderAiScore(c.ai_score, c.ai_score_reason)}
+    </div>
+    ${c.tags && c.tags.length ? `<div style="display:flex;gap:4px;flex-wrap:wrap;max-width:160px">${tagChips((c.tags||[]).slice(0,4))}</div>` : ''}
+  </div>
+</td>
       <td class="col-hide" style="font-size:12px;white-space:nowrap">
         ${c.email?`<div style="color:var(--brand);cursor:pointer;display:flex;align-items:center;gap:4px" onclick="navigator.clipboard.writeText('${esc(c.email)}');toast('📋 邮箱已复制')"><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block" title="${esc(c.email)}">✉ ${esc(c.email)}</span>${ml?`<button class="mail-btn" onclick="event.stopPropagation();window.open('${ml}','_blank')" title="发邮件">✉</button>`:''}</div>`:''}
         ${c.phone?`<div style="color:var(--ts);cursor:pointer;display:flex;align-items:center;gap:4px;margin-top:2px" onclick="navigator.clipboard.writeText('${esc(c.phone)}');toast('📋 电话已复制')"><span style="max-width:130px;overflow:hidden;text-overflow:ellipsis;display:inline-block" title="${esc(c.phone)}">📞 ${esc(c.phone)}</span>${wa?`<button class="wa-btn" onclick="event.stopPropagation();window.open('${wa}','_blank')" title="WhatsApp">💬</button>`:''}</div>`:''}
@@ -1058,7 +1078,33 @@ function renderCus(){
   for(let i=1;i<=totalPages;i++){if(i===1||i===totalPages||Math.abs(i-cusPage)<=2)pageNums.push(i);else if(pageNums[pageNums.length-1]!=='…')pageNums.push('…');}
   const pageBar=`<div class="pbar"><div class="pinfo">共 ${total} 条</div><select onchange="cusPageSize=+this.value;cusPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${cusPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="cusPage=Math.max(1,cusPage-1);render()" ${cusPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${cusPage===n?'on':''}" onclick="cusPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="cusPage=Math.min(${totalPages},cusPage+1);render()" ${cusPage===totalPages?'disabled':''}>›</button></div>`;
 
-  return tbHtml('客户列表',`共 ${total} 条`,`<button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  return tbHtml('客户列表',`共 ${total} 条`,`// 注意多了一个按 AI 评分排序的下拉框，以及顶部的 AI 批量打分按钮
+window.fAiSort = window.fAiSort || '默认排序';
+
+return tbHtml('客户列表',`共 ${total} 条`,`<button class="btn bg" onclick="openBatchScoreModal()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🤖 批量AI打分</button> <button onclick="batchExport(window._filtered)" class="btn bg col-hide">📤 导出${selIds.size>0?` (${selIds.size})`:'全部'}</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`)+`
+  <div class="fsec">
+    <div class="frow">
+      <div class="sbox"><span style="color:var(--tt)">🔍</span><input id="cus-search" value="${esc(fS)}" oninput="handleSearch(this.value, 'cus')" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
+      ${isAdm()?`<select class="fsel" onchange="fSales=this.value;cusPage=1;render()"><option>全部销售</option>${SALES.map(s=>`<option ${fSales===s?'selected':''}>${s}</option>`).join('')}</select>`:''}
+      <select class="fsel" onchange="fStat=this.value;cusPage=1;render()"><option value="">全部状态</option>${STATUSES.filter(s=>s).map(s=>`<option value="${s}" ${fStat===s?'selected':''}>${s}</option>`).join('')}</select>
+      
+      <select class="fsel" onchange="window.fAiSort=this.value;cusPage=1;render()" style="color:var(--danger);font-weight:600;">
+        <option value="默认排序" ${window.fAiSort==='默认排序'?'selected':''}>默认排序</option>
+        <option value="AI分最高" ${window.fAiSort==='AI分最高'?'selected':''}>🔥 AI 评分最高优先</option>
+      </select>
+      
+      <button class="more-filter-btn" onclick="toggleAdvFilters()">⚙ 更多筛选 <span id="adv-arrow">${advFiltersOpen?'▴':'▾'}</span></button>
+      <button class="more-filter-btn" onclick="openTagManager()" style="color:var(--brand);border-color:var(--brand-l);background:var(--brand-l)">🏷️ 标签管理</button>
+    </div>
+    ```
+
+**修改点 2：应用排序规则**
+在 `renderCus()` 的顶部，找到 `filtered = filterByDate(filtered,fDateRange,fDateStart,fDateEnd);` 这句话（大概 564 行）。
+在它**下面**加入排序代码：
+```javascript
+  if (window.fAiSort === 'AI分最高') {
+    filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
+  }
   <div class="fsec">
     <div class="frow">
       <div class="sbox"><span style="color:var(--tt)">🔍</span><input id="cus-search" value="${esc(fS)}" oninput="handleSearch(this.value, 'cus')" placeholder="搜索姓名、公司、电话、邮箱…"/></div>
@@ -3191,6 +3237,130 @@ ${esc(text)}
     </div>`;
   document.body.appendChild(el);
   el.addEventListener('click', e => { if(e.target === el) el.remove() });
+}
+// ================================================
+// AI 批量打分
+// ================================================
+let isScoring = false;
+let cancelScoring = false;
+
+function renderAiScore(score, reason) {
+  if (score === null || score === undefined) return '';
+  let cls = 'ai-score-C'; let icon = '⚪';
+  if (score >= 80) { cls = 'ai-score-S'; icon = '🔥'; }
+  else if (score >= 60) { cls = 'ai-score-A'; icon = '🟢'; }
+  else if (score >= 40) { cls = 'ai-score-B'; icon = '🟡'; }
+  return `<span class="ai-score-badge ${cls}" title="${esc(reason||'暂无理由')}">${icon} ${score}分</span>`;
+}
+
+function openBatchScoreModal() {
+  const targets = ALL.filter(c => c.ai_score === null && !['垃圾', '流失'].includes(c.status));
+  if (targets.length === 0) { toast('🎉 太棒了，当前没有需要打分的客户！'); return; }
+
+  document.getElementById('ai-score-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay'; el.id = 'ai-score-ov'; el.style.zIndex = '3000';
+  el.innerHTML = `
+    <div class="modal msm">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">🤖 AI 全量智能质检打分</div>
+          <button class="modal-close" onclick="cancelScoring=true; document.getElementById('ai-score-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="text-align:center; padding: 24px;">
+        <div style="font-size:13px; color:var(--ts); margin-bottom:16px;">
+          检测到 <b style="color:var(--brand)">${targets.length}</b> 个未评分客户。<br>
+          AI 将根据 FB 表单的单选项（物料/重量/速度）以及邮箱类型，自动评估其购买意向 (0-100分)。
+        </div>
+        <div style="background:var(--surface2); border-radius:10px; padding:16px; margin-bottom:16px;">
+          <div style="font-size:24px; font-weight:700; color:var(--brand); font-family:monospace;" id="score-progress-text">0 / ${targets.length}</div>
+          <div style="height:8px; background:var(--border-l); border-radius:4px; margin-top:10px; overflow:hidden;">
+            <div id="score-progress-bar" style="height:100%; width:0%; background:var(--brand); transition:width .3s;"></div>
+          </div>
+          <div id="score-status-text" style="font-size:11px; color:var(--tt); margin-top:8px;">等待开始...</div>
+        </div>
+      </div>
+      <div class="modal-footer" style="justify-content:center;">
+        <button class="btn bg" onclick="cancelScoring=true; document.getElementById('ai-score-ov').remove()">关闭</button>
+        <button class="btn bp" id="start-score-btn" onclick="executeBatchScore()">🚀 开始打分 (断点续传)</button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+}
+
+async function executeBatchScore() {
+  if (isScoring) return;
+  const btn = document.getElementById('start-score-btn');
+  btn.disabled = true; btn.textContent = '⏸ 运行中...';
+  isScoring = true; cancelScoring = false;
+
+  let targets = ALL.filter(c => c.ai_score === null && !['垃圾', '流失'].includes(c.status));
+  let total = targets.length;
+  let done = 0;
+
+  const statusText = document.getElementById('score-status-text');
+  
+  for (let i = 0; i < total; i += 10) {
+    if (cancelScoring) { statusText.textContent = '⚠️ 已暂停'; break; }
+    
+    const batch = targets.slice(i, i + 10);
+    statusText.textContent = `⏳ 正在请求 Kimi 大模型分析第 ${i+1} 到 ${i+batch.length} 条...`;
+    
+    const batchData = batch.map(c => ({
+      id: c.id,
+      email: c.email,
+      customer_type: c.customer_type,
+      packaging_material: c.packaging_material,
+      packaging_weight: c.packaging_weight,
+      packaging_speed: c.packaging_speed,
+      project_details: c.project_details
+    }));
+
+    const prompt = `你是佳龙 CRM 的 AI 智能打分器，专门评估大型包装机械的 B2B 询盘质量（0-100分）。
+请根据以下维度打分：
+1. 邮箱(30分)：企业邮箱满分，gmail等个人邮箱10分，无邮箱0分。
+2. 需求精准度(50分)：综合评估【包装物料、重量、速度】选项以及【project_details 项目详情】文本。
+ - 如果提供了具体的参数，或在项目详情中清晰描述了业务场景、产品需求，给 40-50 分；
+ - 如果选项不全，但在项目详情中有一定的文字补充，给 20-30 分；
+ - 如果选项全是"无/待确认"，且项目详情为空或只有无意义字符（如"hi"），给 0 分。
+3. 身份(20分)：终端客户/经销商给20分，其他给5分。
+
+请严格返回一个纯 JSON 数组格式（禁止包含 markdown 代码块符号如 \`\`\`json ），如下例：
+[{"id": "客户id", "ai_score": 85, "ai_score_reason": "企业邮箱(+30) 明确需要25kg大米包装(+50) 身份未知(+5)"}]
+
+待打分客户数组：
+${JSON.stringify(batchData)}`;
+
+    const res = await callGemini(prompt, true);
+    
+    if (res && Array.isArray(res)) {
+      statusText.textContent = `💾 正在写入数据库...`;
+      for (let r of res) {
+        if (!r.id || r.ai_score === undefined) continue;
+        await db.from('customers').update({ ai_score: r.ai_score, ai_score_reason: r.ai_score_reason }).eq('id', r.id);
+        let localCus = ALL.find(x => x.id === r.id);
+        if (localCus) {
+          localCus.ai_score = r.ai_score;
+          localCus.ai_score_reason = r.ai_score_reason;
+        }
+      }
+    } else {
+      await new Promise(resolve => setTimeout(resolve, 2000));
+    }
+
+    done += batch.length;
+    document.getElementById('score-progress-text').textContent = `${done} / ${total}`;
+    document.getElementById('score-progress-bar').style.width = `${Math.round(done/total*100)}%`;
+  }
+
+  isScoring = false;
+  btn.disabled = false; btn.textContent = done >= total ? '✅ 全部完成' : '▶️ 继续打分';
+  if (done >= total) {
+    statusText.textContent = '🎉 历史客户打分已全部完成！';
+    toast('✅ 打分完成，列表已刷新');
+    render();
+  }
 }
 </script>
 </body>
