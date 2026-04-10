@@ -1036,6 +1036,7 @@ function renderCus(){
       <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.country)||'—'}</td>
       <td class="col-hide" style="white-space:nowrap"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
       <td class="col-hide" style="font-size:12px;color:var(--ts);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(c.products||[]).join(', ')}">${(c.products||[]).join(', ')||'—'}</td>
+      <td class="col-hide" style="white-space:nowrap">${c.customer_type ? `<span style="padding:3px 8px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--ts);font-size:11px;font-weight:600">${esc(c.customer_type)}</span>` : '<span style="color:var(--border)">—</span>'}</td> <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.source)||'—'}</td>
       <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.source)||'—'}</td>
       <td class="col-hide" style="font-size:12px;font-weight:500;color:var(--tp);white-space:nowrap">${esc(c.sales)||'—'}</td>
       <td style="font-size:11px;color:var(--ts);white-space:nowrap">${c.last_follow_date ? fmt(c.last_follow_date) : '—'}</td>
@@ -1064,11 +1065,12 @@ function renderCus(){
         ${wa?`<a href="${wa}" target="_blank" style="color:var(--success);text-decoration:none">💬 WhatsApp</a>`:''}
       </div>
 
-      <div style="margin-top:10px;font-size:11px;color:var(--tt);display:grid;grid-template-columns:1fr 1fr;gap:4px">
+      <div style="margin-top:10px;font-size:11px;color:var(--tt);display:grid;grid-template-columns:1fr 1fr;gap:6px">
         <div>🌍 ${esc(c.country)||'—'}</div>
+        <div>🏢 ${esc(c.customer_type)||'—'}</div>
         <div>📡 ${esc(c.source)||'—'}</div>
         <div>👤 负责: ${esc(c.sales)||'—'}</div>
-        <div>📦 ${c.products?c.products.slice(0,1).join(''):'—'}</div>
+        <div style="grid-column: span 2">📦 ${c.products?c.products.slice(0,2).join(', '):'—'}</div>
       </div>
 
       <div class="mc-follow-up">
@@ -1147,6 +1149,7 @@ function renderCus(){
         <th class="col-hide" style="width:80px;white-space:nowrap">国家</th>
         <th class="col-hide" style="width:80px;white-space:nowrap">状态</th>
         <th class="col-hide" style="width:100px;white-space:nowrap">产品类型</th>
+        <th class="col-hide" style="width:80px;white-space:nowrap">客户类型</th>
         <th class="col-hide" style="width:90px;white-space:nowrap">来源</th>
         <th class="col-hide" style="width:80px;white-space:nowrap">负责人</th>
         <th style="width:90px;white-space:nowrap">最近跟进</th>
