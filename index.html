@@ -1228,7 +1228,6 @@ function renderTasks() {
   const tDate = T();
   const futureDate = addD(tDate, 3);
   
-  // 1. 获取全局的基础待办任务
   const rawTasks = ALL.filter(c => {
     if(DONE_STATUSES.includes(c.status)) return false;
     if((c.follow_stage||0) >= 5) return false;
@@ -1240,7 +1239,6 @@ function renderTasks() {
   const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
-  // 2. 计算顶部四个大 Tab 的全局数量 (固定不变)
   const cntOverdue = rawTasks.filter(c => c.next_follow_date < tDate && c.follow_stage > 0).length;
   const cntToday = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
@@ -1254,7 +1252,6 @@ function renderTasks() {
   }).length;
   const cntFuture = rawTasks.filter(c => c.next_follow_date > tDate && c.next_follow_date <= futureDate && c.follow_stage > 0).length;
 
-  // 3. 核心修复：先过滤出“当前页面/搜索条件”下的基础任务池
   const baseTasksForCounts = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
     const daysSinceCreated = diffD(cusDate(c));
@@ -1265,18 +1262,15 @@ function renderTasks() {
     const isToday = c.next_follow_date === tDate && !isStageZero;
     const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isStageZero;
 
-    // 过滤：大 Tab
     if (window.fTaskTab === 'overdue' && !isOverdue) return false;
     if (window.fTaskTab === 'today' && !(isToday || isPureNew)) return false;
     if (window.fTaskTab === 'new' && !isRecycled) return false;
     if (window.fTaskTab === 'future' && !isFuture) return false;
 
-    // 过滤：各种筛选条件
     if (window.fTaskRating !== '全部' && (c.rating || '') !== window.fTaskRating) return false;
     if (window.fTaskCountry !== '全部' && c.country !== window.fTaskCountry) return false;
     if (window.fTaskTag !== '全部' && !(c.tags||[]).includes(window.fTaskTag)) return false;
 
-    // 过滤：搜索框
     const q = window.fTaskSearch.toLowerCase();
     if (q) {
       const match = (c.name||'').toLowerCase().includes(q) ||
@@ -1286,10 +1280,9 @@ function renderTasks() {
                     (c.email||'').toLowerCase().includes(q);
       if (!match) return false;
     }
-    return true; // ⚠️ 注意：这里不进行 fTaskStage 的过滤！
+    return true;
   });
 
-  // 4. ✨ 动态计算：只在当前页面任务池 (baseTasksForCounts) 里计算各阶段的数量
   const stageCounts = {
     '0': baseTasksForCounts.filter(c => (c.follow_stage||0)===0).length,
     '1': baseTasksForCounts.filter(c => c.follow_stage===1).length,
@@ -1298,14 +1291,12 @@ function renderTasks() {
     '4': baseTasksForCounts.filter(c => c.follow_stage===4).length,
   };
 
-  // 5. 最后一步：叠加用户点击的阶段胶囊 (fTaskStage)，得出真正要渲染的列表
   let filtered = baseTasksForCounts.filter(c => {
     const currentStage = (c.follow_stage || 0).toString();
     if (window.fTaskStage !== 'all' && currentStage !== window.fTaskStage) return false;
     return true;
   });
 
-  // 排序逻辑
   filtered.sort((a, b) => {
     if (window.fTaskSort === 'rating') {
       const rm = {'A':1, 'B':2, 'C':3, 'D':4, '':5};
@@ -2546,7 +2537,7 @@ async function openDetail(id){
 // ===== EDIT/ADD MODAL (TABS) =====
 function openAdd(){
   EID=null;
-  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',vacuum_need:'',automation_need:'',customer_type:'',self_type:'',purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,status:'',custom_date:T(),first_record_date:'',notes:'',rating:'',tags:[],website:''};
+  FD={name:'',company:'',email:'',phone:'',source:'',country:'',region:'',products:[],packaging_material:'',packaging_weight:'',packaging_speed:'',vacuum_need:'',automation_need:'',customer_type:'',self_type:'',purchase_timeline:'',project_details:'',sales:isAdm()?'':CU,status:'',custom_date:T(),first_record_date:'',notes:'',rating:'',tags:[],website:'',job_title:''};
   showFormModal('新建客户',0);
 }
 function openEdit(id){
@@ -2559,44 +2550,88 @@ function showFormModal(title,activeTab){
   const d=FD;
   const salesRow=isAdm()?`<div class="fg"><label class="fl">负责销售</label><select class="fi" onchange="FD.sales=this.value"><option value="">请选择</option>${SALES.map(s=>`<option ${d.sales===s?'selected':''}>${s}</option>`).join('')}</select></div>`:`<div class="fg"><label class="fl">负责销售</label><div style="padding:8px 11px;background:var(--surface2);border-radius:var(--r);font-size:13px;font-weight:600">${CU}</div></div>`;
   const el=document.createElement('div');el.className='overlay';el.id='form-ov';
-  el.innerHTML=`<div class="modal mlg"><div class="modal-header"><div class="modal-top"><div class="modal-title" style="display:flex;align-items:center;gap:12px">${title} <button class="btn" style="background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2);padding:4px 10px;font-size:12px" onclick="aiParseInquiry()">✨ AI 解析询盘</button></div><button class="modal-close" onclick="document.getElementById('form-ov').remove()">×</button></div>
-  <div class="tabs" id="form-tabs" style="overflow-y: hidden; scrollbar-width: none;">${['基本信息','产品需求','业务信息','CRM'].map((t,i)=>`<div class="tab ${i===activeTab?'on':''}" onclick="switchFormTab(${i})">${t}</div>`).join('')}</div></div>
-  <div class="modal-body">
-    <div class="tab-panel ${activeTab===0?'on':''}" id="ft0">
-      <div class="g2"><div class="fg"><label class="fl">客户姓名 <span style="color:var(--danger)">*</span></label><input class="fi" value="${esc(d.name)}" oninput="FD.name=this.value" placeholder="联系人姓名"/></div><div class="fg"><label class="fl">公司名称</label><input class="fi" value="${esc(d.company)}" oninput="FD.company=this.value"/><div class="fg"><label class="fl">职位/头衔</label><input class="fi" value="${esc(d.job_title||'')}" oninput="FD.job_title=this.value" placeholder="CEO / Manager..."/></div></div>
-      <div class="g3"><div class="fg"><label class="fl">邮箱</label><input class="fi" type="email" value="${esc(d.email)}" oninput="FD.email=this.value"/></div><div class="fg"><label class="fl">电话</label><input class="fi" value="${esc(d.phone)}" oninput="FD.phone=this.value"/></div><div class="fg"><label class="fl">官网</label><input class="fi" type="url" value="${esc(d.website||'')}" oninput="FD.website=this.value" placeholder="www.example.com"/></div></div>
-      <div class="g3"><div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写"/></div><div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div></div>
-      <div class="fg"><label class="fl">创建时间 <span style="color:var(--tt);font-weight:400;font-size:11px">（可修改，用于历史客户）</span></label><input class="fi" type="date" value="${esc(d.custom_date||T())}" onchange="FD.custom_date=this.value"/></div>
-    </div>
-    <div class="tab-panel ${activeTab===1?'on':''}" id="ft1">
-      <div class="fg"><label class="fl">产品类型（可多选）</label><div class="prod-tags" id="ptags">${PRODUCTS.map(p=>`<button type="button" class="ptag ${d.products.includes(p)?'on':''}" onclick="toggleProd('${p}')">${p}</button>`).join('')}</div></div>
-      <div class="g3"><div class="fg"><label class="fl">包装物料</label><input class="fi" value="${esc(d.packaging_material)}" oninput="FD.packaging_material=this.value" placeholder="食品/电子…"/></div><div class="fg"><label class="fl">包装重量</label><input class="fi" value="${esc(d.packaging_weight)}" oninput="FD.packaging_weight=this.value" placeholder="5-10kg"/></div><div class="fg"><label class="fl">包装速度</label><input class="fi" value="${esc(d.packaging_speed)}" oninput="FD.packaging_speed=this.value" placeholder="30包/分钟"/></div></div>
-      <div class="g2"><div class="fg"><label class="fl">真空需求</label><select class="fi" onchange="FD.vacuum_need=this.value"><option value="">—</option>${VACUUM.map(s=>`<option ${d.vacuum_need===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">自动化需求</label><select class="fi" onchange="FD.automation_need=this.value"><option value="">—</option>${AUTO.map(s=>`<option ${d.automation_need===s?'selected':''}>${s}</option>`).join('')}</select></div></div>
-    </div>
-    <div class="tab-panel ${activeTab===2?'on':''}" id="ft2">
-      <div class="g2"><div class="fg"><label class="fl">客户类型</label><select class="fi" onchange="FD.customer_type=this.value"><option value="">—</option>${CTYPES.map(s=>`<option ${d.customer_type===s?'selected':''}>${s}</option>`).join('')}</select></div><div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="贸易商、小型工厂…"/></div></div>
-      <div class="g2"><div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div><div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${esc(d.first_record_date||'')}" onchange="FD.first_record_date=this.value"/></div></div>
-      <div class="fg"><label class="fl">项目详情</label><textarea class="fi" rows="3" oninput="FD.project_details=this.value" placeholder="客户背景、具体需求…">${esc(d.project_details)}</textarea></div>
-      <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新备注…">${esc(d.notes)}</textarea></div>
-    </div>
-    <div class="tab-panel ${activeTab===3?'on':''}" id="ft3">
-      <div class="g2">${salesRow}<div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div></div>
-      <div class="fg"><label class="fl">客户评级</label>
-        <div style="display:flex;gap:8px;margin-top:2px" id="rating-btns">${RATINGS.map(r=>`<div class="rs ${d.rating===r?'sel-'+r:''}" onclick="setFDRating('${r}')">${r}</div>`).join('')}</div>
-        <div style="font-size:11px;color:var(--tt);margin-top:6px">A = 高优先级（橙）· B = 积极跟进（蓝）· C = 冷跟进（青）· D = 低意向（灰）</div>
+  
+  el.innerHTML=`<div class="modal mlg">
+    <div class="modal-header">
+      <div class="modal-top">
+        <div class="modal-title" style="display:flex;align-items:center;gap:12px">${title} <button class="btn" style="background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2);padding:4px 10px;font-size:12px" onclick="aiParseInquiry()">✨ AI 解析询盘</button></div>
+        <button class="modal-close" onclick="document.getElementById('form-ov').remove()">×</button>
       </div>
-      <div class="fg"><label class="fl">自定义标签 <span style="color:var(--tt);font-weight:400;font-size:11px">（输入后回车添加）</span></label>
-        <div class="tags-wrap" id="tags-wrap-edit" onclick="document.getElementById('tag-input-edit').focus()">
-          ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}', this)" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
-          <input id="tag-input-edit" type="text" placeholder="输入标签回车或点右侧添加…" style="border:none;outline:none;font-size:12px;color:var(--tp);background:transparent;font-family:inherit;min-width:100px;flex:1" onkeydown="addTagEdit(event)"/>
-          <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){if(FD.tags.length >= 5) { toast('⚠️ 数据规范拦截：每位客户最多保留 5 个核心标签'); return; } FD.tags.push(v);e.value='';showFormModal(EID ? '编辑客户 — ' + FD.name : '新建客户', 3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
+      <div class="tabs" id="form-tabs" style="overflow-x: auto; scrollbar-width: none;">${['基本信息','产品需求','业务信息','CRM'].map((t,i)=>`<div class="tab ${i===activeTab?'on':''}" onclick="switchFormTab(${i})">${t}</div>`).join('')}</div>
+    </div>
+    
+    <div class="modal-body">
+      <div class="tab-panel ${activeTab===0?'on':''}" id="ft0">
+        <div class="g3">
+          <div class="fg"><label class="fl">客户姓名 <span style="color:var(--danger)">*</span></label><input class="fi" value="${esc(d.name)}" oninput="FD.name=this.value" placeholder="联系人姓名"/></div>
+          <div class="fg"><label class="fl">职位/头衔</label><input class="fi" value="${esc(d.job_title||'')}" oninput="FD.job_title=this.value" placeholder="CEO / Manager..."/></div>
+          <div class="fg"><label class="fl">公司名称</label><input class="fi" value="${esc(d.company)}" oninput="FD.company=this.value"/></div>
+        </div>
+        <div class="g3">
+          <div class="fg"><label class="fl">邮箱</label><input class="fi" type="email" value="${esc(d.email)}" oninput="FD.email=this.value"/></div>
+          <div class="fg"><label class="fl">电话</label><input class="fi" value="${esc(d.phone)}" oninput="FD.phone=this.value"/></div>
+          <div class="fg"><label class="fl">官网</label><input class="fi" type="url" value="${esc(d.website||'')}" oninput="FD.website=this.value" placeholder="www.example.com"/></div>
+        </div>
+        <div class="g3">
+          <div class="fg"><label class="fl">询盘来源</label><select class="fi" onchange="FD.source=this.value"><option value="">—</option>${SOURCES.map(s=>`<option ${d.source===s?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div class="fg"><label class="fl">国家</label><input class="fi" value="${esc(d.country)}" oninput="FD.country=this.value" placeholder="自由填写"/></div>
+          <div class="fg"><label class="fl">具体地区</label><input class="fi" value="${esc(d.region)}" oninput="FD.region=this.value" placeholder="城市/州省"/></div>
+        </div>
+        <div class="fg"><label class="fl">创建时间 <span style="color:var(--tt);font-weight:400;font-size:11px">（可修改，用于历史客户）</span></label><input class="fi" type="date" value="${esc(d.custom_date||T())}" onchange="FD.custom_date=this.value"/></div>
+      </div>
+      
+      <div class="tab-panel ${activeTab===1?'on':''}" id="ft1">
+        <div class="fg"><label class="fl">产品类型（可多选）</label><div class="prod-tags" id="ptags">${PRODUCTS.map(p=>`<button type="button" class="ptag ${d.products.includes(p)?'on':''}" onclick="toggleProd('${p}')">${p}</button>`).join('')}</div></div>
+        <div class="g3">
+          <div class="fg"><label class="fl">包装物料</label><input class="fi" value="${esc(d.packaging_material)}" oninput="FD.packaging_material=this.value" placeholder="食品/电子…"/></div>
+          <div class="fg"><label class="fl">包装重量</label><input class="fi" value="${esc(d.packaging_weight)}" oninput="FD.packaging_weight=this.value" placeholder="5-10kg"/></div>
+          <div class="fg"><label class="fl">包装速度</label><input class="fi" value="${esc(d.packaging_speed)}" oninput="FD.packaging_speed=this.value" placeholder="30包/分钟"/></div>
+        </div>
+        <div class="g2">
+          <div class="fg"><label class="fl">真空需求</label><select class="fi" onchange="FD.vacuum_need=this.value"><option value="">—</option>${VACUUM.map(s=>`<option ${d.vacuum_need===s?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div class="fg"><label class="fl">自动化需求</label><select class="fi" onchange="FD.automation_need=this.value"><option value="">—</option>${AUTO.map(s=>`<option ${d.automation_need===s?'selected':''}>${s}</option>`).join('')}</select></div>
+        </div>
+      </div>
+      
+      <div class="tab-panel ${activeTab===2?'on':''}" id="ft2">
+        <div class="g2">
+          <div class="fg"><label class="fl">客户类型</label><select class="fi" onchange="FD.customer_type=this.value"><option value="">—</option>${CTYPES.map(s=>`<option ${d.customer_type===s?'selected':''}>${s}</option>`).join('')}</select></div>
+          <div class="fg"><label class="fl">客户性质（自述）</label><input class="fi" value="${esc(d.self_type||'')}" oninput="FD.self_type=this.value" placeholder="贸易商、小型工厂…"/></div>
+        </div>
+        <div class="g2">
+          <div class="fg"><label class="fl">预计购买时间</label><input class="fi" value="${esc(d.purchase_timeline)}" oninput="FD.purchase_timeline=this.value" placeholder="Q3 2025"/></div>
+          <div class="fg"><label class="fl">首次记录日期</label><input class="fi" type="date" value="${esc(d.first_record_date||'')}" onchange="FD.first_record_date=this.value"/></div>
+        </div>
+        <div class="fg"><label class="fl">项目详情</label><textarea class="fi" rows="3" oninput="FD.project_details=this.value" placeholder="客户背景、具体需求…">${esc(d.project_details)}</textarea></div>
+        <div class="fg"><label class="fl">备注</label><textarea class="fi" rows="2" oninput="FD.notes=this.value" placeholder="最新备注…">${esc(d.notes)}</textarea></div>
+      </div>
+      
+      <div class="tab-panel ${activeTab===3?'on':''}" id="ft3">
+        <div class="g2">
+          ${salesRow}
+          <div class="fg"><label class="fl">客户状态</label><select class="fi" onchange="FD.status=this.value">${STATUSES.map(s=>`<option value="${s}" ${d.status===s?'selected':''}>${s||'（空）'}</option>`).join('')}</select></div>
+        </div>
+        <div class="fg"><label class="fl">客户评级</label>
+          <div style="display:flex;gap:8px;margin-top:2px" id="rating-btns">${RATINGS.map(r=>`<div class="rs ${d.rating===r?'sel-'+r:''}" onclick="setFDRating('${r}')">${r}</div>`).join('')}</div>
+          <div style="font-size:11px;color:var(--tt);margin-top:6px">A = 高优先级（橙）· B = 积极跟进（蓝）· C = 冷跟进（青）· D = 低意向（灰）</div>
+        </div>
+        <div class="fg"><label class="fl">自定义标签 <span style="color:var(--tt);font-weight:400;font-size:11px">（输入后回车添加）</span></label>
+          <div class="tags-wrap" id="tags-wrap-edit" onclick="document.getElementById('tag-input-edit').focus()">
+            ${(d.tags||[]).map(t=>`<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:4px;font-size:11px;font-weight:600;background:var(--brand-l);color:var(--brand);border:1px solid rgba(0,102,204,.2)">${esc(t)}<span onclick="removeTagEdit('${esc(t)}', this)" style="cursor:pointer;opacity:.6;font-size:12px">×</span></span>`).join('')}
+            <input id="tag-input-edit" type="text" placeholder="输入标签回车或点右侧添加…" style="border:none;outline:none;font-size:12px;color:var(--tp);background:transparent;font-family:inherit;min-width:100px;flex:1" onkeydown="addTagEdit(event)"/>
+            <button type="button" onclick="const e=document.getElementById('tag-input-edit');const v=e.value.trim();if(v&&!FD.tags.includes(v)){if(FD.tags.length >= 5) { toast('⚠️ 数据规范拦截：每位客户最多保留 5 个核心标签'); return; } FD.tags.push(v);e.value='';showFormModal(EID ? '编辑客户 — ' + FD.name : '新建客户', 3);}" style="background:var(--brand);color:#fff;border-radius:4px;padding:3px 8px;font-size:11px;border:none;flex-shrink:0;">添加</button>
+          </div>
         </div>
       </div>
     </div>
-  </div>
-  <div class="modal-footer"><button class="btn bg" onclick="document.getElementById('form-ov').remove()">取消</button><button class="btn bp" onclick="saveCus()">保存</button></div>
+    
+    <div class="modal-footer">
+      <button class="btn bg" onclick="document.getElementById('form-ov').remove()">取消</button>
+      <button class="btn bp" onclick="saveCus()">保存</button>
+    </div>
   </div>`;
-  document.body.appendChild(el);el.addEventListener('click',e=>{if(e.target===el)el.remove()});
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{if(e.target===el)el.remove()});
 }
 function switchFormTab(i){
   document.querySelectorAll('#form-tabs .tab').forEach((t,j)=>t.classList.toggle('on',j===i));
@@ -2630,7 +2665,7 @@ function removeTagEdit(tag, el){
 
 async function saveCus(){
   if(!FD.name?.trim()){toast('⚠️ 请填写客户姓名');return;}
-  const p={name:FD.name.trim(),company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[],website:FD.website||''};
+  const p={name:FD.name.trim(),job_title:FD.job_title||'',company:FD.company||'',email:FD.email||'',phone:FD.phone||'',source:FD.source||'',country:FD.country||'',region:FD.region||'',products:FD.products||[],packaging_material:FD.packaging_material||'',packaging_weight:FD.packaging_weight||'',packaging_speed:FD.packaging_speed||'',vacuum_need:FD.vacuum_need||'',automation_need:FD.automation_need||'',customer_type:FD.customer_type||'',self_type:FD.self_type||'',purchase_timeline:FD.purchase_timeline||'',project_details:FD.project_details||'',sales:FD.sales||CU,status:FD.status||'',custom_date:FD.custom_date||T(),first_record_date:FD.first_record_date||null,notes:FD.notes||'',rating:FD.rating||'',tags:FD.tags||[],website:FD.website||''};
   if(isDup({phone:p.phone, email:p.email}, EID) && !confirm('检测到重复客户（已存在相同的 电话 或 邮箱），是否继续保存？')) return;
   
   showLoading(true);
