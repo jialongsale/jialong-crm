@@ -1248,7 +1248,6 @@ window.batchSnoozeTask = async function(days) {
 };
 
 // ===== TASKS =====
-// ===== TASKS =====
 function renderTasks() {
   window.fTaskTab = window.fTaskTab || 'today'; 
   window.fTaskSearch = window.fTaskSearch || '';
@@ -1274,17 +1273,26 @@ function renderTasks() {
   const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
-  // 2. 精准计算顶部四个大 Tab 的数量（悬案一核心逻辑：基于时间紧迫度）
+  // ✨ 定义一个精准的“公海捞回”判定函数
+  const checkRecycled = (c) => {
+    const isStageZero = (c.follow_stage || 0) === 0;
+    const daysOld = -diffD(cusDate(c));
+    const hasRecycledTag = (c.tags || []).includes('公海认领');
+    // 如果带有捞回标签，或者超过7天未首跟的老数据，统统算作公海捞回
+    return isStageZero && (hasRecycledTag || daysOld >= 7);
+  };
+
+  // 2. 精准计算顶部四个大 Tab 的数量（绝对互斥原则）
   let cntOverdue = 0, cntToday = 0, cntNew = 0, cntFuture = 0;
   rawTasks.forEach(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
     const daysOld = -diffD(cusDate(c)); 
-    const hasRecycledTag = (c.tags || []).includes('公海认领');
+    const isRecycled = checkRecycled(c);
 
     if (isStageZero) {
-        if (hasRecycledTag) cntNew++; // 只有带标签的才是真正捞回的
-        else if (daysOld > 3) cntOverdue++; // 新线索超3天未跟进 -> 变红（逾期）
-        else cntToday++; // 3天内的新鲜线索 -> 今日任务
+        if (isRecycled) cntNew++; // 是公海捞回，就只加到捞回里
+        else if (daysOld > 3) cntOverdue++; // 正常新线索超3天 -> 逾期
+        else cntToday++; // 3天内新线索 -> 今日
     } else {
         if (c.next_follow_date < tDate) cntOverdue++;
         else if (c.next_follow_date === tDate) cntToday++;
@@ -1292,16 +1300,16 @@ function renderTasks() {
     }
   });
 
-  // 3. 根据当前所在的大 Tab 和搜索条件，过滤出基础任务池
+  // 3. 过滤出基础任务池，保持与上面计算逻辑完全一致
   const baseTasksForCounts = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
     const daysOld = -diffD(cusDate(c));
-    const hasRecycledTag = (c.tags || []).includes('公海认领');
+    const isRecycledTask = checkRecycled(c);
 
     let isOverdue = false, isToday = false, isRecycled = false, isFuture = false;
 
     if (isStageZero) {
-        if (hasRecycledTag) isRecycled = true;
+        if (isRecycledTask) isRecycled = true;
         else if (daysOld > 3) isOverdue = true;
         else isToday = true;
     } else {
@@ -1331,6 +1339,7 @@ function renderTasks() {
     return true;
   });
 
+  // 4. 动态计算阶段标签
   const stageCounts = {
     '0': baseTasksForCounts.filter(c => (c.follow_stage||0)===0).length,
     '1': baseTasksForCounts.filter(c => c.follow_stage===1).length,
@@ -1376,10 +1385,10 @@ function renderTasks() {
 
   const headerHtml = `
   <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
-    ${tabCard('overdue', cntOverdue, '逾期未跟', '🔴', 'danger', 'danger-l')}
-    ${tabCard('today', cntToday, '今日任务', '🟠', 'warn', 'warn-l')}
-    ${tabCard('new', cntNew, '公海捞回', '🔵', 'brand', 'brand-l')}
-    ${tabCard('future', cntFuture, '未来三天', '⚪', 'ts', 'surface2')}
+    ${tabCard('overdue', cntOverdue, '🔴 逾期未跟', '', 'danger', 'danger-l')}
+    ${tabCard('today', cntToday, '🟠 今日任务', '', 'warn', 'warn-l')}
+    ${tabCard('new', cntNew, '🔵 公海捞回', '', 'brand', 'brand-l')}
+    ${tabCard('future', cntFuture, '⚪ 未来三天', '', 'ts', 'surface2')}
   </div>
   <div class="fsec">
     <div class="frow">
@@ -1412,7 +1421,7 @@ function renderTasks() {
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; font-weight:700; color:var(--ts); margin-right:4px;">跟进阶段:</span>
         <div onclick="window.fTaskStage='all';render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
-        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次破冰 (${stageCounts['0']})</div>
+        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次跟进 (${stageCounts['0']})</div>
         <div onclick="window.fTaskStage='1';render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
         <div onclick="window.fTaskStage='2';render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
         <div onclick="window.fTaskStage='3';render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
@@ -1447,11 +1456,11 @@ function renderTasks() {
     const n = nfi(c);
     let wa = waLink(c.phone), ml = mailLink(c.email);
 
+    const isRecycled = checkRecycled(c);
     const isStageZero = (c.follow_stage || 0) === 0;
-    const hasRecycledTag = (c.tags || []).includes('公海认领');
     
     let badgeHtml = '';
-    if (isStageZero && hasRecycledTag) {
+    if (isRecycled) {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--teal); background:var(--teal-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">公海捞回</span>';
     } else if (isStageZero) {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--danger); background:var(--danger-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">新线索</span>';
@@ -1459,7 +1468,7 @@ function renderTasks() {
     
     let stageBadge = '';
     const s = c.follow_stage || 0;
-    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次破冰</span>`;
+    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次跟进</span>`;
     else if (s == 1) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,149,0,.2)">📞 3天回访</span>`;
     else if (s == 2) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,102,204,.2)">💬 7天回访</span>`;
     else if (s == 3) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(175,82,222,.2)">⏳ 15天回访</span>`;
