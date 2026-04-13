@@ -1022,7 +1022,6 @@ function renderCus(){
   
   filtered=filterByDate(filtered,fDateRange,fDateStart,fDateEnd);
   
-  // AI 评分排序逻辑
   if (window.fAiSort === 'AI分最高') {
     filtered.sort((a, b) => (b.ai_score || 0) - (a.ai_score || 0));
   }
@@ -1249,6 +1248,7 @@ window.batchSnoozeTask = async function(days) {
 };
 
 // ===== TASKS =====
+// ===== TASKS =====
 function renderTasks() {
   window.fTaskTab = window.fTaskTab || 'today'; 
   window.fTaskSearch = window.fTaskSearch || '';
@@ -1262,6 +1262,7 @@ function renderTasks() {
   const tDate = T();
   const futureDate = addD(tDate, 3);
   
+  // 1. 获取全局基础待办任务
   const rawTasks = ALL.filter(c => {
     if(DONE_STATUSES.includes(c.status)) return false;
     if((c.follow_stage||0) >= 5) return false;
@@ -1273,31 +1274,44 @@ function renderTasks() {
   const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
-  const cntOverdue = rawTasks.filter(c => c.next_follow_date < tDate && c.follow_stage > 0).length;
-  const cntToday = rawTasks.filter(c => {
+  // 2. 精准计算顶部四个大 Tab 的数量（悬案一核心逻辑：基于时间紧迫度）
+  let cntOverdue = 0, cntToday = 0, cntNew = 0, cntFuture = 0;
+  rawTasks.forEach(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
-    const isPureNew = isStageZero && diffD(cusDate(c)) > -7;
-    return (c.next_follow_date === tDate && !isStageZero) || isPureNew;
-  }).length;
-  const cntNew = rawTasks.filter(c => {
-    const isStageZero = (c.follow_stage || 0) === 0;
-    const isRecycled = isStageZero && diffD(cusDate(c)) <= -7;
-    return isRecycled;
-  }).length;
-  const cntFuture = rawTasks.filter(c => c.next_follow_date > tDate && c.next_follow_date <= futureDate && c.follow_stage > 0).length;
+    const daysOld = -diffD(cusDate(c)); 
+    const hasRecycledTag = (c.tags || []).includes('公海认领');
 
+    if (isStageZero) {
+        if (hasRecycledTag) cntNew++; // 只有带标签的才是真正捞回的
+        else if (daysOld > 3) cntOverdue++; // 新线索超3天未跟进 -> 变红（逾期）
+        else cntToday++; // 3天内的新鲜线索 -> 今日任务
+    } else {
+        if (c.next_follow_date < tDate) cntOverdue++;
+        else if (c.next_follow_date === tDate) cntToday++;
+        else if (c.next_follow_date > tDate && c.next_follow_date <= futureDate) cntFuture++;
+    }
+  });
+
+  // 3. 根据当前所在的大 Tab 和搜索条件，过滤出基础任务池
   const baseTasksForCounts = rawTasks.filter(c => {
     const isStageZero = (c.follow_stage || 0) === 0;
-    const daysSinceCreated = diffD(cusDate(c));
-    const isRecycled = isStageZero && daysSinceCreated <= -7;
-    const isPureNew = isStageZero && daysSinceCreated > -7;
+    const daysOld = -diffD(cusDate(c));
+    const hasRecycledTag = (c.tags || []).includes('公海认领');
 
-    const isOverdue = c.next_follow_date < tDate && !isStageZero;
-    const isToday = c.next_follow_date === tDate && !isStageZero;
-    const isFuture = c.next_follow_date > tDate && c.next_follow_date <= futureDate && !isStageZero;
+    let isOverdue = false, isToday = false, isRecycled = false, isFuture = false;
+
+    if (isStageZero) {
+        if (hasRecycledTag) isRecycled = true;
+        else if (daysOld > 3) isOverdue = true;
+        else isToday = true;
+    } else {
+        if (c.next_follow_date < tDate) isOverdue = true;
+        else if (c.next_follow_date === tDate) isToday = true;
+        else if (c.next_follow_date > tDate && c.next_follow_date <= futureDate) isFuture = true;
+    }
 
     if (window.fTaskTab === 'overdue' && !isOverdue) return false;
-    if (window.fTaskTab === 'today' && !(isToday || isPureNew)) return false;
+    if (window.fTaskTab === 'today' && !isToday) return false;
     if (window.fTaskTab === 'new' && !isRecycled) return false;
     if (window.fTaskTab === 'future' && !isFuture) return false;
 
@@ -1398,7 +1412,7 @@ function renderTasks() {
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; font-weight:700; color:var(--ts); margin-right:4px;">跟进阶段:</span>
         <div onclick="window.fTaskStage='all';render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
-        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次跟进 (${stageCounts['0']})</div>
+        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次破冰 (${stageCounts['0']})</div>
         <div onclick="window.fTaskStage='1';render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
         <div onclick="window.fTaskStage='2';render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
         <div onclick="window.fTaskStage='3';render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
@@ -1434,11 +1448,10 @@ function renderTasks() {
     let wa = waLink(c.phone), ml = mailLink(c.email);
 
     const isStageZero = (c.follow_stage || 0) === 0;
-    const daysSinceCreated = diffD(cusDate(c));
-    const isRecycled = isStageZero && daysSinceCreated <= -7;
+    const hasRecycledTag = (c.tags || []).includes('公海认领');
     
     let badgeHtml = '';
-    if (isRecycled) {
+    if (isStageZero && hasRecycledTag) {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--teal); background:var(--teal-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">公海捞回</span>';
     } else if (isStageZero) {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--danger); background:var(--danger-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">新线索</span>';
@@ -1446,7 +1459,7 @@ function renderTasks() {
     
     let stageBadge = '';
     const s = c.follow_stage || 0;
-    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次跟进</span>`;
+    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次破冰</span>`;
     else if (s == 1) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,149,0,.2)">📞 3天回访</span>`;
     else if (s == 2) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,102,204,.2)">💬 7天回访</span>`;
     else if (s == 3) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(175,82,222,.2)">⏳ 15天回访</span>`;
@@ -1664,11 +1677,9 @@ function transfer(id) { openTransferModal(id); }
 function batchTransfer() { openTransferModal(null); }
 
 // ===== GEMINI AI ENGINE =====
-// 1. 修复 Key 获取逻辑：确保强制保存为字符串
 function getGeminiKey() {
   return new Promise((resolve) => {
     const cached = localStorage.getItem('CRM_AI_KEY');
-    // 增加判断：如果缓存的是旧的 Coze 对象格式，强制清除重新输入
     if (cached && !cached.includes('{')) { 
       resolve(cached); 
       return; 
@@ -1709,7 +1720,6 @@ function getGeminiKey() {
   });
 }
 
-// 2. 核心调用逻辑：增加【自动抗 429 限制】的重试功能
 async function callGemini(promptText, isJson = false) {
   const key = await getGeminiKey(); 
   if (!key) return null;
@@ -1731,7 +1741,6 @@ async function callGemini(promptText, isJson = false) {
       })
     });
 
-    // 客观拦截 429 状态码并阻断死循环
     if (res.status === 429) {
       throw new Error('API 并发超限 (429)。由于当前账户并发配额过低，请等待 1 分钟后再试，或在 Kimi 开放平台充值以解锁高并发额度。');
     }
@@ -1750,7 +1759,6 @@ async function callGemini(promptText, isJson = false) {
 
   } catch (err) {
     showLoading(false);
-    // 将错误信息直接输出到提示框，便于销售人员明确知道需要等待
     toast('⚠️ 终止: ' + err.message, 4000); 
     return null;
   }
@@ -2246,13 +2254,12 @@ async function deleteLog(logId){
   openLog(LID);
 }
 
-// ===== ASSIGN / CLAIM (新版分配与认领系统) =====
+// ===== ASSIGN / CLAIM =====
 function openClaimModal(id = null) {
   const isBatch = !id;
   const count = isBatch ? selIds.size : 1;
   if(isBatch && count === 0) return;
 
-  // 销售本人直接静默认领，无需弹窗
   if (!isAdm()) {
     if (confirm(`确定要认领这 ${count} 个客户到你的名下吗？`)) {
        executeClaim(id, CU);
@@ -2260,7 +2267,6 @@ function openClaimModal(id = null) {
     return;
   }
 
-  // 管理员调出分配模态框
   document.getElementById('claim-ov')?.remove();
   const el = document.createElement('div');
   el.className = 'overlay';
@@ -2298,14 +2304,17 @@ function confirmClaimModal(idStr) {
 }
 
 async function executeClaim(id, targetSales) {
-  const t = T();
+const t = T();
+  const c = id ? ALL.find(x => x.id === id) : null;
+  const currentTags = c ? (c.tags || []) : [];
   const upd = {
-     sales: targetSales,
-     follow_stage: 0,
-     last_follow_date: null,
-     first_follow_date: t,
-     next_follow_date: t,
-     last_log_note: null
+      sales: targetSales,
+      follow_stage: 0,
+      tags: [...new Set([...currentTags, '公海认领'])],
+      last_follow_date: null,
+      first_follow_date: t,
+      next_follow_date: t,
+      last_log_note: null
   };
 
   if (typeof showLoading === 'function') showLoading(true);
