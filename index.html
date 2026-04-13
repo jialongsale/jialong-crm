@@ -1275,36 +1275,38 @@ function renderTasks() {
 
   // ✨ 核心逻辑：精准互斥的瀑布流分流算法
   const classifyTask = (c) => {
-    const isStageZero = (c.follow_stage || 0) === 0;
+    const stage = c.follow_stage || 0;
+    const isRecycledPending = (c.tags || []).includes('公海认领') && stage === 0;
     const daysOld = -diffD(cusDate(c));
-    const hasTag = (c.tags || []).includes('公海认领');
-    
-    // 判定是否为公海捞回：处于首跟阶段，且带有认领标签 或 已经有过分配时间(完美兼容系统里的老数据)
-    const isRecycledLead = isStageZero && (hasTag || c.first_follow_date);
 
-    let isOverdue = false, isToday = false, isRecycled = false, isFuture = false;
-
-    // 第一优先级：只要过了该跟进的日子，就是逾期 (严惩不跟进的行为)
-    if (c.next_follow_date) {
-        if (c.next_follow_date < tDate) isOverdue = true;
-    } else {
-        // 如果是完全没被碰过的纯新线索，超过3天算逾期
-        if (daysOld > 3) isOverdue = true;
+    // 公海捞回：优先级最高，认领回来但尚未完成首次跟进
+    // 无论日期多旧、多逾期，都死锁在这里，直到 followUp 执行后 stage 变为 1
+    if (isRecycledPending) {
+        return { isOverdue: false, isToday: false, isRecycled: true, isFuture: false };
     }
 
-    // 第二优先级：如果没有逾期，再精确按归属地面板分发
-    if (!isOverdue) {
-        if (isRecycledLead) {
-            isRecycled = true; // 刚认领回来且还未逾期的线索
-        } else if (c.next_follow_date === tDate || (!c.next_follow_date && daysOld <= 3)) {
-            isToday = true;    // 计划今天跟进，或3天内的新鲜线索
-        } else if (c.next_follow_date > tDate && c.next_follow_date <= futureDate) {
-            isFuture = true;   // 未来三天的任务
+    let isOverdue = false, isToday = false, isFuture = false;
+
+    if (stage === 0) {
+        if (daysOld > 3) {
+            isOverdue = true;   // 入库超3天无人碰 → 逾期
+        } else {
+            isToday = true;     // 3天内新鲜线索 → 今日任务
+        }
+    } else {
+        if (!c.next_follow_date) {
+            isToday = true;
+        } else if (c.next_follow_date < tDate) {
+            isOverdue = true;
+        } else if (c.next_follow_date === tDate) {
+            isToday = true;
+        } else if (c.next_follow_date <= futureDate) {
+            isFuture = true;
         }
     }
 
-    return { isOverdue, isToday, isRecycled, isFuture };
-  };
+    return { isOverdue, isToday, isRecycled: false, isFuture };
+};
 
   // 2. 计算各面板总数
   let cntOverdue = 0, cntToday = 0, cntNew = 0, cntFuture = 0;
