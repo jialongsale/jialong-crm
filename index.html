@@ -1035,7 +1035,7 @@ function renderCus(){
   const coOpts=[...new Set(CUS.map(c=>c.country).filter(Boolean))].sort();
   const allSel=paged.length>0&&paged.every(c=>selIds.has(c.id));
 
-  const rows=paged.length===0?`<tr><td colspan="13"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div></td></tr>`:paged.map(c=>{
+  const rows=paged.length===0?`<tr><td colspan="14"><div class="empty"><div class="empty-icon">🔍</div><div class="empty-ttl">暂无数据</div></div></td></tr>`:paged.map(c=>{
     const n=nfi(c);const dup=isDup(c,c.id);const sea=isSea(c);const noResp=isNoResp(c);
     const wa=waLink(c.phone),ml=mailLink(c.email);
     return`<tr>
@@ -1067,7 +1067,7 @@ function renderCus(){
       <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.country)||'—'}</td>
       <td class="col-hide" style="white-space:nowrap"><span class="badge s-${c.status||''}">${c.status||'未设置'}</span></td>
       <td class="col-hide" style="font-size:12px;color:var(--ts);max-width:100px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(c.products||[]).join(', ')}">${(c.products||[]).join(', ')||'—'}</td>
-      <td class="col-hide" style="white-space:nowrap">${c.customer_type ? `<span style="padding:3px 8px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--ts);font-size:11px;font-weight:600">${esc(c.customer_type)}</span>` : '<span style="color:var(--border)">—</span>'}</td> <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.source)||'—'}</td>
+      <td class="col-hide" style="white-space:nowrap">${c.customer_type ? `<span style="padding:3px 8px;border-radius:6px;background:var(--surface2);border:1px solid var(--border);color:var(--ts);font-size:11px;font-weight:600">${esc(c.customer_type)}</span>` : '<span style="color:var(--border)">—</span>'}</td>
       <td class="col-hide" style="font-size:12px;color:var(--ts);white-space:nowrap">${esc(c.source)||'—'}</td>
       <td class="col-hide" style="font-size:12px;font-weight:500;color:var(--tp);white-space:nowrap">${esc(c.sales)||'—'}</td>
       <td style="font-size:11px;color:var(--ts);white-space:nowrap">${c.last_follow_date ? fmt(c.last_follow_date) : '—'}</td>
