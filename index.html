@@ -913,7 +913,7 @@ function renderDash(){
   
   const todHtml=todList.length?todList.map(c=>{const n=nfi(c);return`<div style="display:flex;align-items:center;gap:8px;padding:8px 0;border-bottom:1px solid var(--border-l)">${ratingBadge(c.rating)}<div style="flex:1;min-width:0"><div style="font-size:13px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${esc(c.name)}</div><div style="font-size:11px;color:var(--tt)">${esc(c.country||'—')} · ${esc(c.sales)}</div></div><div style="text-align:right;flex-shrink:0"><div class="${n.cls}">${n.t}</div><button class="ab ag" style="font-size:10px;padding:2px 7px;margin-top:2px" onclick="event.stopPropagation();followUp('${c.id}')">✓跟进</button></div></div>`}).join(''):'<div style="padding:16px;text-align:center;color:var(--tt);font-size:13px">今天暂无待办 🎉</div>';
   
-  return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
+  return tbHtml('数据看板',new Date().toLocaleDateString('zh-CN',{year:'numeric',month:'long',day:'numeric'}),`${isAdm()?'<button class="btn bg" onclick="openSeaTagTool()" style="color:var(--teal);border-color:var(--teal);background:var(--teal-l)">🌊 补打公海标签</button>':''}<button class="btn bg col-hide" onclick="openImport()">📥 导入</button><button class="btn bp" onclick="openAdd()">+ 新建</button>`) +
   
   `<div class="dash-filters" style="padding:16px 20px; margin-bottom:20px; background:var(--surface); border-radius:var(--r3); box-shadow:var(--sh); border:1px solid var(--border-l);">` +
     (isAdm()?`<div style="display:flex; align-items:flex-start; gap:16px;">
@@ -3597,6 +3597,98 @@ ${JSON.stringify(batchData)}`;
     render(); 
   }
 }
+// ===== 临时工具：补打公海认领标签（用完删除）=====
+function openSeaTagTool() {
+  const targets = ALL.filter(c =>
+    (c.follow_stage || 0) === 0 &&
+    c.first_follow_date &&
+    !DONE_STATUSES.includes(c.status) &&
+    !(c.tags || []).includes('公海认领')
+  );
+
+  document.getElementById('sea-tag-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'sea-tag-ov';
+
+  const rowsHtml = targets.length ? targets.map(c => `
+    <div style="display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--border-l)">
+      <input type="checkbox" class="sea-tag-chk" value="${c.id}" checked
+             style="width:16px;height:16px;accent-color:var(--teal);cursor:pointer;flex-shrink:0"/>
+      <div style="flex:1;min-width:0">
+        <div style="font-size:13px;font-weight:600;color:var(--tp)">${esc(c.name)}</div>
+        <div style="font-size:11px;color:var(--tt)">${esc(c.company||'—')} · ${esc(c.country||'—')} · 负责: ${esc(c.sales)}</div>
+        <div style="font-size:11px;color:var(--ts)">认领日期: ${c.first_follow_date} · 当前状态: ${c.status||'未设置'}</div>
+      </div>
+    </div>
+  `).join('') : '<div style="padding:20px;text-align:center;color:var(--tt)">没有需要补标签的客户</div>';
+
+  el.innerHTML = `
+    <div class="modal mlg">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">🌊 补打公海认领标签
+            <span style="font-size:13px;font-weight:400;color:var(--tt)">（${targets.length} 个客户需要补打）</span>
+          </div>
+          <button class="modal-close" onclick="document.getElementById('sea-tag-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body" style="padding:0 24px">
+        <div style="background:var(--teal-l);border:1px solid rgba(8,145,178,.2);border-radius:var(--r2);padding:10px 14px;margin:16px 0;font-size:12px;color:var(--teal);line-height:1.6">
+          ✅ 以下客户满足条件：<b>follow_stage=0 且 first_follow_date 不为空</b>，说明已被认领但尚未首次跟进。<br/>
+          确认勾选后点击「执行打标签」，系统会给他们加上「公海认领」tag，之后就会出现在公海捞回面板里。
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 0;border-bottom:1px solid var(--border)">
+          <label style="display:flex;align-items:center;gap:6px;cursor:pointer;font-size:13px;font-weight:600">
+            <input type="checkbox" checked onchange="document.querySelectorAll('.sea-tag-chk').forEach(c=>c.checked=this.checked)"
+                   style="width:16px;height:16px;accent-color:var(--teal)"/>
+            全选 / 全不选
+          </label>
+          <span style="font-size:12px;color:var(--tt)">默认全选，可手动取消不需要的</span>
+        </div>
+        <div style="max-height:400px;overflow-y:auto;padding:4px 0">
+          ${rowsHtml}
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="document.getElementById('sea-tag-ov').remove()">取消</button>
+        <button class="btn bp" style="background:var(--teal);box-shadow:0 2px 8px rgba(8,145,178,.25)"
+                onclick="executeSeaTag()" ${!targets.length?'disabled':''}>
+          🌊 执行打标签
+        </button>
+      </div>
+    </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click', e => { if(e.target === el) el.remove() });
+}
+
+async function executeSeaTag() {
+  const checked = [...document.querySelectorAll('.sea-tag-chk:checked')].map(c => c.value);
+  if (!checked.length) { toast('⚠️ 没有选中任何客户'); return; }
+
+  showCustomConfirm(
+    '<span style="color:var(--teal)">🌊 确认打标签</span>',
+    `确定为选中的 <span style="color:var(--teal)">${checked.length}</span> 个客户<br>补打「公海认领」标签吗？`,
+    '打完标签后这些客户会出现在公海捞回面板，不影响其他任何数据。',
+    '确认执行', 'teal',
+    async () => {
+      document.getElementById('sea-tag-ov')?.remove();
+      showLoading(true);
+      let success = 0;
+      for (const id of checked) {
+        const c = ALL.find(x => x.id === id);
+        if (!c) continue;
+        const newTags = [...new Set([...(c.tags || []), '公海认领'])];
+        const { error } = await db.from('customers').update({ tags: newTags }).eq('id', id);
+        if (!error) success++;
+      }
+      showLoading(false);
+      toast(`✅ 成功为 ${success} 个客户打上了公海认领标签`);
+      await load();
+    }
+  );
+}
+// ===== 临时工具结束 =====
 </script>
 </body>
 </html>
