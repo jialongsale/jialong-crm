@@ -1276,10 +1276,8 @@ function renderTasks() {
   // ✨ 定义一个精准的“公海捞回”判定函数
   const checkRecycled = (c) => {
     const isStageZero = (c.follow_stage || 0) === 0;
-    const daysOld = -diffD(cusDate(c));
     const hasRecycledTag = (c.tags || []).includes('公海认领');
-    // 如果带有捞回标签，或者超过7天未首跟的老数据，统统算作公海捞回
-    return isStageZero && (hasRecycledTag || daysOld >= 7);
+    return isStageZero && hasRecycledTag;
   };
 
   // 2. 精准计算顶部四个大 Tab 的数量（绝对互斥原则）
