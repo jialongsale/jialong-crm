@@ -1273,53 +1273,57 @@ function renderTasks() {
   const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
-  // ✨ 定义一个精准的“公海捞回”判定函数
-  const checkRecycled = (c) => {
-    const isStageZero = (c.follow_stage || 0) === 0;
-    const hasRecycledTag = (c.tags || []).includes('公海认领');
-    return isStageZero && hasRecycledTag;
-  };
-
-  // 2. 精准计算顶部四个大 Tab 的数量（绝对互斥原则）
-  let cntOverdue = 0, cntToday = 0, cntNew = 0, cntFuture = 0;
-  rawTasks.forEach(c => {
-    const isStageZero = (c.follow_stage || 0) === 0;
-    const daysOld = -diffD(cusDate(c)); 
-    const isRecycled = checkRecycled(c);
-
-    if (isStageZero) {
-        if (isRecycled) cntNew++; // 是公海捞回，就只加到捞回里
-        else if (daysOld > 3) cntOverdue++; // 正常新线索超3天 -> 逾期
-        else cntToday++; // 3天内新线索 -> 今日
-    } else {
-        if (c.next_follow_date < tDate) cntOverdue++;
-        else if (c.next_follow_date === tDate) cntToday++;
-        else if (c.next_follow_date > tDate && c.next_follow_date <= futureDate) cntFuture++;
-    }
-  });
-
-  // 3. 过滤出基础任务池，保持与上面计算逻辑完全一致
-  const baseTasksForCounts = rawTasks.filter(c => {
+  // ✨ 核心逻辑：精准互斥的瀑布流分流算法
+  const classifyTask = (c) => {
     const isStageZero = (c.follow_stage || 0) === 0;
     const daysOld = -diffD(cusDate(c));
-    const isRecycledTask = checkRecycled(c);
+    const hasTag = (c.tags || []).includes('公海认领');
+    
+    // 判定是否为公海捞回：处于首跟阶段，且带有认领标签 或 已经有过分配时间(完美兼容系统里的老数据)
+    const isRecycledLead = isStageZero && (hasTag || c.first_follow_date);
 
     let isOverdue = false, isToday = false, isRecycled = false, isFuture = false;
 
-    if (isStageZero) {
-        if (isRecycledTask) isRecycled = true;
-        else if (daysOld > 3) isOverdue = true;
-        else isToday = true;
-    } else {
+    // 第一优先级：只要过了该跟进的日子，就是逾期 (严惩不跟进的行为)
+    if (c.next_follow_date) {
         if (c.next_follow_date < tDate) isOverdue = true;
-        else if (c.next_follow_date === tDate) isToday = true;
-        else if (c.next_follow_date > tDate && c.next_follow_date <= futureDate) isFuture = true;
+    } else {
+        // 如果是完全没被碰过的纯新线索，超过3天算逾期
+        if (daysOld > 3) isOverdue = true;
     }
 
-    if (window.fTaskTab === 'overdue' && !isOverdue) return false;
-    if (window.fTaskTab === 'today' && !isToday) return false;
-    if (window.fTaskTab === 'new' && !isRecycled) return false;
-    if (window.fTaskTab === 'future' && !isFuture) return false;
+    // 第二优先级：如果没有逾期，再精确按归属地面板分发
+    if (!isOverdue) {
+        if (isRecycledLead) {
+            isRecycled = true; // 刚认领回来且还未逾期的线索
+        } else if (c.next_follow_date === tDate || (!c.next_follow_date && daysOld <= 3)) {
+            isToday = true;    // 计划今天跟进，或3天内的新鲜线索
+        } else if (c.next_follow_date > tDate && c.next_follow_date <= futureDate) {
+            isFuture = true;   // 未来三天的任务
+        }
+    }
+
+    return { isOverdue, isToday, isRecycled, isFuture };
+  };
+
+  // 2. 计算各面板总数
+  let cntOverdue = 0, cntToday = 0, cntNew = 0, cntFuture = 0;
+  rawTasks.forEach(c => {
+    const cls = classifyTask(c);
+    if (cls.isOverdue) cntOverdue++;
+    if (cls.isToday) cntToday++;
+    if (cls.isRecycled) cntNew++;
+    if (cls.isFuture) cntFuture++;
+  });
+
+  // 3. 过滤当前面板的任务
+  const baseTasksForCounts = rawTasks.filter(c => {
+    const cls = classifyTask(c);
+
+    if (window.fTaskTab === 'overdue' && !cls.isOverdue) return false;
+    if (window.fTaskTab === 'today' && !cls.isToday) return false;
+    if (window.fTaskTab === 'new' && !cls.isRecycled) return false;
+    if (window.fTaskTab === 'future' && !cls.isFuture) return false;
 
     if (window.fTaskRating !== '全部' && (c.rating || '') !== window.fTaskRating) return false;
     if (window.fTaskCountry !== '全部' && c.country !== window.fTaskCountry) return false;
@@ -1383,10 +1387,10 @@ function renderTasks() {
 
   const headerHtml = `
   <div style="display:flex; gap:10px; margin-bottom:16px; overflow-x:auto; padding-bottom:4px;">
-    ${tabCard('overdue', cntOverdue, '🔴 逾期未跟', '', 'danger', 'danger-l')}
-    ${tabCard('today', cntToday, '🟠 今日任务', '', 'warn', 'warn-l')}
-    ${tabCard('new', cntNew, '🔵 公海捞回', '', 'brand', 'brand-l')}
-    ${tabCard('future', cntFuture, '⚪ 未来三天', '', 'ts', 'surface2')}
+    ${tabCard('overdue', cntOverdue, '逾期未跟', '🔴', 'danger', 'danger-l')}
+    ${tabCard('today', cntToday, '今日任务', '🟠', 'warn', 'warn-l')}
+    ${tabCard('new', cntNew, '公海捞回', '🔵', 'brand', 'brand-l')}
+    ${tabCard('future', cntFuture, '未来三天', '⚪', 'ts', 'surface2')}
   </div>
   <div class="fsec">
     <div class="frow">
@@ -1454,13 +1458,13 @@ function renderTasks() {
     const n = nfi(c);
     let wa = waLink(c.phone), ml = mailLink(c.email);
 
-    const isRecycled = checkRecycled(c);
-    const isStageZero = (c.follow_stage || 0) === 0;
+    // ✨ 这里也要同步使用分类算法提取状态
+    const cls = classifyTask(c);
     
     let badgeHtml = '';
-    if (isRecycled) {
+    if (cls.isRecycled) {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--teal); background:var(--teal-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">公海捞回</span>';
-    } else if (isStageZero) {
+    } else if ((c.follow_stage || 0) === 0) {
         badgeHtml = '<span style="font-size:10px; font-weight:700; color:var(--danger); background:var(--danger-l); padding:4px; border-radius:4px; writing-mode:vertical-rl; letter-spacing:2px; margin-top:4px">新线索</span>';
     }
     
