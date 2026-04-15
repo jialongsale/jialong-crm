@@ -1007,9 +1007,23 @@ function renderDashChart(){
 function renderCus(){
   window.fAiSort = window.fAiSort || '默认排序';
 
-  let filtered=CUS.filter(c=>{
-    const q=fS.toLowerCase();
-    return(!q||c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.phone?.includes(q)||c.country?.toLowerCase().includes(q)||c.email?.toLowerCase().includes(q)||(c.tags||[]).some(t=>t.toLowerCase().includes(q)))
+  let filtered = CUS.filter(c => {
+    const q = fS.toLowerCase();
+    const matchSearch = !q || 
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.company || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.country || '').toLowerCase().includes(q) ||
+      (c.job_title || '').toLowerCase().includes(q) ||
+      (c.packaging_material || '').toLowerCase().includes(q) ||
+      (c.project_details || '').toLowerCase().includes(q) ||
+      (c.notes || '').toLowerCase().includes(q) ||
+      (c.last_log_note || '').toLowerCase().includes(q) ||
+      (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
+      (c.products || []).some(p => p.toLowerCase().includes(q));
+
+    return matchSearch
       &&(fSales==='全部'||c.sales===fSales)
       &&(fStat==='全部'||(c.status||'')===fStat)
       &&(fCo==='全部'||c.country===fCo)
@@ -1333,17 +1347,23 @@ function renderTasks() {
 
     const q = window.fTaskSearch.toLowerCase();
     if (q) {
-      const match = (c.name||'').toLowerCase().includes(q) ||
-                    (c.company||'').toLowerCase().includes(q) ||
-                    (c.last_log_note||'').toLowerCase().includes(q) ||
-                    (c.phone||'').includes(q) ||
-                    (c.email||'').toLowerCase().includes(q);
+      const match = (c.name || '').toLowerCase().includes(q) ||
+                    (c.company || '').toLowerCase().includes(q) ||
+                    (c.phone || '').includes(q) ||
+                    (c.email || '').toLowerCase().includes(q) ||
+                    (c.country || '').toLowerCase().includes(q) ||
+                    (c.job_title || '').toLowerCase().includes(q) ||
+                    (c.packaging_material || '').toLowerCase().includes(q) ||
+                    (c.project_details || '').toLowerCase().includes(q) ||
+                    (c.notes || '').toLowerCase().includes(q) ||
+                    (c.last_log_note || '').toLowerCase().includes(q) ||
+                    (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
+                    (c.products || []).some(p => p.toLowerCase().includes(q));
       if (!match) return false;
     }
     return true;
   });
 
-  // 4. 动态计算阶段标签
   const stageCounts = {
     '0': baseTasksForCounts.filter(c => (c.follow_stage||0)===0).length,
     '1': baseTasksForCounts.filter(c => c.follow_stage===1).length,
@@ -1540,7 +1560,24 @@ function renderTasks() {
 // ===== SEA =====
 function renderSea(){
   let list=ALL.filter(isSea);
-  if(seaS){const q=seaS.toLowerCase();list=list.filter(c=>c.name?.toLowerCase().includes(q)||c.company?.toLowerCase().includes(q)||c.country?.toLowerCase().includes(q)||c.sales?.toLowerCase().includes(q));}
+  if(seaS){
+    const q = seaS.toLowerCase();
+    list = list.filter(c => 
+      (c.name || '').toLowerCase().includes(q) ||
+      (c.company || '').toLowerCase().includes(q) ||
+      (c.phone || '').includes(q) ||
+      (c.email || '').toLowerCase().includes(q) ||
+      (c.country || '').toLowerCase().includes(q) ||
+      (c.sales || '').toLowerCase().includes(q) ||
+      (c.job_title || '').toLowerCase().includes(q) ||
+      (c.packaging_material || '').toLowerCase().includes(q) ||
+      (c.project_details || '').toLowerCase().includes(q) ||
+      (c.notes || '').toLowerCase().includes(q) ||
+      (c.last_log_note || '').toLowerCase().includes(q) ||
+      (c.tags || []).some(t => t.toLowerCase().includes(q)) ||
+      (c.products || []).some(p => p.toLowerCase().includes(q))
+    );
+  }
   const total=list.length;
   const totalPages=Math.max(1,Math.ceil(total/seaPageSize));
   if(seaPage>totalPages)seaPage=totalPages;
