@@ -2243,26 +2243,72 @@ async function saveLog(){
   openLog(LID); 
 }
 
-async function editLog(logId){
-  const log=LOGS.find(l=>l.id===logId);if(!log)return;
-  const newNotes=prompt('修改沟通详情：',log.notes);if(newNotes===null)return;
-  const curDate=log.log_date||log.created_at?.split('T')[0];
-  const newDate=prompt('修改跟进日期（格式 2024-03-15）：',curDate);if(newDate===null)return;
-  const fd=fixDate(newDate)||curDate;
-  
+function editLog(logId) {
+  const log = LOGS.find(l => l.id === logId);
+  if (!log) return;
+
+  const curDate = log.log_date || log.created_at?.split('T')[0];
+  const curNotes = log.notes || '';
+
+  document.getElementById('edit-log-ov')?.remove();
+  const el = document.createElement('div');
+  el.className = 'overlay';
+  el.id = 'edit-log-ov';
+  el.style.zIndex = '4000';
+
+  el.innerHTML = `
+    <div class="modal msm">
+      <div class="modal-header">
+        <div class="modal-top">
+          <div class="modal-title">📝 修改历史跟进记录</div>
+          <button class="modal-close" onclick="document.getElementById('edit-log-ov').remove()">×</button>
+        </div>
+      </div>
+      <div class="simple-body">
+        <div class="fg">
+          <label class="fl">跟进日期</label>
+          <input type="date" id="edit-log-date" class="fi" value="${curDate}">
+        </div>
+        <div class="fg">
+          <label class="fl">沟通详情</label>
+          <textarea id="edit-log-notes" class="fi" rows="5" placeholder="请填写详细的跟进内容...">${esc(curNotes)}</textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="btn bg" onclick="document.getElementById('edit-log-ov').remove()">取消</button>
+        <button class="btn bp" onclick="confirmEditLog('${logId}')">确认保存</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(el);
+}
+
+async function confirmEditLog(logId) {
+  const newDate = document.getElementById('edit-log-date').value;
+  const newNotes = document.getElementById('edit-log-notes').value.trim();
+  const fd = fixDate(newDate) || T();
+
+  if (!newNotes) {
+    toast('⚠️ 沟通详情不能为空');
+    return;
+  }
+
+  document.getElementById('edit-log-ov').remove();
+
   if (typeof showLoading === 'function') showLoading(true);
-  await db.from('follow_logs').update({notes:newNotes.trim(),log_date:fd}).eq('id',logId);
   
-  const {data: latest} = await db.from('follow_logs').select('notes').eq('customer_id', LID).order('log_date', {ascending: false}).order('created_at', {ascending: false}).limit(1);
-  if(latest && latest.length > 0) {
-    await db.from('customers').update({last_log_note: latest[0].notes}).eq('id', LID);
+  await db.from('follow_logs').update({ notes: newNotes, log_date: fd }).eq('id', logId);
+  
+  const { data: latest } = await db.from('follow_logs').select('notes').eq('customer_id', LID).order('log_date', { ascending: false }).order('created_at', { ascending: false }).limit(1);
+  if (latest && latest.length > 0) {
+    await db.from('customers').update({ last_log_note: latest[0].notes }).eq('id', LID);
   }
 
   if (typeof showLoading === 'function') showLoading(false);
   
-  toast('✅ 日志已更新');
+  toast('✅ 日志已成功更新');
   await load();
-  openLog(LID);
+  openLog(LID); // 刷新侧边栏抽屉里的历史列表
 }
 
 async function deleteLog(logId){
