@@ -1271,56 +1271,57 @@ function renderTasks() {
   window.fTaskCountry = window.fTaskCountry || '全部';
   window.fTaskTag = window.fTaskTag || '全部';
   window.fTaskStage = window.fTaskStage || 'all'; 
+  // ✨ 新增：任务页的销售筛选与分页状态
+  window.fTaskSales = window.fTaskSales || '全部';
+  window.taskPage = window.taskPage || 1;
+  window.taskPageSize = window.taskPageSize || 20;
 
   const tDate = T();
   const futureDate = addD(tDate, 3);
   
-  // 1. 获取全局基础待办任务
+  // 1. 获取全局基础待办任务 (✨ 加入销售员过滤逻辑)
   const rawTasks = ALL.filter(c => {
     if(DONE_STATUSES.includes(c.status)) return false;
     if((c.follow_stage||0) >= 5) return false;
     if((c.follow_stage||0) === 0) return true;
     if(!c.next_follow_date) return false;
     return c.next_follow_date <= futureDate; 
-  }).filter(c => isAdm() ? (dashSales === '全部' || c.sales === dashSales) : c.sales === CU);
+  }).filter(c => {
+    if (isAdm()) return window.fTaskSales === '全部' ? true : c.sales === window.fTaskSales;
+    return c.sales === CU;
+  });
 
   const taskCountries = [...new Set(rawTasks.map(c => c.country).filter(Boolean))].sort();
   const taskTags = [...new Set(rawTasks.flatMap(c => c.tags || []))].sort();
 
-  // ✨ 核心逻辑：精准互斥的瀑布流分流算法
+  // 核心灵魂：绝对互斥的分类算法
   const classifyTask = (c) => {
-    const stage = c.follow_stage || 0;
-    const isRecycledPending = (c.tags || []).includes('公海认领') && stage === 0;
+    const isStageZero = (c.follow_stage || 0) === 0;
     const daysOld = -diffD(cusDate(c));
+    const hasRecycledTag = (c.tags || []).includes('公海认领');
+    
+    // 双重保险判定公海捞回
+    const isRecycledLead = isStageZero && (hasRecycledTag || !!c.first_follow_date);
 
-    // 公海捞回：优先级最高，认领回来但尚未完成首次跟进
-    // 无论日期多旧、多逾期，都死锁在这里，直到 followUp 执行后 stage 变为 1
-    if (isRecycledPending) {
-        return { isOverdue: false, isToday: false, isRecycled: true, isFuture: false };
-    }
+    let isOverdue = false, isToday = false, isRecycled = false, isFuture = false;
 
-    let isOverdue = false, isToday = false, isFuture = false;
-
-    if (stage === 0) {
-        if (daysOld > 3) {
-            isOverdue = true;   // 入库超3天无人碰 → 逾期
+    if (isStageZero) {
+        if (isRecycledLead) {
+            isRecycled = true; 
+        } else if (c.next_follow_date && c.next_follow_date > tDate) {
+            isFuture = true; 
         } else {
-            isToday = true;     // 3天内新鲜线索 → 今日任务
+            if (daysOld > 3) isOverdue = true; 
+            else isToday = true; 
         }
     } else {
-        if (!c.next_follow_date) {
-            isToday = true;
-        } else if (c.next_follow_date < tDate) {
-            isOverdue = true;
-        } else if (c.next_follow_date === tDate) {
-            isToday = true;
-        } else if (c.next_follow_date <= futureDate) {
-            isFuture = true;
-        }
+        if (!c.next_follow_date || c.next_follow_date < tDate) isOverdue = true;
+        else if (c.next_follow_date === tDate) isToday = true;
+        else if (c.next_follow_date <= futureDate) isFuture = true;
     }
 
-    return { isOverdue, isToday, isRecycled: false, isFuture };
-};
+    return { isOverdue, isToday, isRecycled, isFuture };
+  };
 
   // 2. 计算各面板总数
   let cntOverdue = 0, cntToday = 0, cntNew = 0, cntFuture = 0;
@@ -1332,7 +1333,7 @@ function renderTasks() {
     if (cls.isFuture) cntFuture++;
   });
 
-  // 3. 过滤当前面板的任务
+  // 3. 过滤出当前面板的基础任务池
   const baseTasksForCounts = rawTasks.filter(c => {
     const cls = classifyTask(c);
 
@@ -1364,6 +1365,7 @@ function renderTasks() {
     return true;
   });
 
+  // 4. 动态计算阶段胶囊标签的数量
   const stageCounts = {
     '0': baseTasksForCounts.filter(c => (c.follow_stage||0)===0).length,
     '1': baseTasksForCounts.filter(c => c.follow_stage===1).length,
@@ -1372,6 +1374,7 @@ function renderTasks() {
     '4': baseTasksForCounts.filter(c => c.follow_stage===4).length,
   };
 
+  // 5. 叠加胶囊过滤
   let filtered = baseTasksForCounts.filter(c => {
     const currentStage = (c.follow_stage || 0).toString();
     if (window.fTaskStage !== 'all' && currentStage !== window.fTaskStage) return false;
@@ -1398,10 +1401,16 @@ function renderTasks() {
     return dateA < dateB ? -1 : 1;
   });
 
-  window._currentTaskIds = filtered.map(c => c.id);
+  // ✨ 分页处理
+  const total = filtered.length;
+  const totalPages = Math.max(1, Math.ceil(total / window.taskPageSize));
+  if (window.taskPage > totalPages) window.taskPage = totalPages;
+  const pagedTasks = filtered.slice((window.taskPage - 1) * window.taskPageSize, window.taskPage * window.taskPageSize);
+
+  window._currentTaskIds = pagedTasks.map(c => c.id);
 
   const tabCard = (id, count, label, icon, color, bgL) => `
-    <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.taskSelIds.clear();window.fTaskTab='${id}';window.fTaskType='all';window.fTaskStage='all';render()">
+    <div style="flex:1; background:${window.fTaskTab===id? `var(--${bgL})` : 'var(--surface)'}; border:1px solid ${window.fTaskTab===id? `var(--${color})` : 'var(--border-l)'}; border-radius:var(--r2); padding:12px; text-align:center; cursor:pointer; transition:all .2s" onclick="window.taskSelIds.clear();window.fTaskTab='${id}';window.taskPage=1;window.fTaskStage='all';render()">
       <div style="font-size:22px; font-weight:700; color:var(--${color}); line-height:1">${count}</div>
       <div style="font-size:12px; color:var(--${window.fTaskTab===id?color:'ts'}); font-weight:600; margin-top:6px;">${icon} ${label}</div>
     </div>
@@ -1416,13 +1425,14 @@ function renderTasks() {
   </div>
   <div class="fsec">
     <div class="frow">
-      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; clearTimeout(window._tst); window._tst=setTimeout(render,600)" placeholder="搜姓名/公司/电话/备注..."/></div>
-      <select class="fsel" onchange="window.fTaskRating=this.value;render()">
+      <div class="sbox"><span style="color:var(--tt)">🔍</span><input value="${esc(window.fTaskSearch)}" oninput="window.fTaskSearch=this.value; window.taskPage=1; clearTimeout(window._tst); window._tst=setTimeout(render,600)" placeholder="🔍 全能搜索：姓名/公司/备注..."/></div>
+      ${isAdm() ? `<select class="fsel" onchange="window.fTaskSales=this.value;window.taskPage=1;render()"><option value="全部">全部销售</option>${SALES.map(s=>`<option ${window.fTaskSales===s?'selected':''}>${s}</option>`).join('')}</select>` : ''}
+      <select class="fsel" onchange="window.fTaskRating=this.value;window.taskPage=1;render()">
         <option value="全部">全部评级</option>
         <option value="A" ${window.fTaskRating==='A'?'selected':''}>⭐ 仅看 A 级</option>
         <option value="B" ${window.fTaskRating==='B'?'selected':''}>👍 仅看 B 级</option>
       </select>
-      <select class="fsel" onchange="window.fTaskSort=this.value;render()">
+      <select class="fsel" onchange="window.fTaskSort=this.value;window.taskPage=1;render()">
         <option value="urgent" ${window.fTaskSort==='urgent'?'selected':''}>按紧急程度优先</option>
         <option value="rating" ${window.fTaskSort==='rating'?'selected':''}>按客户评级优先</option>
         <option value="created_desc" ${window.fTaskSort==='created_desc'?'selected':''}>按入库时间 (最新优先)</option>
@@ -1431,11 +1441,11 @@ function renderTasks() {
     </div>
     
     <div class="frow" style="margin-top:10px; padding-top:10px; border-top:1px dashed var(--border-l)">
-      <select class="fsel" onchange="window.fTaskCountry=this.value;render()" style="min-width:140px">
+      <select class="fsel" onchange="window.fTaskCountry=this.value;window.taskPage=1;render()" style="min-width:140px">
         <option value="全部">🌍 全部国家/时区</option>
         ${taskCountries.map(c=>`<option ${window.fTaskCountry===c?'selected':''}>${esc(c)}</option>`).join('')}
       </select>
-      <select class="fsel" onchange="window.fTaskTag=this.value;render()" style="min-width:140px">
+      <select class="fsel" onchange="window.fTaskTag=this.value;window.taskPage=1;render()" style="min-width:140px">
         <option value="全部">🏷️ 全部高意向标签</option>
         ${taskTags.map(t=>`<option ${window.fTaskTag===t?'selected':''}>${esc(t)}</option>`).join('')}
       </select>
@@ -1444,19 +1454,19 @@ function renderTasks() {
     <div class="frow" style="margin-top:12px; padding-top:12px; border-top:1px dashed var(--border-l)">
       <div style="display:flex; gap:8px; flex-wrap:wrap; align-items:center;">
         <span style="font-size:12px; font-weight:700; color:var(--ts); margin-right:4px;">跟进阶段:</span>
-        <div onclick="window.fTaskStage='all';render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
-        <div onclick="window.fTaskStage='0';render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次跟进 (${stageCounts['0']})</div>
-        <div onclick="window.fTaskStage='1';render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
-        <div onclick="window.fTaskStage='2';render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
-        <div onclick="window.fTaskStage='3';render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
-        <div onclick="window.fTaskStage='4';render()" class="pill ${window.fTaskStage==='4'?'on':''}">💤 30天回访 (${stageCounts['4']})</div>
+        <div onclick="window.fTaskStage='all';window.taskPage=1;render()" class="pill ${window.fTaskStage==='all'?'on':''}">全部</div>
+        <div onclick="window.fTaskStage='0';window.taskPage=1;render()" class="pill ${window.fTaskStage==='0'?'on':''}">🔥 首次破冰 (${stageCounts['0']})</div>
+        <div onclick="window.fTaskStage='1';window.taskPage=1;render()" class="pill ${window.fTaskStage==='1'?'on':''}">📞 3天回访 (${stageCounts['1']})</div>
+        <div onclick="window.fTaskStage='2';window.taskPage=1;render()" class="pill ${window.fTaskStage==='2'?'on':''}">💬 7天回访 (${stageCounts['2']})</div>
+        <div onclick="window.fTaskStage='3';window.taskPage=1;render()" class="pill ${window.fTaskStage==='3'?'on':''}">⏳ 15天回访 (${stageCounts['3']})</div>
+        <div onclick="window.fTaskStage='4';window.taskPage=1;render()" class="pill ${window.fTaskStage==='4'?'on':''}">💤 30天回访 (${stageCounts['4']})</div>
       </div>
     </div>
   </div>
   `;
 
-  if(!filtered.length) {
-     return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">✓</div><div class="empty-ttl">当前区间无任务</div><div style="font-size:13px; color:var(--ts)">您可以切换顶部的任务面板或跟进阶段查看</div></div></div>`;
+  if(!pagedTasks.length) {
+     return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + `<div class="empty" style="margin-top:40px"><div class="empty-icon">✓</div><div class="empty-ttl">当前区间无任务</div><div style="font-size:13px; color:var(--ts)">您可以尝试切换分页、清理筛选条件或查看其他面板</div></div></div>`;
   }
 
   const batchActionBar = window.taskSelIds.size > 0 ? `
@@ -1471,16 +1481,16 @@ function renderTasks() {
 
   const selectAllHtml = `
     <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; padding:0 4px">
-      <input type="checkbox" onchange="toggleAllTasks(this)" ${filtered.every(c => window.taskSelIds.has(c.id)) ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer"/>
-      <span style="font-size:13px; color:var(--ts); font-weight:500">全选当前列表 (${filtered.length}个任务)</span>
+      <input type="checkbox" onchange="toggleAllTasks(this)" ${pagedTasks.every(c => window.taskSelIds.has(c.id)) ? 'checked' : ''} style="width:16px;height:16px;accent-color:var(--brand);cursor:pointer"/>
+      <span style="font-size:13px; color:var(--ts); font-weight:500">全选本页 (${pagedTasks.length}个任务)</span>
     </div>
   `;
 
-  const listHtml = `<div style="display:flex;flex-direction:column;gap:12px;padding-bottom:40px">` + filtered.map(c => {
+  // ✨ 渲染分页后的任务列表 (pagedTasks)
+  const listHtml = `<div style="display:flex;flex-direction:column;gap:12px;padding-bottom:16px">` + pagedTasks.map(c => {
     const n = nfi(c);
     let wa = waLink(c.phone), ml = mailLink(c.email);
 
-    // ✨ 这里也要同步使用分类算法提取状态
     const cls = classifyTask(c);
     
     let badgeHtml = '';
@@ -1492,7 +1502,7 @@ function renderTasks() {
     
     let stageBadge = '';
     const s = c.follow_stage || 0;
-    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次跟进</span>`;
+    if (s == 0) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--danger);background:var(--danger-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,59,48,.2)">🔥 首次破冰</span>`;
     else if (s == 1) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--warn);background:var(--warn-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(255,149,0,.2)">📞 3天回访</span>`;
     else if (s == 2) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--brand);background:var(--brand-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(0,102,204,.2)">💬 7天回访</span>`;
     else if (s == 3) stageBadge = `<span style="font-size:11px;font-weight:700;color:var(--purple);background:var(--purple-l);padding:2px 6px;border-radius:4px;border:1px solid rgba(175,82,222,.2)">⏳ 15天回访</span>`;
@@ -1554,7 +1564,14 @@ function renderTasks() {
     </div>`;
   }).join('') + `</div>`;
 
-  return tbHtml('⚡ 今日待办',`${T()}`,`<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + batchActionBar + selectAllHtml + listHtml + `</div>`;
+  const pageNums = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || Math.abs(i - window.taskPage) <= 2) pageNums.push(i);
+    else if (pageNums[pageNums.length - 1] !== '…') pageNums.push('…');
+  }
+  const pageBar = `<div class="pbar" style="margin-top:10px; border-top:none; padding:0;"><div class="pinfo">共 ${total} 条任务</div><select onchange="window.taskPageSize=+this.value;window.taskPage=1;render()" style="padding:4px 8px;border-radius:6px;border:1px solid var(--border);font-size:12px;background:var(--surface);color:var(--ts);cursor:pointer">${[20,50,100].map(n=>`<option value="${n}" ${window.taskPageSize===n?'selected':''}>${n}条/页</option>`).join('')}</select><button class="pbtn" onclick="window.taskPage=Math.max(1,window.taskPage-1);render()" ${window.taskPage===1?'disabled':''}>‹</button>${pageNums.map(n=>n==='…'?`<span style="font-size:12px;color:var(--tt);padding:0 2px">…</span>`:`<button class="pbtn ${window.taskPage===n?'on':''}" onclick="window.taskPage=${n};render()">${n}</button>`).join('')}<button class="pbtn" onclick="window.taskPage=Math.min(${totalPages},window.taskPage+1);render()" ${window.taskPage===totalPages?'disabled':''}>›</button></div>`;
+
+  return tbHtml('⚡ 今日待办', `${T()}`, `<button class="btn bp" onclick="openAdd()">+ 新建客户</button>`) + headerHtml + batchActionBar + selectAllHtml + listHtml + pageBar + `</div>`;
 }
 
 // ===== SEA =====
