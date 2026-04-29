@@ -444,6 +444,7 @@ textarea.fi{resize:vertical;line-height:1.6}.fi::placeholder{color:var(--tt)}
       <button class="user-btn" onclick="login('Chris')">Chris</button>
       <button class="user-btn" onclick="login('Tony')">Tony</button>
       <button class="user-btn" onclick="login('Gethin')">Gethin</button>
+      <button class="user-btn" onclick="login('Rachel Lyn')">Rachel Lyn</button>
     </div>
     <button class="user-btn admin" onclick="login('管理员')">🔧 Admin</button>
   </div>
@@ -490,7 +491,7 @@ const {createClient}=supabase;
 const db=createClient(SUPABASE_URL,SUPABASE_ANON_KEY);
 
 // ===== CONSTANTS =====
-const SALES=['Jacky','Jen','Jimmy','Chris','Tony','Gethin'];
+const SALES=['Jacky','Jen','Jimmy','Chris','Tony','Gethin','Rachel Lyn'];
 const SOURCES=['独立站','易询盘','外贸牛','阿里巴巴','中国制造','社媒','国内转交','国内展会','国外展会'];
 const PRODUCTS=['真空机','封口机','半自动','全自动','外购产品'];
 const STATUSES=['','潜在','意向','成交','转交代理商','流失','垃圾'];
@@ -500,7 +501,7 @@ const VACUUM=['有','无','待确认'];
 const AUTO=['全自动','半自动','手动','待确认'];
 const SLABELS=['','首次跟进','3天回访','7天回访','15天回访','30天回访'];
 const RATINGS=['A','B','C','D'];
-const PASSWORDS={Jacky:'jacky123',Jen:'jen123',Jimmy:'jimmy123',Chris:'chris123',Tony:'tony123',Gethin:'gethin123','管理员':'admin888'};
+const PASSWORDS={Jacky:'jacky123',Jen:'jen123',Jimmy:'jimmy123',Chris:'chris123',Tony:'tony123',Gethin:'gethin123','Rachel Lyn':'rachel123','管理员':'admin888'};
 const RCOLORS={A:'var(--warn)',B:'var(--brand)',C:'var(--teal)',D:'var(--rose)'};
 
 // ===== STATE =====
